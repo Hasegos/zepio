@@ -65,15 +65,17 @@ export default function Title({ saved, best, onNew, onContinue }) {
 /**
  * 엔딩 화면. 한 줄 평과 기록을 보여 주고 공유와 마을 돌아가기를 제공한다.
  *
- * @param props.ending { trust, coins, tasksDone, disasters, steps, codex, title }
+ * @param props.ending { trust, coins, tasksDone, disasters, steps, codex, title, league }
  * @param props.saved 기록을 저장했는지(false면 경고)
  */
 export function Ending({ ending, saved, onResume, onTitle }) {
   return (
     <div className="flex flex-col items-center gap-4 rounded-xl border-4 border-town-ink bg-town-panel p-5 text-center text-town-ink">
       <Sprite kind="agent" scale={8} label="주황색 도트 에이전트" />
-      <h2 className="text-2xl font-extrabold">시험 합격!</h2>
-      <p className="text-sm font-semibold">팀장 박이 당신을 신뢰하는 에이전트로 인정했어요.</p>
+      <h2 className="text-2xl font-extrabold">{ending.league ? "챔피언 리그 제패!" : "시험 합격!"}</h2>
+      <p className="text-sm font-semibold">
+        {ending.league ? "챔피언 제피가 당신을 챔피언 에이전트로 인정했어요." : "팀장 박이 당신을 신뢰하는 에이전트로 인정했어요."}
+      </p>
       <dl className="grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
         {[
           ["신뢰", ending.trust],

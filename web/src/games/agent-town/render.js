@@ -8,6 +8,7 @@ const PAL = {
   town: { ground: "#92d16c", speck: "#7bbd57", path: "#dcc48f", pathDot: "#c4a96f", leaf: "#2f8a3c", leafLight: "#58b653", leafDark: "#226b2e", trunk: "#7a4e2a" },
   forest: { ground: "#5a9a52", speck: "#468a46", path: "#b79a68", pathDot: "#9a7e4e", leaf: "#1f6a3a", leafLight: "#3f9a55", leafDark: "#154a2a", trunk: "#5a3a22" },
   harbor: { ground: "#e6d6a4", speck: "#d2c08a", path: "#b98a56", pathDot: "#94693a", leaf: "#3f6fa8", leafLight: "#6a9ad0", leafDark: "#2a4f7e", trunk: "#2a2a2a" },
+  league: { ground: "#2c3252", speck: "#3a4270", path: "#c9a14a", pathDot: "#a8802f", leaf: "#585f90", leafLight: "#8088c0", leafDark: "#3a4068", trunk: "#2a2e3e" },
   cave: { ground: "#3a4054", speck: "#2c3144", path: "#5c647c", pathDot: "#474e66", leaf: "#585f78", leafLight: "#7a829c", leafDark: "#3a4056", trunk: "#2a2e3e" },
 };
 
@@ -207,7 +208,7 @@ export function drawWorld(canvas, mapId) {
       else if (ch === "~") drawWater(ctx, x, y, tx, ty);
       else if (ch === "b") drawCrates(ctx, x, y, tx, ty, pal);
       else if (ch === "c") drawCable(ctx, x, y, tx, ty, pal);
-      else if (ch === "T") (map.theme === "harbor" ? drawContainer : map.theme === "cave" ? drawRock : drawTree)(ctx, x, y, tx, ty, pal);
+      else if (ch === "T") (map.theme === "harbor" ? drawContainer : map.theme === "cave" || map.theme === "league" ? drawRock : drawTree)(ctx, x, y, tx, ty, pal);
       else if (ch === "S") drawSign(ctx, x, y, tx, ty, pal);
       else drawGround(ctx, x, y, tx, ty, pal);
     }
