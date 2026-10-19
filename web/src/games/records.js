@@ -1,3 +1,4 @@
+import { summarize as agentTown } from "./agent-town/record.js";
 import { summarize as colorClash } from "./color-clash/record.js";
 import { summarize as cozyCafe } from "./cozy-cafe/record.js";
 import { summarize as lightFlip } from "./light-flip/record.js";
@@ -12,4 +13,5 @@ export const summarizers = {
   "light-flip": lightFlip,
   "cozy-cafe": cozyCafe,
   "tiny-isle": tinyIsle,
+  "agent-town": agentTown,
 };

@@ -1,3 +1,4 @@
+import agentTown from "./agent-town/meta.js";
 import cozyCafe from "./cozy-cafe/meta.js";
 import colorClash from "./color-clash/meta.js";
 import lightFlip from "./light-flip/meta.js";
@@ -12,6 +13,7 @@ export const games = [
   { ...lightFlip, load: () => import("./light-flip/index.jsx") },
   { ...cozyCafe, load: () => import("./cozy-cafe/index.jsx") },
   { ...tinyIsle, load: () => import("./tiny-isle/index.jsx") },
+  { ...agentTown, load: () => import("./agent-town/index.jsx") },
 ];
 
 export const liveGames = games.filter((game) => game.status === "live");
