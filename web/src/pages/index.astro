@@ -1,7 +1,9 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import Mascot from "../components/Mascot.astro";
 import { liveGames } from "../games/registry.js";
 
+const CATEGORY_LABELS = { puzzle: "퍼즐", arcade: "아케이드", casual: "캐주얼" };
 const dailyGame = liveGames.find((game) => game.hasDaily);
 ---
 
@@ -9,8 +11,16 @@ const dailyGame = liveGames.find((game) => game.hasDaily);
   title="Zepio | 무료 웹게임"
   description="회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임 플랫폼 Zepio입니다."
 >
-  <h1 class="text-3xl font-extrabold">Play Something New</h1>
-  <p class="mt-2 text-slate-600">다운로드나 회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임.</p>
+  <section class="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-primary to-violet-700 p-5 text-white sm:p-8">
+    <div class="flex-1">
+      <h1 class="text-3xl font-extrabold sm:text-4xl">Play Something New</h1>
+      <p class="mt-2 text-indigo-100">다운로드나 회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임.</p>
+      <a href="#games" class="mt-4 inline-block rounded-xl bg-white px-5 py-2.5 font-bold text-primary">
+        게임 둘러보기
+      </a>
+    </div>
+    <Mascot size={96} class="size-20 shrink-0 sm:size-28" />
+  </section>
 
   {
     dailyGame && (
@@ -46,11 +56,16 @@ const dailyGame = liveGames.find((game) => game.hasDaily);
           data-game-card={game.id}
           data-slug={game.slug}
           data-name={game.name}
-          class="overflow-hidden rounded-2xl bg-white shadow-sm"
+          class="overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
         >
           <img src={game.thumbnail} alt="" width="320" height="180" class="aspect-video w-full object-cover" />
           <div class="p-4">
-            <h3 class="text-lg font-bold">{game.name}</h3>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-lg font-bold">{game.name}</h3>
+              <span class="shrink-0 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-primary">
+                {CATEGORY_LABELS[game.category] ?? game.category}
+              </span>
+            </div>
             <p class="mt-1 text-sm text-slate-600">{game.description}</p>
             <p class="mt-1 text-xs text-slate-600">{game.estimatedPlayTime}</p>
             <p data-record hidden class="mt-1 text-sm font-bold text-primary" />

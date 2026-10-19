@@ -37,6 +37,7 @@ const imageUrl = indexable ? new URL(image, Astro.site).href : null;
     }
     <meta name="twitter:card" content={imageUrl ? "summary_large_image" : "summary"} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/fonts/pretendard/pretendardvariable-dynamic-subset.css" />
     {
       import.meta.env.DEV && (
         <script is:inline type="module">

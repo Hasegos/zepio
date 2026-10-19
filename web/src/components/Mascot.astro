@@ -1,0 +1,40 @@
+---
+/**
+ * 마스코트 "제피"를 그린다. 장식이라 화면 낭독기에는 숨긴다.
+ * 같은 쪽에 여러 번 놓여도 id 충돌이 없게 그라디언트를 쓰지 않는다.
+ */
+interface Props {
+  expression?: "happy" | "think";
+  size?: number;
+  class?: string;
+}
+
+const { expression = "happy", size = 64, class: className } = Astro.props;
+const think = expression === "think";
+---
+
+<svg
+  viewBox="0 0 100 100"
+  width={size}
+  height={size}
+  class={className}
+  aria-hidden="true"
+  focusable="false"
+>
+  <line x1="50" y1="16" x2="50" y2="7" stroke="#fff" stroke-width="3" stroke-linecap="round"></line>
+  <circle cx="50" cy="7" r="5" fill="#f59e0b" stroke="#fff" stroke-width="2"></circle>
+  <rect x="8" y="16" width="84" height="76" rx="26" fill="#4f46e5" stroke="#fff" stroke-width="3"></rect>
+  <circle cx="34" cy="50" r="10" fill="#fff"></circle>
+  <circle cx="66" cy="50" r="10" fill="#fff"></circle>
+  <circle cx={think ? 37 : 35} cy={think ? 46 : 51} r="5" fill="#0f172a"></circle>
+  <circle cx={think ? 69 : 67} cy={think ? 46 : 51} r="5" fill="#0f172a"></circle>
+  <rect x="17" y="64" width="9" height="9" rx="3" fill="#fbbf24"></rect>
+  <rect x="74" y="64" width="9" height="9" rx="3" fill="#fbbf24"></rect>
+  {
+    think ? (
+      <path d="M40 74 H58" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none"></path>
+    ) : (
+      <path d="M38 69 Q50 82 62 69" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none"></path>
+    )
+  }
+</svg>
