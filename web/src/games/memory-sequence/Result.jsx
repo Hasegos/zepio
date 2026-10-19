@@ -1,5 +1,8 @@
 import { useEffect, useRef } from "react";
+import ShareButton from "../ShareButton.jsx";
+import meta from "./meta.js";
 import { formatDuration, MAX_ROUND } from "./reducer.js";
+import { memoryShareText } from "./share-text.js";
 
 /**
  * 클리어한 라운드에 맞는 한 줄 평가를 고른다.
@@ -66,6 +69,8 @@ export default function Result({ state, record, onRetry }) {
           {record.data.bestRound} / {MAX_ROUND} 라운드 · {formatDuration(record.data.bestMs)}
         </p>
       )}
+
+      <ShareButton title="Zepio Memory Sequence" text={memoryShareText(state)} path={`/games/${meta.slug}/`} />
 
       <button
         type="button"
