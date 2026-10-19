@@ -1,172 +1,75 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { getGameData, saveGameData } from "../../lib/storage.js";
-import { GOAL, incomePerSecond, stage as stageOf, stationCost, STATIONS } from "./economy.js";
-import { formatCoins, formatCompact, formatRate } from "./format.js";
+import { FIRST_REGULARS } from "./characters.js";
+import { formatCoins, formatSpan } from "./format.js";
 import Icon from "./icons.jsx";
 import meta from "./meta.js";
-import { AwayDialog, EquipmentPanel, GoalDialog, OperationsPanel, UpgradePanel } from "./Panels.jsx";
+import { Dialog, Management, Notebook, Orders, StoryShelf } from "./Panels.jsx";
+import { menuById } from "./recipes.js";
 import { initialState, reducer } from "./reducer.js";
 import Scene from "./Scene.jsx";
+import { storyEntry } from "./story.js";
+import { Zepi } from "./TownArt.jsx";
 import "./cozy-cafe.css";
 
-const TICK_MS = 250;
-const AUTOSAVE_MS = 10_000;
-const TABS = [{ id: "equipment", label: "건설 · 매니저" }, { id: "upgrade", label: "업그레이드" }];
-const STAGE_NAMES = ["작은 카페의 시작", "빵 냄새가 나는 골목", "초록빛 마을 광장", "언덕까지 이어진 마을", "별빛이 모이는 상점 거리"];
+const TABS=[{id:"manage",name:"카페 운영"},{id:"regulars",name:"단골의 이야기"},{id:"notebook",name:"레시피 노트"}];
 
-/** 저장된 진행 상황을 불러와 오프라인 수익을 한 번 반영한다. */
-function loadState() {
-  const now = Date.now();
-  return reducer(initialState(now), { type: "load", data: getGameData(meta.id), now });
+/** 이 브라우저의 기록을 복구하고 복귀 수익을 한 번 정산한다. */
+function load() {
+  const now=Date.now();
+  return reducer(initialState(now),{type:"load",data:getGameData(meta.id),now});
 }
 
-/** 다음 미보유 설비 또는 직원의 실제 구매 비용을 안내한다. */
-function NextGoal({ econ }) {
-  const locked = STATIONS.find((s) => !econ.levels[s.id]);
-  const previous = locked ? STATIONS[STATIONS.indexOf(locked)-1] : null;
-  const next = locked ? { done: false, label: previous && econ.levels[previous.id]<5 ? `${previous.name} 5레벨 → ${locked.name} 부지 개방` : `${locked.name}을 지어 마을을 넓혀요`, name: previous && econ.levels[previous.id]<5 ? `${previous.name} 증축` : locked.name, cost: previous && econ.levels[previous.id]<5 ? stationCost(previous.id,econ.levels[previous.id]) : stationCost(locked.id,0), icon: locked.id } : null;
-  const value = next ? econ.coins : econ.total;
-  const target = next?.cost ?? GOAL;
-  return (
-    <div className="cafe-next">
-      <span className="cafe-next-icon"><Icon id={next?.icon ?? "upgrade"} /></span>
-      <div className="cafe-next-copy">
-        <p className="cafe-eyebrow">{econ.goalAt ? "OUR LITTLE SUCCESS" : "NEXT LITTLE DREAM"}</p>
-        <p className="cafe-next-title">{next?.label ?? (econ.goalAt ? "마을의 랜드마크! 계속 성장해요" : "누적 수익 1억, 랜드마크를 향해")}</p>
-        <div className="cafe-progress" role="progressbar" aria-label={next?.name ?? "마을의 랜드마크"} aria-valuemin={0} aria-valuemax={target} aria-valuenow={Math.min(value, target)}>
-          <span style={{ width: `${Math.min(100, value / target * 100)}%` }} />
-        </div>
-        <p className="cafe-next-detail">{next ? `${next.name} · ${value >= target ? "구매할 수 있어요" : `${formatCoins(Math.ceil(target - value))} 코인 더 모으면 돼요`}` : `누적 ${formatCompact(econ.total)} / 1억 코인`}</p>
-      </div>
-    </div>
-  );
-}
-
-/** 숫자는 DOM에서 보간하고 경제 상태와 React 렌더 주기는 바꾸지 않는다. */
-function CoinBalance({ value, paused }) {
-  const node = useRef(null);
-  const shown = useRef(value);
-  const firstLabel = useRef(formatCoins(value));
-  useEffect(() => {
-    const from = shown.current;
-    if (paused || !window.matchMedia || window.matchMedia("(prefers-reduced-motion: reduce)").matches || from === value) {
-      shown.current = value;
-      node.current.textContent = formatCoins(value);
-      return;
-    }
-    let frame;
-    const start = performance.now();
-    const draw = (now) => {
-      const t = Math.min(1, (now - start) / 180);
-      shown.current = from + (value - from) * (1 - (1 - t) ** 3);
-      node.current.textContent = formatCoins(shown.current);
-      if (t < 1) frame = requestAnimationFrame(draw);
-    };
-    frame = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
-  }, [value, paused]);
-  return <strong ref={node} className="cafe-balance" aria-label={`코인 ${formatCoins(value)}`}>{firstLabel.current}</strong>;
-}
-
-/** 카페 운영 화면. 경제와 저장은 기존 리듀서에 위임하고 일시적 시각 효과만 관리한다. */
+/** 비 오는 골목의 주문·이야기·운영 화면을 연결한다. */
 export default function CozyCafe() {
-  const [state, dispatch] = useReducer(reducer, undefined, loadState);
-  const [tab, setTab] = useState("equipment");
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [paused, setPaused] = useState(document.visibilityState === "hidden");
-  const latest = useRef(state);
-  const { econ, sim } = state;
-  const growth = stageOf(econ);
-
-  useEffect(() => { latest.current = state; });
-  const persist = useCallback(() => saveGameData(meta.id, Date.now(), { ...latest.current.econ, service: latest.current.sim }), []);
-
-  useEffect(() => {
+  const [state,dispatch]=useReducer(reducer,undefined,load);
+  const [tab,setTab]=useState("manage");
+  const [opened,setOpened]=useState(null);
+  const [settings,setSettings]=useState(false);
+  const [confirm,setConfirm]=useState(false);
+  const [paused,setPaused]=useState(document.visibilityState==="hidden");
+  const latest=useRef(state);
+  const {game}=state;
+  useEffect(()=>{latest.current=state;});
+  const persist=useCallback(()=>saveGameData(meta.id,Date.now(),latest.current.game),[]);
+  useEffect(()=>{
     persist();
     let tick;
-    const startTick = () => {
-      clearInterval(tick);
-      if (document.visibilityState !== "hidden") tick = setInterval(() => dispatch({ type: "tick", now: Date.now() }), TICK_MS);
-    };
-    startTick();
-    const autosave = setInterval(() => { if (document.visibilityState !== "hidden") persist(); }, AUTOSAVE_MS);
-    const onVisibility = () => {
-      const hidden = document.visibilityState === "hidden";
-      setPaused(hidden);
-      if (hidden) persist();
-      else dispatch({ type: "resume", now: Date.now() });
-      startTick();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", persist);
-    return () => {
-      clearInterval(tick);
-      clearInterval(autosave);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", persist);
-      persist();
-    };
-  }, [persist]);
-
-  /** 마을 응원으로 재사용 제한이 있는 생산 보너스를 요청한다. */
-  function brew() {
-    dispatch({ type: "tap", now: Date.now() });
-  }
-
-  /** 게임 안에서 두 번 확인한 초기화 요청을 처리한다. */
-  function reset() {
-    const now = Date.now();
-    dispatch({ type: "reset", now });
-    saveGameData(meta.id, now, initialState(now).econ);
-    setConfirmReset(false);
-    setSettingsOpen(false);
-  }
-
-  /** 방향키로 관리 탭과 키보드 초점을 함께 옮긴다. */
-  function onTabKey(event) {
-    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-    if (!step) return;
-    event.preventDefault();
-    const next = TABS[(TABS.findIndex((t) => t.id === tab) + step + TABS.length) % TABS.length];
-    setTab(next.id);
-    document.getElementById(`cafe-tab-${next.id}`)?.focus();
-  }
-
-  return (
-    <section className="cozy-cafe" data-paused={paused} aria-label="Cozy Cafe 마을 키우기">
-      <header className="cafe-topbar">
-        <div className="cafe-brand"><span className="cafe-brand-mark"><Icon id="cup" /></span><div><p className="cafe-eyebrow">A TINY TOWN, A BIG LITTLE DREAM</p><h2>Cozy Cafe<span>나의 작은 카페 마을</span></h2></div></div>
-        <div className="cafe-wallet"><Icon id="coin" /><div><span className="cafe-wallet-label">마을 금고 · 자동으로 쌓이는 수익</span><CoinBalance value={econ.coins} paused={paused} /></div><span className="cafe-income"><small>자동 생산</small> +{formatRate(incomePerSecond(econ))}<small>/초</small></span></div>
-        <button type="button" aria-label="설정" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)} className="cafe-settings-button"><Icon id="settings" /></button>
-      </header>
-      {settingsOpen && (
-        <div className="cafe-settings">
-          <h3>마을 설정</h3><p>진행 상황은 이 브라우저에만 저장돼요. 지우면 되돌릴 수 없어요.</p>
-          {confirmReset ? <div className="cafe-settings-actions"><button type="button" onClick={reset} className="cafe-danger">정말 지우기</button><button type="button" onClick={() => setConfirmReset(false)}>취소</button></div> : <button type="button" onClick={() => setConfirmReset(true)} className="cafe-danger">저장 초기화</button>}
-        </div>
-      )}
-      <div className="cafe-layout">
-        <div className="cafe-play">
-          <div className="cafe-scene-heading"><div><span className="cafe-eyebrow">MY GROWING VILLAGE</span><h3>{STAGE_NAMES[growth - 1]}</h3></div><span key={growth} className="cafe-stage"><Icon id="leaf" /> 성장 {growth} / 5</span></div>
-          <Scene econ={econ} sim={sim} dispatch={dispatch} />
-          <div className="cafe-brew-area"><p>카페 한 채에서 시작한<br /><strong>우리만의 작은 마을</strong></p><button type="button" onClick={brew} className="cafe-brew"><Icon id="leaf" /><span>마을 응원 <small>10초마다 · 5초 생산 보너스</small></span><b>＋</b></button></div>
-          <OperationsPanel sim={sim} dispatch={dispatch} />
-          <NextGoal econ={econ} />
-          <dl className="cafe-stats"><div><dt>누적 수익</dt><dd>{formatCompact(econ.total)}<small> 코인</small></dd></div><div><dt>마을 매니저</dt><dd>{econ.staff}<small> 명</small></dd></div><div><dt>마을 방문</dt><dd>{sim.served}<small> 회 · 자동 저장</small></dd></div></dl>
-        </div>
-        <aside className="cafe-shop" aria-label="마을 건설 상점">
-          <div className="cafe-shop-heading"><p className="cafe-eyebrow">MAKE IT YOURS</p><h3>골목에서 마을로</h3><p>건물 5레벨마다 다음 부지가 열려요.</p></div>
-          <div role="tablist" aria-label="카페 관리" className="cafe-tabs">{TABS.map((t) => <button key={t.id} id={`cafe-tab-${t.id}`} role="tab" type="button" aria-selected={tab === t.id} aria-controls="cafe-panel" tabIndex={tab === t.id ? 0 : -1} onClick={() => setTab(t.id)} onKeyDown={onTabKey}>{t.label}</button>)}</div>
-          <div id="cafe-panel" role="tabpanel" aria-labelledby={`cafe-tab-${tab}`}>
-            {tab === "equipment" ? <EquipmentPanel econ={econ} dispatch={dispatch} /> : <UpgradePanel econ={econ} dispatch={dispatch} />}
-          </div>
-          <p role="status" className="cafe-notice">{state.notice ? <span key={state.noticeId}>{state.notice}</span> : "건물을 고르고 증축해 마을을 넓혀 보세요"}</p>
-        </aside>
-      </div>
-      <footer className="cafe-footer"><Icon id="leaf" /><span>잠시 쉬어 가도 괜찮아요. 마을은 최대 8시간 동안 수익을 모아요.</span></footer>
-      {state.away && <AwayDialog away={state.away} onClose={() => dispatch({ type: "dismissAway", now: Date.now() })} />}
-      {state.goalOpen && !state.away && <GoalDialog econ={econ} onClose={() => dispatch({ type: "closeGoal", now: Date.now() })} />}
-    </section>
-  );
+    /** 숨김 상태에서는 영업 틱을 멈춘다. */
+    function start(){clearInterval(tick);if(document.visibilityState!=="hidden")tick=setInterval(()=>dispatch({type:"tick",now:Date.now()}),250);}
+    /** 숨김 저장과 복귀 정산을 처리한다. */
+    function visibility(){const hidden=document.visibilityState==="hidden";setPaused(hidden);if(hidden)persist();else dispatch({type:"resume",now:Date.now()});start();}
+    start();
+    const autosave=setInterval(()=>{if(document.visibilityState!=="hidden")persist();},10000);
+    document.addEventListener("visibilitychange",visibility);
+    window.addEventListener("pagehide",persist);
+    window.addEventListener("pageshow",visibility);
+    return ()=>{clearInterval(tick);clearInterval(autosave);document.removeEventListener("visibilitychange",visibility);window.removeEventListener("pagehide",persist);window.removeEventListener("pageshow",visibility);persist();};
+  },[persist]);
+  useEffect(()=>{persist();},[game.served,game.read,game.menus,game.staff,game.choices,game.discovered,persist]);
+  /** 조작 시각은 화면에서만 읽어 순수 상태 전이에 전달한다. */
+  function send(action){dispatch({...action,now:Date.now()});}
+  /** 관리 탭을 키보드로 선택하고 초점을 옮긴다. */
+  function tabKey(event){const step={ArrowRight:1,ArrowLeft:-1}[event.key];if(!step)return;event.preventDefault();const next=TABS[(TABS.findIndex(t=>t.id===tab)+step+TABS.length)%TABS.length];setTab(next.id);document.getElementById(`rain-tab-${next.id}`)?.focus();}
+  const entry=opened?storyEntry(opened):null;
+  const featured=storyEntry(game.latest);
+  const serving=[...new Set([...game.menus,...game.queue.map(order=>order.menu)])];
+  return <section className="cozy-cafe" data-paused={paused} aria-label="Cozy Cafe 비 오는 골목의 마지막 카페">
+    <header className="cafe-topbar"><div><p className="cafe-eyebrow">THE LAST CAFE ON A RAINY LANE</p><h2>Cozy Cafe <span>비 오는 골목의 마지막 카페</span></h2></div><div className="cafe-wallet"><span>오늘의 카페 금고</span><strong aria-label={`보유 코인 ${formatCoins(game.coins)}`}>{formatCoins(game.coins)}<small>코인</small></strong></div><button type="button" className="cafe-settings-toggle" aria-label="설정" aria-expanded={settings} onClick={()=>setSettings(!settings)}>···</button></header>
+    {settings&&<div className="cafe-settings"><h3>이 브라우저의 카페</h3><p>기록은 자동 저장돼요. 초기화하면 이야기와 코인을 되돌릴 수 없어요.</p>{confirm?<><button type="button" onClick={()=>{send({type:"reset"});setConfirm(false);setSettings(false);}}>정말 초기화</button><button type="button" onClick={()=>setConfirm(false)}>취소</button></>:<button type="button" onClick={()=>setConfirm(true)}>저장 초기화</button>}</div>}
+    <div className="cafe-layout"><div className="cafe-play"><div className="cafe-chapter"><div><span className="cafe-eyebrow">CHAPTER {game.elapsed>=600000?"02":"01"}</span><h3>{game.elapsed>=600000?"비 오는 골목":"문 여는 날"}</h3></div><span>{formatSpan(game.elapsed)}의 기억</span></div>
+      <Scene game={game}/>
+      <div className="cafe-service-heading"><h3>지금, 따뜻한 한 잔</h3><span className="cafe-combo" data-active={game.combo>1}>COMBO <b>x{game.combo||1}</b><small>최대 x5</small></span></div>
+      <Orders game={game}/>
+      <div className="cafe-serve-buttons" aria-label="메뉴 서빙">{serving.map(id=>{const menu=menuById(id);const pending=game.queue.some(order=>order.menu===id);return <button type="button" key={id} data-ready={pending} aria-label={`${menu.name} 서빙`} onClick={()=>send({type:"serve",menu:id})}><Icon id={id} size={40}/><span>{menu.name}</span><small>{pending?"기다리는 손님에게 전하기":"주문을 기다리는 중"}</small></button>;})}</div>
+      <p className="cafe-service-note">주문과 같은 메뉴를 눌러 주세요. 놓쳐도 콤보만 쉬어 가요.<br/>제피와 직원은 자동 서빙해요. 직접 전하면 콤보와 팁을 받아요.</p>
+      {featured&&<button type="button" className="cafe-featured" onClick={()=>setOpened(featured.id)}><span className="cafe-zepi-mini"><svg viewBox="-48 -100 96 108" aria-hidden="true"><Zepi/></svg></span><span><small>{game.read.includes(featured.id)?"책갈피에 남은 이야기":"새로 도착한 이야기"}</small><strong>{featured.title}</strong><span>{featured.text.split("\n")[0]}</span></span><b>읽기 →</b></button>}
+      {state.notice&&<p role="status" className="cafe-notice" key={state.noticeId}>{state.notice}</p>}
+      {game.legacy&&<p className="cafe-legacy">이전 카페의 코인과 설비·직원 기록을 보관했어요. 금고는 이어받고, 이야기는 첫날부터 시작해요.</p>}
+      {game.elapsed>=2400000&&<div className="cafe-phase-end"><h3>골목에 남은 불빛</h3><p>여기까지가 1차 공개된 1~2장의 이야기예요. 단골 사연과 레시피는 계속 모을 수 있어요. 소문·위기·투자 제안과 엔딩은 2차에서 이어집니다.</p></div>}
+    </div><aside className="cafe-sidebar" aria-label="카페 이야기와 운영"><div className="cafe-sidebar-title"><span className="cafe-eyebrow">ONE CUP, ONE LITTLE STORY</span><h3>다시 와 줄 사람이 있는 곳</h3><p>빈 의자가 하나씩, 누군가의 자리가 돼요.</p></div><div className="cafe-tabs" role="tablist" aria-label="카페 관리">{TABS.map(t=><button key={t.id} id={`rain-tab-${t.id}`} type="button" role="tab" aria-selected={tab===t.id} tabIndex={tab===t.id?0:-1} aria-controls="rain-panel" onClick={()=>setTab(t.id)} onKeyDown={tabKey}>{t.name}{t.id==="regulars"&&game.inbox.length>0&&<span className="cafe-unread">{game.inbox.length}</span>}</button>)}</div><div id="rain-panel" role="tabpanel" aria-labelledby={`rain-tab-${tab}`}>{tab==="manage"?<Management game={game} send={send}/>:tab==="regulars"?<StoryShelf game={game} onOpen={setOpened}/>:<Notebook game={game} send={send}/>}</div></aside></div>
+    <footer className="cafe-footer"><span>직접 전한 잔 {game.directServed} · 직원이 전한 잔 {game.autoServed}</span><span>잠시 떠나도 최대 8시간, 이야기와 함께 기다릴게요.</span></footer>
+    {entry&&!state.away&&<Dialog title={entry.title} onClose={()=>setOpened(null)}><p className="cafe-dialog-speaker">{entry.speaker}</p>{entry.text.split("\n").map(line=><p className="cafe-dialog-line" key={line}>{line}</p>)}{entry.act===2&&<p className="cafe-story-gift">마음에 남는 선물 · {FIRST_REGULARS.find(person=>person.id===entry.person)?.reward}</p>}<button type="button" className="cafe-primary" onClick={()=>{send({type:"read",id:entry.id});setOpened(null);}}>마음에 담기</button><button type="button" className="cafe-text-button" onClick={()=>setOpened(null)}>나중에 읽기</button></Dialog>}
+    {state.away&&<Dialog title="카페는 불을 켜 두었어요" onClose={()=>send({type:"dismissAway"})}><p className="cafe-away-coins">+{formatCoins(state.away.earned)} 코인</p><p>{formatSpan(state.away.ms)} 동안 직원이 {state.away.served}잔을 전했어요. 수익은 이미 금고에 한 번 반영했어요.</p><p>읽지 않은 이야기는 단골의 이야기 탭에서 기다려요. 최대 8시간까지 계산해요.</p><button type="button" className="cafe-primary" onClick={()=>send({type:"dismissAway"})}>기다려 줘서 고마워</button></Dialog>}
+  </section>;
 }

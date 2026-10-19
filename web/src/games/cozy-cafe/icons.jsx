@@ -1,24 +1,7 @@
-import { Building, Resident } from "./TownArt.jsx";
-
-/**
- * 항목 아이콘 하나를 그린다. 이름은 옆 글자가 말하므로 화면 낭독기에는 숨긴다.
- *
- * @param props.id 설비 id(espresso, oven, terrace, beans, marketing), staff, upgrade 중 하나
- */
-export default function Icon({ id }) {
-  const building = ["espresso", "oven", "terrace", "beans", "marketing"].indexOf(id);
-  if (building >= 0) return <svg viewBox="-105 -220 210 245" width="36" height="36" aria-hidden="true"><Building index={building}/></svg>;
-  if (id === "staff") return <svg viewBox="-18 -49 36 53" width="36" height="36" aria-hidden="true"><Resident id={0} manager/></svg>;
-  const shapes = {
-    cup: <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 11h15v7a6 6 0 0 1-6 6h-3a6 6 0 0 1-6-6z" /><path d="M20 12h2a3 3 0 0 1 0 6h-2M3 25h20M9 7c-3-3 3-3 0-6M15 7c-3-3 3-3 0-6" /></g>,
-    coin: <g><circle cx="14" cy="14" r="11" fill="#eac16c" stroke="#bb853c" strokeWidth="1.5" /><circle cx="14" cy="14" r="7.5" fill="none" stroke="#fff0bb" strokeWidth="1.5" /><path d="M16.5 10.5c-5-3-8 4-3 5 5 1 2 5-2 2M14 7.5v13" fill="none" stroke="#966527" strokeWidth="1.6" strokeLinecap="round" /></g>,
-    leaf: <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4C7 1 1 12 9 19c6 5 15-1 14-15zM6 25 18 10M10 20l-1-7M14 15h6" /></g>,
-    settings: <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="m11 3-1 4-4 1-3 4 2 3v4l4 1 2 5h5l2-4 4-1 3-4-2-3V8l-5-1-2-4z" /><circle cx="14" cy="14" r="4" /></g>,
-    upgrade: <path d="M14 3 l3.4 7 7.6 1 -5.5 5.3 1.4 7.6 -6.9 -3.7 -6.9 3.7 1.4 -7.6 -5.5 -5.3 7.6 -1z" fill="#f7c873" />,
-  };
-  return (
-    <svg viewBox="0 0 28 28" width="36" height="36" aria-hidden="true" focusable="false" className="shrink-0">
-      {shapes[id] ?? shapes.upgrade}
-    </svg>
-  );
+/** 컵·디저트·노트 아이콘을 같은 선과 팔레트로 그린다. */
+export default function Icon({ id, size = 32 }) {
+  const dessert=["toast","cake","letter"].includes(id);
+  return <svg viewBox="0 0 40 40" width={size} height={size} aria-hidden="true" focusable="false">
+    {id==="book"?<g fill="none" stroke="#af8965" strokeWidth="2"><path d="M20 9Q10 3 4 9V33Q12 28 20 34Q28 28 36 33V9Q28 3 20 9V34"/><path d="M9 14h6M9 20h6M25 14h6M25 20h6"/></g>:dessert?<g stroke="#9f7954" strokeWidth="1.7" strokeLinejoin="round"><ellipse cx="20" cy="33" rx="17" ry="3" fill="#e8d5b2"/>{id==="cake"?<><path d="M7 30V15L30 8 34 30Z" fill="#e7c36f"/><path d="M7 15 30 8 34 15 10 22Z" fill="#fff0c8"/><path d="M8 24H33" stroke="#fff0c8" strokeWidth="4"/></>:<><path d="M7 29V13Q3 5 12 5H28Q37 5 33 13V29Z" fill="#c69558"/><path d="M11 25V14Q9 10 14 10H26Q31 10 29 14V25Z" fill="#f0d298"/><rect x="16" y="14" width="9" height="7" rx="2" fill="#f6de8f"/></>}</g>:<g stroke="#9e8265" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="19" cy="34" rx="16" ry="3" fill="#e5d2b4"/><path d="M7 13H29V25Q29 33 18 33T7 25Z" fill={id==="milk"?"#e3ddcf":"#c3ceba"}/><path d="M29 16H32Q40 22 29 26" fill="none"/><ellipse cx="18" cy="13" rx="11" ry="4" fill={id==="milk"?"#fff4da":id==="latte"||id==="cloud"?"#d6b187":"#80634e"}/>{id==="cloud"&&<path d="M12 13Q10 7 16 8Q18 4 22 8Q29 8 25 13Z" fill="#fff0d1"/>}<path d="M14 7Q10 3 14 1M23 6Q19 2 23 0" fill="none" stroke="#b6b8a5"/></g>}
+  </svg>;
 }

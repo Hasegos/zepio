@@ -2,42 +2,43 @@ import { describe, expect, it } from "vitest";
 import { initialState, reducer } from "./reducer.js";
 const T=1700000000000;
 
-describe("마을 상태 전이",()=>{
-  it("자동 생산을 구매 전에 정산하고 지나간 시간은 다시 지급하지 않는다",()=>{
+describe("카페 상태와 복귀",()=>{
+  it("이미 접수한 주문은 메뉴 편성 후에도 마저 서빙한다",()=>{
+    let s=reducer(initialState(T),{type:"tick",now:T+1000});
+    s={...s,game:{...s.game,elapsed:60000}};
+    s=reducer(s,{type:"menu",slot:0,id:"latte",now:T+1000});
+    expect(s.game.menus).not.toContain("espresso");
+    s=reducer(s,{type:"serve",menu:"espresso",now:T+1000});
+    expect(s.game.served).toBe(1);
+  });
+  it("복귀와 새로고침이 같은 시간의 수익을 중복 지급하지 않는다",()=>{
+    const data=initialState(T).game;
+    const first=reducer(initialState(T),{type:"load",data,now:T+3600000});
+    expect(first.away.ms).toBe(3600000);
+    const again=reducer(first,{type:"resume",now:T+3600000});
+    expect(again.game.coins).toBe(first.game.coins);
+    const loaded=reducer(initialState(T+3600000),{type:"load",data:first.game,now:T+3600000});
+    expect(loaded.game.coins).toBe(first.game.coins);
+    expect(loaded.away).toBeNull();
+    expect(loaded.game.counts).toEqual(first.game.counts);
+  });
+  it("읽기 전에는 완결 보상이 없고 같은 사연은 한 번만 읽은 것으로 남긴다",()=>{
     let s=initialState(T);
-    s=reducer(s,{type:"station",id:"espresso",now:T+30000});
-    expect(s.econ.levels.espresso).toBe(2);
-    expect(s.econ.coins).toBe(7);
-    s=reducer(s,{type:"tick",now:T+31000});
-    expect(s.econ.coins).toBe(9);
-    expect(reducer(s,{type:"tick",now:T+31000}).econ.coins).toBe(9);
+    s={...s,game:{...s.game,counts:{...s.game.counts,doyun:50}}};
+    s=reducer(s,{type:"tick",now:T+1000});
+    const read=reducer(s,{type:"read",id:"doyun-2",now:T+1000});
+    expect(read.game.read).toEqual(["doyun-2"]);
+    expect(reducer(read,{type:"read",id:"doyun-2",now:T+1000})).toBe(read);
+    expect(reducer(read,{type:"read",id:"bad",now:T+1000})).toBe(read);
   });
-  it("응원은 10초 재사용 제한으로 무한 연타 수익을 막는다",()=>{
-    const s=reducer(initialState(T),{type:"tap",now:T});
-    expect(s.econ.coins).toBe(5);
-    expect(reducer(s,{type:"tap",now:T}).econ.coins).toBe(5);
-    expect(reducer(s,{type:"tap",now:T+10000}).econ.coins).toBe(20);
-  });
-  it("응원 보너스로 누적 목표를 넘겨도 달성 카드를 연다",()=>{
-    const s=initialState(T);
-    s.econ.total=99999998;
-    const next=reducer(s,{type:"tap",now:T});
-    expect(next.goalOpen).toBe(true);
-    expect(next.econ.goalAt).toBe(T);
-  });
-  it("재접속 시 생산을 한 번 정산하고 대화창을 연다",()=>{
-    const data=initialState(T).econ;
-    const s=reducer(initialState(T+60000),{type:"load",data,now:T+60000});
-    expect(s.econ.coins).toBe(60);
-    expect(s.away.earned).toBe(60);
-    expect(reducer(s,{type:"resume",now:T+60000}).econ.coins).toBe(60);
-  });
-  it("고용 후 건물에 매니저를 배치하면 생산이 늘어난다",()=>{
+  it("선택·조합·초기화를 같은 경로로 처리한다",()=>{
     let s=initialState(T);
-    s={...s,econ:{...s.econ,coins:1000}};
-    s=reducer(s,{type:"hire",now:T});
-    s=reducer(s,{type:"manager",id:"espresso",now:T});
-    const before=s.econ.coins;
-    expect(reducer(s,{type:"tick",now:T+1000}).econ.coins-before).toBe(4);
+    s={...s,game:{...s.game,elapsed:180000}};
+    s=reducer(s,{type:"choice",id:"style",option:"rest",now:T});
+    expect(s.game.choices.style).toBe("rest");
+    s=reducer(s,{type:"recipe",pair:["espresso","milk"],now:T});
+    expect(s.game.discovered).toContain("cloud");
+    expect(s.game.timeline.at(-1).id).toBe("recipe-cloud");
+    expect(reducer(s,{type:"reset",now:T+1}).game).toEqual(initialState(T+1).game);
   });
 });
