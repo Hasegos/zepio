@@ -68,11 +68,16 @@ def write_daily(day: date, puzzles: list[Puzzle], directory: Path, force: bool =
     return True
 
 
-def recent_signatures(directory: Path, day: date, window: int = 14) -> set:
-    """day 앞 window일 안의 일일 파일에 있는 문제들의 서명을 모은다. 파일이 없거나 깨졌으면 건너뛴다."""
+DUPLICATE_WINDOW = 14
+
+
+def nearby_signatures(directory: Path, day: date, window: int = DUPLICATE_WINDOW) -> set:
+    """day 앞뒤 window일 안의 일일 파일에 있는 문제들의 서명을 모은다. 파일이 없거나 깨졌으면 건너뛴다."""
     found = set()
-    for back in range(1, window + 1):
-        path = directory / f"{(day - timedelta(days=back)).isoformat()}.json"
+    for offset in range(-window, window + 1):
+        if offset == 0:
+            continue
+        path = directory / f"{(day + timedelta(days=offset)).isoformat()}.json"
         if not path.exists():
             continue
         try:
@@ -95,6 +100,7 @@ def validate_daily_dir(directory: Path, min_ahead: int | None = None, today: dat
     """
     problems = []
     existing = set()
+    signatures = {}
     for path in sorted(directory.glob("*.json")) if directory.exists() else []:
         try:
             daily = DailyFile.model_validate_json(path.read_text(encoding="utf-8"))
@@ -104,8 +110,14 @@ def validate_daily_dir(directory: Path, min_ahead: int | None = None, today: dat
         if path.stem != daily.date:
             problems.append(f"{path.name}: 파일 이름과 날짜 {daily.date}가 다르다")
         existing.add(daily.date)
+        signatures[date.fromisoformat(daily.date)] = {puzzle_signature(p) for p in daily.puzzles}
         for puzzle in daily.puzzles:
             problems += check(puzzle)
+    for day, signs in signatures.items():
+        for offset in range(1, DUPLICATE_WINDOW + 1):
+            later = day + timedelta(days=offset)
+            if later in signatures and signs & signatures[later]:
+                problems.append(f"{day.isoformat()}와 {later.isoformat()}: {DUPLICATE_WINDOW}일 안에 같은 문제가 있다")
     if min_ahead:
         start = today or today_kst()
         for offset in range(min_ahead):
@@ -145,7 +157,7 @@ def main(argv=None) -> int:
         written = 0
         for offset in range(args.days):
             day = start + timedelta(days=offset)
-            avoid = recent_signatures(args.out_dir, day)
+            avoid = nearby_signatures(args.out_dir, day)
             if write_daily(day, generate_daily(day, avoid), args.out_dir, args.force):
                 written += 1
         print(f"{written}일 치를 {args.out_dir}에 저장했다 (건너뜀 {args.days - written}일)")

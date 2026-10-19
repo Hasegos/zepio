@@ -78,6 +78,21 @@ def test_14일_안에는_같은_문제가_다시_나오지_않는다(tmp_path):
             assert not set(signs) & set(earlier), (day, back)
 
 
+def test_나중_날짜를_먼저_만들어도_앞날짜가_겹치지_않고_검증이_겹침을_잡는다(tmp_path):
+    main(["daily", "--start", "2026-10-24", "--days", "7", "--out-dir", str(tmp_path)])
+    main(["daily", "--start", "2026-10-19", "--days", "5", "--out-dir", str(tmp_path)])
+    assert validate_daily_dir(tmp_path) == []
+
+    first = DailyFile.model_validate_json((tmp_path / "2026-10-20.json").read_text(encoding="utf-8"))
+    other = tmp_path / "2026-10-29.json"
+    data = json.loads(other.read_text(encoding="utf-8"))
+    data["puzzles"][0] = first.puzzles[0].model_dump(mode="json")
+    data["puzzles"][0]["id"] = "2026-10-29-1"
+    data["puzzles"][0]["difficulty"] = 1
+    other.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    assert any("2026-10-20와 2026-10-29" in line for line in validate_daily_dir(tmp_path))
+
+
 def test_avoid에_든_문제는_만들지_않는다():
     first = generate_daily(DAY)
     again = generate_daily(DAY, {puzzle_signature(p) for p in first})
