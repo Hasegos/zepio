@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { availableMoves, CONTEXT_CAP, USAGE_CAP } from "./battle.js";
 import { Bar } from "./Hud.jsx";
+import { shake } from "./motion.js";
 import Sprite from "./Sprite.jsx";
 import { npcsFor } from "./world.js";
 
@@ -14,6 +15,8 @@ const HINT = {
   hint: "다음에 할 일을 귀띔받는다",
   refuse: "의뢰를 거절한다",
 };
+
+const END_SFX = { win: "win", refuse: "win", leave: "leave", disaster: "disaster", limit: "leave" };
 
 const ENDINGS = {
   win: { title: "의뢰 완료!", tone: "text-town-good" },
@@ -47,10 +50,23 @@ function learned(b) {
  * @param props.battle { b, kind, id }
  * @param props.gear 가진 장비
  * @param props.party 동료 식별자 목록
+ * @param props.sfx 효과음 재생 함수(없어도 된다)
  */
-export default function Battle({ battle, gear, party, onMove, onClose }) {
+export default function Battle({ battle, gear, party, onMove, onClose, sfx = () => {} }) {
   const { b, kind, id } = battle;
   const [summonOpen, setSummonOpen] = useState(false);
+  const rootRef = useRef(null);
+  const doneKind = b.done?.kind;
+
+  useEffect(() => {
+    if (!doneKind) return;
+    sfx(END_SFX[doneKind]);
+    if (doneKind === "disaster") shake(rootRef.current);
+  }, [doneKind]);
+
+  useEffect(() => {
+    if (b.lines.some((line) => line.startsWith("훅이 막았다"))) sfx("block");
+  }, [b.lines]);
   const task = b.task;
   const moves = availableMoves(b, gear, party);
   const npc = kind === "trainer" ? npcsFor(0).find((n) => n.id === id) : null;
@@ -64,11 +80,17 @@ export default function Battle({ battle, gear, party, onMove, onClose }) {
       return;
     }
     setSummonOpen(false);
+    sfx(move.id === "edit" ? "hit" : "select");
+    if (move.id === "edit") shake(rootRef.current);
     onMove(move.id);
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border-4 border-town-ink bg-[#cfe8c4] p-3">
+    <div ref={rootRef} className="relative flex flex-col gap-3 overflow-hidden rounded-xl border-4 border-town-ink bg-[#cfe8c4] p-3">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-10 hidden bg-[repeating-linear-gradient(90deg,#1f1b34_0_24px,#b84a22_24px_48px)] motion-safe:block motion-safe:animate-town-wipe"
+      />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 rounded-lg border-2 border-town-ink bg-town-ink p-2 text-white">
           <p className="text-xs font-bold text-amber-300">
@@ -88,11 +110,13 @@ export default function Battle({ battle, gear, party, onMove, onClose }) {
             ))}
           </ul>
         </div>
-        {npc ? (
-          <Sprite kind="npc" npc={npc} scale={5} label={`${npc.name}`} />
-        ) : (
-          <Sprite kind="request" task={task} scale={5} label="의뢰 몬스터" />
-        )}
+        <div className="motion-safe:animate-town-slide">
+          {npc ? (
+            <Sprite kind="npc" npc={npc} scale={5} label={`${npc.name}`} />
+          ) : (
+            <Sprite kind="request" task={task} scale={5} label="의뢰 몬스터" />
+          )}
+        </div>
       </div>
 
       <div className="flex items-end justify-between gap-3">
@@ -115,9 +139,17 @@ export default function Battle({ battle, gear, party, onMove, onClose }) {
       {b.done ? (
         <div className="flex flex-col gap-2 rounded-xl border-4 border-town-ink bg-white p-3 text-center text-town-ink">
           <p className={`text-xl font-extrabold ${done.tone}`}>{done.title}</p>
+          {b.done.coins > 0 && (
+            <p aria-hidden="true" className="text-2xl text-amber-500 motion-safe:animate-town-pop">
+              ★ ★ ★
+            </p>
+          )}
           <p className="text-sm font-bold">
-            코인 {b.done.coins >= 0 ? "+" : ""}
-            {b.done.coins} · 신뢰 {b.done.trust >= 0 ? "+" : ""}
+            <span className={`inline-block ${b.done.coins > 0 ? "motion-safe:animate-town-pop" : ""}`}>
+              코인 {b.done.coins >= 0 ? "+" : ""}
+              {b.done.coins}
+            </span>{" "}
+            · 신뢰 {b.done.trust >= 0 ? "+" : ""}
             {b.done.trust}
           </p>
           <button
