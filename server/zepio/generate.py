@@ -1,5 +1,7 @@
 """규칙으로 문제를 만든다. 모호성 검사를 통과하지 못한 문제는 버리고 다시 만든다."""
+import json
 import random
+from datetime import date
 
 from .models import COLORS, SHAPES, NumberCell, Puzzle, ShapeCell
 from .rules import arith, check, geom
@@ -8,6 +10,8 @@ NUMBER_LIMIT = 300
 SHAPE_NAMES = {"triangle": "삼각형", "circle": "원", "square": "사각형", "star": "별", "diamond": "마름모"}
 COLOR_NAMES = {"indigo": "남색", "cyan": "하늘색", "amber": "주황색"}
 MAX_ATTEMPTS = 2000
+ATTEMPTS_PER_RULE = 100
+DAILY_SLOTS = (1, 1, 2, 2, 3)
 
 
 def _arith(rng):
@@ -184,6 +188,46 @@ def _shape_puzzle(difficulty, index, rng):
     }
 
 
+def signature(kind, rules, cells) -> tuple:
+    """같은 문제인지 비교하는 서명을 만든다. 종류, 규칙, 보이는 칸이 같으면 같은 서명이다."""
+    return (kind, tuple(rules), json.dumps(cells, sort_keys=True))
+
+
+def puzzle_signature(puzzle: Puzzle) -> tuple:
+    """만들어 둔 문제의 서명을 돌려준다."""
+    dumped = puzzle.model_dump(mode="json")
+    return signature(dumped["kind"], dumped["rules"], dumped["cells"])
+
+
+def make_puzzle(kind, difficulty, index, rng, seen, puzzle_id) -> Puzzle:
+    """모호성 검사를 통과하고 seen에 없는 문제를 만들 때까지 다시 시도한다.
+
+    Args:
+        kind: number 또는 shape
+        difficulty: 1, 2, 3
+        index: 같은 난이도 안에서 규칙을 고르는 번호(개수로 나눈 나머지를 쓰고, 한 규칙으로 100번 실패하면 다음 규칙으로 넘어간다)
+        rng: 난수 생성기
+        seen: 이미 만든 문제의 서명 집합. 새로 만든 문제의 서명이 더해진다
+        puzzle_id: 문제 id
+    Raises:
+        RuntimeError: 시도 횟수 안에 통과하는 문제를 만들지 못했을 때
+    """
+    build = _number_puzzle if kind == "number" else _shape_puzzle
+    for attempt in range(MAX_ATTEMPTS):
+        data = build(difficulty, index + attempt // ATTEMPTS_PER_RULE, rng)
+        if data is None:
+            continue
+        sign = signature(data["kind"], data["rules"], data["cells"])
+        if sign in seen:
+            continue
+        puzzle = Puzzle(id=puzzle_id, difficulty=difficulty, **data)
+        if check(puzzle):
+            continue
+        seen.add(sign)
+        return puzzle
+    raise RuntimeError(f"{puzzle_id}: 난이도 {difficulty} {kind} 문제를 만들지 못했다")
+
+
 def generate_pool(per_level: int = 20, seed: int = 20261019) -> list[Puzzle]:
     """난이도 1, 2, 3마다 per_level개씩 문제를 만든다. 숫자와 도형을 번갈아 만들고, 같은 시드는 같은 결과를 낸다.
 
@@ -199,20 +243,28 @@ def generate_pool(per_level: int = 20, seed: int = 20261019) -> list[Puzzle]:
     pool, seen = [], set()
     for difficulty in (1, 2, 3):
         for i in range(per_level):
-            build = _number_puzzle if i % 2 == 0 else _shape_puzzle
-            for _ in range(MAX_ATTEMPTS):
-                data = build(difficulty, i // 2, rng)
-                if data is None:
-                    continue
-                signature = (data["kind"], tuple(data["rules"]), repr(data["cells"]))
-                if signature in seen:
-                    continue
-                puzzle = Puzzle(id=f"pc-{len(pool) + 1:03d}", difficulty=difficulty, **data)
-                if check(puzzle):
-                    continue
-                seen.add(signature)
-                pool.append(puzzle)
-                break
-            else:
-                raise RuntimeError(f"난이도 {difficulty}의 {i + 1}번째 문제를 만들지 못했다")
+            kind = "number" if i % 2 == 0 else "shape"
+            pool.append(make_puzzle(kind, difficulty, i // 2, rng, seen, f"pc-{len(pool) + 1:03d}"))
     return pool
+
+
+def generate_daily(day: date, avoid=frozenset()) -> list[Puzzle]:
+    """날짜 하나의 일일 문제 5개(난이도 1,1,2,2,3)를 만든다. 같은 날짜는 항상 같은 문제를 낸다.
+
+    숫자와 도형은 날짜마다 번갈아 시작하고 마지막 문제의 종류만 무작위로 정한다.
+
+    Args:
+        day: 일일 문제 날짜
+        avoid: 만들지 말아야 할 문제의 서명 집합(최근 날짜와 겹치지 않게 할 때 쓴다)
+    Returns:
+        모호성 검사를 통과한 문제 5개
+    """
+    rng = random.Random(f"zepio-daily-{day.isoformat()}")
+    first = day.toordinal() % 2
+    kinds = ["number" if (i + first) % 2 == 0 else "shape" for i in range(4)]
+    kinds.append(rng.choice(["number", "shape"]))
+    seen, puzzles = set(avoid), []
+    for number, (difficulty, kind) in enumerate(zip(DAILY_SLOTS, kinds), start=1):
+        index = rng.randrange(6)
+        puzzles.append(make_puzzle(kind, difficulty, index, rng, seen, f"{day.isoformat()}-{number}"))
+    return puzzles

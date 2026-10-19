@@ -8,7 +8,7 @@ const RECENT_MAX = 5;
  * @returns 기록 객체
  */
 function emptyRecords() {
-  return { v: VERSION, games: {}, recent: [] };
+  return { v: VERSION, games: {}, recent: [], daily: {} };
 }
 
 /**
@@ -24,7 +24,9 @@ export function loadRecords() {
       parsed.games !== null &&
       typeof parsed.games === "object" &&
       Array.isArray(parsed.recent);
-    return valid ? parsed : emptyRecords();
+    if (!valid) return emptyRecords();
+    const hasDaily = parsed.daily !== null && typeof parsed.daily === "object" && !Array.isArray(parsed.daily);
+    return { ...parsed, daily: hasDaily ? parsed.daily : {} };
   } catch {
     return emptyRecords();
   }
@@ -54,10 +56,43 @@ export function saveResult(id, now, data) {
   const plays = (Number.isInteger(records.games[id]?.plays) ? records.games[id].plays : 0) + 1;
   records.games[id] = { plays, lastAt: now, data };
   records.recent = [id, ...records.recent.filter((recent) => recent !== id)].slice(0, RECENT_MAX);
+  return { plays, saved: writeRecords(records) };
+}
+
+/**
+ * 한 게임의 일일 기록을 읽는다.
+ *
+ * @param id 게임 id
+ * @returns 저장된 일일 기록, 없으면 null
+ */
+export function getDaily(id) {
+  return loadRecords().daily[id] ?? null;
+}
+
+/**
+ * 한 게임의 일일 기록을 저장한다. 저장소에 쓸 수 없어도 오류를 내지 않는다.
+ *
+ * @param id 게임 id
+ * @param daily 저장할 일일 기록
+ * @returns 저장에 성공했는지
+ */
+export function saveDaily(id, daily) {
+  const records = loadRecords();
+  records.daily[id] = daily;
+  return writeRecords(records);
+}
+
+/**
+ * 기록 전체를 저장소에 쓴다.
+ *
+ * @param records 기록 객체
+ * @returns 저장에 성공했는지
+ */
+function writeRecords(records) {
   try {
     localStorage.setItem(KEY, JSON.stringify(records));
-    return { plays, saved: true };
+    return true;
   } catch {
-    return { plays, saved: false };
+    return false;
   }
 }

@@ -48,6 +48,7 @@ describe("registry", () => {
       expect(RUNTIMES).toContain(game.runtime);
       expect(game.supportedDevices.every((device) => DEVICES.includes(device))).toBe(true);
       expect(game.inputs.every((input) => INPUTS.includes(input))).toBe(true);
+      if ("hasDaily" in game) expect(typeof game.hasDaily).toBe("boolean");
     }
   });
 

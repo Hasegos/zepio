@@ -1,4 +1,5 @@
 """Pattern Challenge 문제 형식. 웹 게임이 읽는 JSON과 같은 모양이다."""
+from datetime import date as Date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -53,4 +54,23 @@ class Puzzle(BaseModel):
         dumped = [o.model_dump_json() for o in self.options]
         if len(set(dumped)) != len(dumped):
             raise ValueError("선택지가 서로 달라야 한다")
+        return self
+
+
+class DailyFile(BaseModel):
+    """날짜 하나의 일일 문제 파일. 문제 5개의 난이도는 1,1,2,2,3 순서다."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    puzzles: list[Puzzle] = Field(min_length=5, max_length=5)
+
+    @model_validator(mode="after")
+    def _check_daily(self) -> "DailyFile":
+        """날짜가 실제 날짜인지, 난이도 순서와 id 중복을 검사한다."""
+        Date.fromisoformat(self.date)
+        if [p.difficulty for p in self.puzzles] != [1, 1, 2, 2, 3]:
+            raise ValueError("난이도 순서는 1,1,2,2,3이어야 한다")
+        if len({p.id for p in self.puzzles}) != 5:
+            raise ValueError("문제 id가 중복된다")
         return self
