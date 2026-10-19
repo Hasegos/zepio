@@ -5,6 +5,10 @@ export const CONTEXT_CAP = 10;
 export const DISASTER_FINE = 10;
 
 const drain = (task) => (task.urgent ? 2 : 1);
+const PEAK_MOVES = ["ask", "read", "plan", "edit", "test", "summon"];
+
+/** 피크 시간 의뢰는 사용량을 쓰는 행동마다 1이 더 든다. 프롬프트 캐시가 있으면 면제된다. */
+const peakFee = (b, gear, id) => (b.peak && !gear.cache && PEAK_MOVES.includes(id) ? 1 : 0);
 
 /**
  * 의뢰 한 건의 전투를 시작한다. 컨텍스트와 사용량은 이전 전투에서 이어받는다.
@@ -26,6 +30,7 @@ export function startBattle(task, carry = {}) {
     bugs: 0,
     fake: false,
     fast: false,
+    peak: Boolean(task.peak),
     rejects: 0,
     context: carry.context ?? 0,
     usage: carry.usage ?? 0,
@@ -44,6 +49,10 @@ export function startBattle(task, carry = {}) {
  * @returns 사용량
  */
 export function usageCost(b, gear, id) {
+  return baseCost(b, gear, id) + peakFee(b, gear, id);
+}
+
+function baseCost(b, gear, id) {
   const t = b.task;
   switch (id) {
     case "edit":
@@ -413,6 +422,7 @@ export function playMove(b, gear, id, arg) {
     default:
       return b;
   }
+  s.usage += peakFee(b, gear, id);
   settle(s);
   return s;
 }

@@ -3,7 +3,7 @@ import { currentTitle } from "./codex.js";
 import { GYMS } from "./gyms.js";
 import { activeGear, buy, isSlotItem, ITEMS, MAX_SLOTS, MEMBERS, slotsOf, toggleSlot } from "./party.js";
 import { makeRng, shuffle } from "./rng.js";
-import { ENDING, FOREST_SIGN_TIPS, guardLines, INTRO, keeperLines, TIPS, TRAINER_TALK, zepiLines } from "./story.js";
+import { dockLines, ENDING, guardLines, INTRO, keeperLines, SIGN_TIPS, TRAINER_TALK, wardenLines, zepiLines } from "./story.js";
 import { REGION_TASKS, TRAINER_TASKS } from "./tasks.js";
 import { buildingAtDoor, facing, GATE_TRUST, MAPS, progressOf, START, START_MAP, step, tileAt, walkable, warpAt } from "./world.js";
 
@@ -14,7 +14,7 @@ export const COOLDOWN = 4;
  * 지역별 의뢰 대기열을 만든다. 지역마다 시드에 1씩 더해 따로 섞는다.
  *
  * @param seed 정수 시드
- * @returns { town: [id], forest: [id] }
+ * @returns { town: [id], forest: [id], harbor: [id], cave: [id] }
  */
 export function newPools(seed) {
   return Object.fromEntries(
@@ -87,7 +87,8 @@ function openBattle(s, task, kind, carry = {}, gymId = null) {
       : kind === "trainer"
         ? `${task.client}가 승부를 걸어왔다!`
         : `${GYMS[gymId].leader}의 시험 ${s.gymPhase + 1}단계!`;
-  b.lines = [intro, ...b.lines];
+  const peak = task.peak ? [s.gear.cache ? "피크 시간대지만 프롬프트 캐시가 추가 요금을 막아 준다." : "피크 시간대! 행동마다 사용량이 1 더 든다."] : [];
+  b.lines = [intro, ...peak, ...b.lines];
   return {
     ...s,
     phase: "battle",
@@ -156,13 +157,15 @@ function interact(s) {
   const front = facing(s.map, s.player.x, s.player.y, s.player.dir, progressOf(s));
   if (!front) return s;
   if (front.type === "sign") {
-    const tips = s.map === "forest" ? FOREST_SIGN_TIPS : TIPS;
+    const tips = SIGN_TIPS[s.map];
     return say({ ...s, tip: s.tip + 1 }, [{ who: front.target.name, text: tips[s.tip % tips.length] }]);
   }
   const npc = front.target;
   if (npc.id === "zepi") return say(s, zepiLines(s));
   if (npc.id === "guard") return say(s, guardLines(s));
   if (npc.id === "keeper") return say(s, keeperLines(s));
+  if (npc.id === "dockhand") return say(s, dockLines(s));
+  if (npc.id === "warden") return say(s, wardenLines(s));
   const talk = TRAINER_TALK[npc.id];
   if (s.cleared[npc.id]) return say(s, talk.after);
   const warn =
@@ -231,8 +234,12 @@ function afterGymPhase(s, gymId, d) {
     return openBattle(refreshed, gym.phases[gymPhase], "gym", {}, gymId);
   }
   const badges = [...s.badges, gymId];
-  const won = { ...s, gymPhase: 0, badges, player: { ...gym.spot } };
-  if (!gym.ending) return say(won, gym.win);
+  const tired = s.usage >= USAGE_CAP;
+  const won = { ...s, gymPhase: 0, badges, usage: tired ? 0 : s.usage, player: { ...gym.spot } };
+  if (!gym.ending) {
+    const rested = { who: "알림", text: "사용량 한도에 닿았지만 시험이 끝나 한도가 풀렸다. (사용량 회복)" };
+    return say(won, tired ? [...gym.win, rested] : gym.win);
+  }
   return {
     ...won,
     phase: "ending",
