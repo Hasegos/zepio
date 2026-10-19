@@ -1,4 +1,4 @@
-import { ALL_TASK_IDS, BOSS_PHASES, FOREST_TASKS, taskById, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
+import { ALL_TASK_IDS, BOSS_PHASES, FOREST_GYM_PHASES, FOREST_TASKS, taskById, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
 
 const FLAGS = [
   ["locate", "위치를 모름"],
@@ -33,6 +33,7 @@ export function codexGroups(seen) {
     { group: "레거시 숲 의뢰", entries: FOREST_TASKS.map((t) => entry(t.id)) },
     { group: "트레이너 의뢰", entries: Object.keys(TRAINER_TASKS).map(entry) },
     { group: "팀장 박의 시험", entries: BOSS_PHASES.map((t) => entry(t.id)) },
+    { group: "숲의 주인의 시험", entries: FOREST_GYM_PHASES.map((t) => entry(t.id)) },
   ];
 }
 
@@ -48,7 +49,8 @@ export const TITLES = [
   { id: "solver", name: "해결사", desc: "의뢰를 10가지 해결한다", test: (s) => won(s) >= 10 },
   { id: "checker", name: "팩트체커", desc: "근거가 필요한 의뢰를 해결한다", test: wonHallu },
   { id: "safe", name: "무사고 장인", desc: "사고 없이 의뢰를 8번 끝낸다", test: (s) => s.tasksDone >= 8 && s.disasters === 0 },
-  { id: "passed", name: "신뢰받는 에이전트", desc: "팀장 박의 시험에 합격한다", test: (s) => s.finished },
+  { id: "passed", name: "신뢰받는 에이전트", desc: "팀장 박의 시험에 합격한다", test: (s) => s.badges.includes("town") },
+  { id: "evidence", name: "근거의 수호자", desc: "숲의 주인에게 근거 뱃지를 받는다", test: (s) => s.badges.includes("forest") },
   { id: "forest", name: "숲 탐험가", desc: "레거시 숲의 의뢰를 하나 해결한다", test: (s) => forestWon(s) >= 1 },
   { id: "conqueror", name: "레거시 정복자", desc: "레거시 숲의 의뢰를 모두 해결한다", test: (s) => forestWon(s) === FOREST_TASKS.length },
   { id: "master", name: "도감 마스터", desc: "모든 의뢰를 만난다", test: (s) => ALL_TASK_IDS.every((id) => s.seen[id]) },
@@ -57,7 +59,7 @@ export const TITLES = [
 /**
  * 칭호별 획득 여부를 구한다. TITLES는 뒤에 있을수록 귀하고, 얻은 것 중 가장 뒤의 것이 대표 칭호가 된다.
  *
- * @param state 게임 상태(seen, party, tasksDone, disasters, finished 사용)
+ * @param state 게임 상태(seen, party, tasksDone, disasters, badges 사용)
  * @returns [{ id, name, desc, earned }]
  */
 export function titlesOf(state) {

@@ -1,7 +1,9 @@
 import { CONTEXT_CAP, USAGE_CAP } from "./battle.js";
 import { isSlotItem, ITEMS, MAX_SLOTS, MEMBERS, slotsOf } from "./party.js";
-import { ALL_TASK_IDS, FOREST_TASKS, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
-import { HEIGHT, START, WIDTH, walkable } from "./world.js";
+import { GYM_IDS } from "./gyms.js";
+import { newPools } from "./reducer.js";
+import { ALL_TASK_IDS, REGION_TASKS, TRAINER_TASKS } from "./tasks.js";
+import { MAPS, START, START_MAP, walkable } from "./world.js";
 
 const GEAR_IDS = ITEMS.map((it) => it.id);
 const int = (n, max) => Number.isInteger(n) && n >= 0 && n <= max;
@@ -15,6 +17,7 @@ const int = (n, max) => Number.isInteger(n) && n >= 0 && n <= max;
 export function snapshot(state) {
   return {
     seed: state.seed,
+    map: state.map,
     player: state.player,
     trust: state.trust,
     coins: state.coins,
@@ -25,11 +28,10 @@ export function snapshot(state) {
     party: state.party,
     cleared: state.cleared,
     seen: state.seen,
-    pool: state.pool,
-    forestPool: state.forestPool ?? [],
+    pools: state.pools,
+    badges: state.badges,
     cooldown: state.cooldown,
-    bossPhase: 0,
-    finished: state.finished,
+    gymPhase: 0,
     tip: state.tip,
     steps: state.steps,
     disasters: state.disasters,
@@ -46,8 +48,12 @@ export function snapshot(state) {
 export function restore(raw) {
   if (!raw || typeof raw !== "object") return null;
   const { player } = raw;
-  const wildIds = WILD_TASKS.map((t) => t.id);
+  const map = raw.map ?? START_MAP;
+  const badges = raw.badges ?? (raw.finished === true ? ["town"] : []);
   const ok =
+    typeof map === "string" &&
+    Object.hasOwn(MAPS, map) &&
+    badgesOk(badges) &&
     Number.isInteger(raw.seed) &&
     Number.isInteger(player?.x) &&
     Number.isInteger(player?.y) &&
@@ -61,25 +67,24 @@ export function restore(raw) {
     int(raw.steps, 9999999) &&
     int(raw.disasters, 9999) &&
     int(raw.tasksDone, 9999) &&
-    typeof raw.finished === "boolean" &&
-    Array.isArray(raw.pool) &&
-    raw.pool.every((id) => wildIds.includes(id)) &&
-    new Set(raw.pool).size === raw.pool.length &&
     Array.isArray(raw.party) &&
     raw.party.every((id) => Object.hasOwn(MEMBERS, id)) &&
     new Set(raw.party).size === raw.party.length &&
     plain(raw.gear, GEAR_IDS) &&
     slotsOk(raw.slots, raw.gear) &&
-    forestOk(raw.forestPool) &&
     plain(raw.cleared, Object.keys(TRAINER_TASKS)) &&
     plain(raw.seen, ALL_TASK_IDS);
   if (!ok) return null;
-  const x = Math.max(0, Math.min(WIDTH - 1, player.x));
-  const y = Math.max(0, Math.min(HEIGHT - 1, player.y));
-  const spot = walkable(x, y, raw.trust) ? { x, y, dir: player.dir } : { ...START };
+  const pools = readPools(raw);
+  if (!pools) return null;
+  const { x, y } = player;
+  const inside = x >= 0 && y >= 0 && x < MAPS[map].width && y < MAPS[map].height;
+  const fallback = map === START_MAP ? { ...START } : { ...MAPS[map].rest };
+  const spot = inside && walkable(map, x, y, { trust: raw.trust, badges }) ? { x, y, dir: player.dir } : fallback;
   return {
     phase: "map",
     seed: raw.seed,
+    map,
     player: spot,
     trust: raw.trust,
     coins: raw.coins,
@@ -90,11 +95,10 @@ export function restore(raw) {
     party: raw.party,
     cleared: raw.cleared,
     seen: raw.seen,
-    pool: raw.pool,
-    forestPool: raw.forestPool ?? forestLeft(raw.seen),
+    pools,
+    badges,
     cooldown: raw.cooldown,
-    bossPhase: 0,
-    finished: raw.finished,
+    gymPhase: 0,
     tip: raw.tip,
     steps: raw.steps,
     disasters: raw.disasters,
@@ -108,16 +112,37 @@ export function restore(raw) {
   };
 }
 
-/** 숲 의뢰 대기열 정보가 없으면(예전 저장) 통과, 있으면 숲 의뢰만 중복 없이 담겨야 한다. */
-function forestOk(pool) {
-  if (pool === undefined) return true;
-  const ids = FOREST_TASKS.map((t) => t.id);
-  return Array.isArray(pool) && pool.every((id) => ids.includes(id)) && new Set(pool).size === pool.length;
+/** 뱃지는 체육관 식별자만 중복 없이 담겨야 한다. */
+function badgesOk(badges) {
+  return Array.isArray(badges) && badges.every((id) => GYM_IDS.includes(id)) && new Set(badges).size === badges.length;
 }
 
-/** 예전 저장에서는 아직 해결하지 않은 숲 의뢰를 정해진 순서대로 대기열에 올린다. */
-function forestLeft(seen) {
-  return FOREST_TASKS.map((t) => t.id).filter((id) => seen[id] !== "win");
+/**
+ * 지역별 의뢰 대기열을 읽는다. 예전 저장(pool, forestPool)은 옮겨 담고, 없는 지역은 아직 해결하지 않은 의뢰로 채운다.
+ *
+ * @param raw 저장소에서 읽은 값(seed와 seen은 이미 검증됨)
+ * @returns { 지역: [id] }, 어긋나면 null
+ */
+function readPools(raw) {
+  const source = raw.pools ?? { town: raw.pool, ...(raw.forestPool === undefined ? {} : { forest: raw.forestPool }) };
+  if (source === null || typeof source !== "object" || Array.isArray(source)) return null;
+  const regions = Object.keys(REGION_TASKS);
+  if (!Object.keys(source).every((key) => regions.includes(key))) return null;
+  const fresh = newPools(raw.seed);
+  const out = {};
+  for (const region of regions) {
+    const ids = REGION_TASKS[region].map((t) => t.id);
+    const list = source[region];
+    if (list === undefined) {
+      if (region === "town") return null;
+      out[region] = fresh[region].filter((id) => raw.seen[id] !== "win");
+    } else if (Array.isArray(list) && list.every((id) => ids.includes(id)) && new Set(list).size === list.length) {
+      out[region] = list;
+    } else {
+      return null;
+    }
+  }
+  return out;
 }
 
 /** 슬롯 정보가 없으면(예전 저장) 통과, 있으면 가진 슬롯 장비만 중복 없이 칸 수 안에서 담겨야 한다. */
@@ -196,6 +221,6 @@ export function summarize(data) {
   const { save, best } = readData(data);
   const state = restore(save);
   if (best.endings) return `엔딩 ${best.endings}회 · 도감 ${best.codex}/${ALL_TASK_IDS.length}`;
-  if (state) return `진행 중 · 신뢰 ${state.trust} · 도감 ${Object.keys(state.seen).length}/${ALL_TASK_IDS.length}`;
+  if (state) return `진행 중 · 뱃지 ${state.badges.length}/${GYM_IDS.length} · 신뢰 ${state.trust} · 도감 ${Object.keys(state.seen).length}/${ALL_TASK_IDS.length}`;
   return "";
 }
