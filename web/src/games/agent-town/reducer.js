@@ -3,7 +3,7 @@ import { currentTitle } from "./codex.js";
 import { GYMS } from "./gyms.js";
 import { activeGear, buy, isSlotItem, ITEMS, MAX_SLOTS, MEMBERS, slotsOf, toggleSlot } from "./party.js";
 import { makeRng, shuffle } from "./rng.js";
-import { dockLines, ENDING, guardLines, INTRO, keeperLines, SIGN_TIPS, TRAINER_TALK, wardenLines, zepiLines } from "./story.js";
+import { clerkLines, dockLines, guardLines, INTRO, keeperLines, SIGN_TIPS, TRAINER_TALK, wardenLines, zepiLines } from "./story.js";
 import { REGION_TASKS, TRAINER_TASKS } from "./tasks.js";
 import { buildingAtDoor, facing, GATE_TRUST, MAPS, progressOf, START, START_MAP, step, tileAt, walkable, warpAt } from "./world.js";
 
@@ -166,6 +166,7 @@ function interact(s) {
   if (npc.id === "keeper") return say(s, keeperLines(s));
   if (npc.id === "dockhand") return say(s, dockLines(s));
   if (npc.id === "warden") return say(s, wardenLines(s));
+  if (npc.id === "clerk") return say(s, clerkLines(s));
   const talk = TRAINER_TALK[npc.id];
   if (s.cleared[npc.id]) return say(s, talk.after);
   const warn =
@@ -243,7 +244,7 @@ function afterGymPhase(s, gymId, d) {
   return {
     ...won,
     phase: "ending",
-    dialog: { lines: ENDING, i: 0, then: null },
+    dialog: { lines: gym.endingLines, i: 0, then: null },
     ending: {
       trust: s.trust,
       coins: s.coins,
@@ -252,6 +253,7 @@ function afterGymPhase(s, gymId, d) {
       steps: s.steps,
       codex: Object.keys(s.seen).length,
       title: currentTitle(won),
+      league: gymId === "league",
     },
   };
 }

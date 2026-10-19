@@ -18,9 +18,15 @@ import {
   HARBOR_INTRO,
   HARBOR_LOCKED,
   HARBOR_WIN,
+  LEAGUE_DONE,
+  LEAGUE_ENDING,
+  LEAGUE_FAIL,
+  LEAGUE_INTRO,
+  LEAGUE_LOCKED,
+  ENDING,
 } from "./story.js";
-import { BOSS_PHASES, CAVE_GYM_PHASES, FOREST_GYM_PHASES, HARBOR_GYM_PHASES } from "./tasks.js";
-import { BOSS_TRUST, CAVE_GYM_TRUST, FOREST_GYM_TRUST, HARBOR_GYM_TRUST } from "./world.js";
+import { BOSS_PHASES, CAVE_GYM_PHASES, FOREST_GYM_PHASES, HARBOR_GYM_PHASES, LEAGUE_PHASES } from "./tasks.js";
+import { BOSS_TRUST, CAVE_GYM_TRUST, FOREST_GYM_TRUST, HARBOR_GYM_TRUST, LEAGUE_GYM_TRUST } from "./world.js";
 
 export const GYMS = {
   town: {
@@ -38,6 +44,7 @@ export const GYMS = {
     done: BOSS_DONE,
     win: [],
     ending: true,
+    endingLines: ENDING,
   },
   forest: {
     id: "forest",
@@ -86,6 +93,23 @@ export const GYMS = {
     done: CAVE_DONE,
     win: CAVE_WIN,
     ending: false,
+  },
+  league: {
+    id: "league",
+    map: "league",
+    leader: "챔피언 제피",
+    badge: "챔피언 뱃지",
+    trust: LEAGUE_GYM_TRUST,
+    phases: LEAGUE_PHASES,
+    spot: { x: 10, y: 5, dir: "down" },
+    refresh: 8,
+    intro: LEAGUE_INTRO,
+    locked: LEAGUE_LOCKED,
+    fail: LEAGUE_FAIL,
+    done: LEAGUE_DONE,
+    win: [],
+    ending: true,
+    endingLines: LEAGUE_ENDING,
   },
 };
 

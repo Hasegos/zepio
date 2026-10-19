@@ -7,6 +7,7 @@ import {
   FOREST_TASKS,
   HARBOR_GYM_PHASES,
   HARBOR_TASKS,
+  LEAGUE_PHASES,
   taskById,
   TRAINER_TASKS,
   WILD_TASKS,
@@ -50,6 +51,7 @@ export function codexGroups(seen) {
     { group: "숲의 주인의 시험", entries: FOREST_GYM_PHASES.map((t) => entry(t.id)) },
     { group: "경리부장의 시험", entries: HARBOR_GYM_PHASES.map((t) => entry(t.id)) },
     { group: "보안팀장의 시험", entries: CAVE_GYM_PHASES.map((t) => entry(t.id)) },
+    { group: "챔피언 제피의 시험", entries: LEAGUE_PHASES.map((t) => entry(t.id)) },
   ];
 }
 
@@ -72,6 +74,7 @@ export const TITLES = [
   { id: "forest", name: "숲 탐험가", desc: "레거시 숲의 의뢰를 하나 해결한다", test: (s) => forestWon(s) >= 1 },
   { id: "conqueror", name: "레거시 정복자", desc: "레거시 숲의 의뢰를 모두 해결한다", test: (s) => forestWon(s) === FOREST_TASKS.length },
   { id: "master", name: "도감 마스터", desc: "모든 의뢰를 만난다", test: (s) => ALL_TASK_IDS.every((id) => s.seen[id]) },
+  { id: "champion", name: "챔피언 에이전트", desc: "챔피언 리그를 제패한다", test: (s) => s.badges.includes("league") },
 ];
 
 /**
