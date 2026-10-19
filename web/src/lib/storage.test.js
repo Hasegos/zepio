@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearRecords, getDaily, getGameData, loadRecords, saveDaily, saveResult } from "./storage.js";
+import { clearRecords, getDaily, getGameData, loadRecords, saveDaily, saveGameData, saveResult } from "./storage.js";
 
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.restoreAllMocks());
@@ -43,6 +43,28 @@ describe("storage", () => {
     });
     expect(loadRecords().games).toEqual({});
     expect(saveResult("a", 1, { best: 1 })).toEqual({ plays: 1, saved: false });
+  });
+
+  it("진행 상황 저장은 플레이 횟수를 올리지 않고 데이터, 시간, 최근 목록만 갱신한다", () => {
+    expect(saveGameData("a", 100, { coins: 1 })).toBe(true);
+    expect(loadRecords().games.a).toEqual({ plays: 1, lastAt: 100, data: { coins: 1 } });
+    saveGameData("a", 200, { coins: 2 });
+    saveGameData("a", 300, { coins: 3 });
+    expect(loadRecords().games.a).toEqual({ plays: 1, lastAt: 300, data: { coins: 3 } });
+    saveResult("b", 1, null);
+    saveGameData("a", 400, { coins: 4 });
+    expect(loadRecords().recent).toEqual(["a", "b"]);
+    saveResult("a", 500, { coins: 5 });
+    expect(loadRecords().games.a.plays).toBe(2);
+    saveGameData("a", 600, { coins: 6 });
+    expect(loadRecords().games.a.plays).toBe(2);
+  });
+
+  it("진행 상황 저장도 저장소를 쓸 수 없으면 false를 돌려주고 던지지 않는다", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota");
+    });
+    expect(saveGameData("a", 1, { coins: 1 })).toBe(false);
   });
 
   it("일일 기록을 게임별로 저장하고, 결과 저장이 일일 기록을 지우지 않는다", () => {
