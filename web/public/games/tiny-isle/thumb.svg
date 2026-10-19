@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="Tiny Isle">
+  <rect width="320" height="180" fill="#bfe3ea"/>
+  <path d="M0 150q40-14 80 0t80 0 80 0 80 0v30H0z" fill="#8cc4d1"/>
+  <ellipse cx="160" cy="104" rx="118" ry="62" fill="#b9dd95" stroke="#8fbf6a" stroke-width="4"/>
+  <g stroke-linejoin="round">
+    <rect x="86" y="82" width="34" height="28" rx="2" fill="#fbefd8" stroke="#8a6a4a" stroke-width="2"/>
+    <path d="M80 84 103 62l23 22z" fill="#d9674a" stroke="#8a4630" stroke-width="2"/>
+    <rect x="98" y="94" width="10" height="16" fill="#8a6a4a"/>
+    <circle cx="150" cy="86" r="18" fill="#5fae5a" stroke="#3b7a3a" stroke-width="2"/>
+    <rect x="148" y="98" width="4" height="14" fill="#8a6a4a"/>
+    <rect x="178" y="84" width="38" height="26" rx="2" fill="#fbefd8" stroke="#8a6a4a" stroke-width="2"/>
+    <path d="M174 84l5-14h32l5 14z" fill="#e2573b" stroke="#8a3a2a" stroke-width="2"/>
+    <path d="M196 74l-1 10M204 74l0 10M212 74l1 10" stroke="#fff4e6" stroke-width="3"/>
+    <rect x="190" y="96" width="10" height="14" fill="#8a6a4a"/>
+    <path d="M226 116l8-34h10l8 34z" fill="#f7f2e8" stroke="#6b7684" stroke-width="2"/>
+    <path d="M232 98h20l1 8h-22z" fill="#d9534f"/>
+    <rect x="231" y="74" width="16" height="9" fill="#ffe08a" stroke="#6b7684" stroke-width="2"/>
+  </g>
+  <g fill="#ffffff" font-family="sans-serif" font-weight="700" font-size="13">
+    <circle cx="103" cy="58" r="11" fill="#2f8a57"/><text x="103" y="63" text-anchor="middle">+5</text>
+    <circle cx="196" cy="62" r="11" fill="#2f8a57"/><text x="196" y="67" text-anchor="middle">+4</text>
+  </g>
+</svg>
