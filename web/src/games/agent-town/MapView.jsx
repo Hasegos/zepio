@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { drawFrame, drawWorld, VIEW_PX_H, VIEW_PX_W } from "./render.js";
+import { drawFrame, drawWorld, SCALE, VIEW_PX_H, VIEW_PX_W } from "./render.js";
 import { facing, npcsFor } from "./world.js";
 
 export const WALK_MS = 120;
@@ -43,6 +43,7 @@ export default function MapView({ state, onMove, onInteract, disabled, children 
       const s = latest.current;
       const m = motion.current;
       const t = m.from ? Math.min(1, (now - m.at) / WALK_MS) : 1;
+      ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
       drawFrame(ctx, world, { player: s.player, from: m.from, t, npcs: npcsFor(s.trust), tick: now });
       raf = requestAnimationFrame(loop);
     };
@@ -72,8 +73,8 @@ export default function MapView({ state, onMove, onInteract, disabled, children 
       <div className="relative">
       <canvas
         ref={canvasRef}
-        width={VIEW_PX_W}
-        height={VIEW_PX_H}
+        width={VIEW_PX_W * SCALE}
+        height={VIEW_PX_H * SCALE}
         role="img"
         aria-label={`프롬프트 마을 지도. 현재 위치 ${state.player.x}, ${state.player.y}. 방향키나 아래 버튼으로 움직이고 Enter로 말을 겁니다.`}
         className="w-full rounded-xl border-4 border-town-ink bg-town-ink [image-rendering:pixelated]"
