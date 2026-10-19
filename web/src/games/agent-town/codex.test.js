@@ -3,7 +3,7 @@ import { codexGroups, currentTitle, titlesOf } from "./codex.js";
 import { activeGear, isSlotItem, MAX_SLOTS, slotsOf, toggleSlot } from "./party.js";
 import { ALL_TASK_IDS } from "./tasks.js";
 
-const base = { seen: {}, party: [], tasksDone: 0, disasters: 0, finished: false };
+const base = { seen: {}, party: [], tasksDone: 0, disasters: 0, badges: [] };
 const ALL_GEAR = { plan: true, grep: true, readRule: true, askRule: true, guard: true, secret: true, autotest: true };
 
 describe("도감", () => {
@@ -24,9 +24,9 @@ describe("칭호", () => {
     expect(currentTitle(base)).toBe("신입 에이전트");
     const ten = Object.fromEntries(ALL_TASK_IDS.slice(0, 10).map((id) => [id, true]));
     expect(currentTitle({ ...base, seen: ten })).toBe("수집가");
-    expect(currentTitle({ ...base, finished: true })).toBe("신뢰받는 에이전트");
+    expect(currentTitle({ ...base, badges: ["town"] })).toBe("신뢰받는 에이전트");
     const all = Object.fromEntries(ALL_TASK_IDS.map((id) => [id, true]));
-    expect(currentTitle({ ...base, seen: all, finished: true })).toBe("도감 마스터");
+    expect(currentTitle({ ...base, seen: all, badges: ["town"] })).toBe("도감 마스터");
   });
 
   it("팩트체커는 환각 의뢰를 해결해야 얻고, 무사고는 사고가 없어야 얻는다", () => {
@@ -73,6 +73,17 @@ describe("레거시 숲 도감과 칭호", () => {
   it("도감에 숲 의뢰 묶음이 있다", () => {
     const group = codexGroups({}).find((g) => g.group === "레거시 숲 의뢰");
     expect(group.entries).toHaveLength(6);
+  });
+
+  it("도감에 숲의 주인의 시험 묶음이 있다", () => {
+    const group = codexGroups({}).find((g) => g.group === "숲의 주인의 시험");
+    expect(group.entries).toHaveLength(3);
+  });
+
+  it("숲의 주인에게 근거 뱃지를 받으면 근거의 수호자가 된다", () => {
+    const earned = (s, id) => titlesOf(s).find((t) => t.id === id).earned;
+    expect(earned(base, "evidence")).toBe(false);
+    expect(earned({ ...base, badges: ["forest"] }, "evidence")).toBe(true);
   });
 
   it("숲 의뢰를 하나 풀면 숲 탐험가, 모두 풀면 레거시 정복자가 된다", () => {
