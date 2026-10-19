@@ -30,6 +30,38 @@
   --color-town-good: #2b7a39;
   --color-town-bad: #b3302a;
   --color-town-warn: #9a5b00;
+  --animate-town-wipe: town-wipe 0.7s ease-in forwards;
+  @keyframes town-wipe {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+  --animate-town-slide: town-slide 0.45s ease-out;
+  @keyframes town-slide {
+    from {
+      opacity: 0;
+      transform: translateX(70px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  --animate-town-pop: town-pop 0.4s ease-out;
+  @keyframes town-pop {
+    0% {
+      transform: scale(0.3);
+    }
+    65% {
+      transform: scale(1.25);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
   --color-det-ink: #1c2742;
   --color-det-paper: #fbf3dc;
   --color-det-line: #d9c9a0;
