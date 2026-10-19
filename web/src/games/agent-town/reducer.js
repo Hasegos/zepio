@@ -10,12 +10,13 @@ import {
   ENDING,
   guardLines,
   INTRO,
+  keeperLines,
   TIPS,
   TRAINER_TALK,
   zepiLines,
 } from "./story.js";
-import { BOSS_PHASES, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
-import { BOSS_TRUST, buildingAtDoor, facing, GATE_TRUST, START, step, tileAt, walkable } from "./world.js";
+import { BOSS_PHASES, FOREST_TASKS, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
+import { BOSS_TRUST, buildingAtDoor, facing, FOREST_TRUST, GATE_TRUST, START, step, tileAt, walkable } from "./world.js";
 
 export const ENCOUNTER_RATE = 0.14;
 export const COOLDOWN = 4;
@@ -55,6 +56,10 @@ export function newGame(seed) {
     pool: shuffle(
       WILD_TASKS.map((t) => t.id),
       makeRng(seed),
+    ),
+    forestPool: shuffle(
+      FOREST_TASKS.map((t) => t.id),
+      makeRng(seed + 1),
     ),
     cooldown: 2,
     bossPhase: 0,
@@ -125,12 +130,15 @@ function walk(s, dir, roll) {
     if (s.trust < BOSS_TRUST) return say(moved, BOSS_LOCKED);
     return say(moved, BOSS_INTRO, { type: "boss" });
   }
-  if (tileAt(nx, ny) !== ",") return moved;
+  const grass = tileAt(nx, ny);
+  if (grass !== "," && grass !== "f") return moved;
   if (moved.cooldown > 0) return { ...moved, cooldown: moved.cooldown - 1 };
-  if (roll < ENCOUNTER_RATE && moved.pool.length) {
-    const [id, ...rest] = moved.pool;
-    const task = WILD_TASKS.find((t) => t.id === id);
-    return openBattle({ ...moved, pool: rest, cooldown: COOLDOWN }, task, "wild");
+  const forest = grass === "f";
+  const list = (forest ? moved.forestPool : moved.pool) ?? [];
+  if (roll < ENCOUNTER_RATE && list.length) {
+    const [id, ...rest] = list;
+    const task = (forest ? FOREST_TASKS : WILD_TASKS).find((t) => t.id === id);
+    return openBattle({ ...moved, [forest ? "forestPool" : "pool"]: rest, cooldown: COOLDOWN }, task, "wild");
   }
   return moved;
 }
@@ -142,6 +150,7 @@ function interact(s) {
   const npc = front.target;
   if (npc.id === "zepi") return say(s, zepiLines(s));
   if (npc.id === "guard") return say(s, guardLines(s));
+  if (npc.id === "keeper") return say(s, keeperLines(s));
   const talk = TRAINER_TALK[npc.id];
   if (s.cleared[npc.id]) return say(s, talk.after);
   const warn =
@@ -180,11 +189,14 @@ function applyPayout(s, b, kind, id) {
     next = {
       ...next,
       coins: Math.max(0, next.coins + d.coins),
-      trust: Math.max(Math.min(next.trust, GATE_TRUST), next.trust + d.trust),
+      trust: Math.max(Math.min(next.trust, next.trust >= FOREST_TRUST ? FOREST_TRUST : GATE_TRUST), next.trust + d.trust),
       disasters: next.disasters + 1,
     };
   }
-  if (kind === "wild" && d.kind !== "win" && d.kind !== "refuse") next = { ...next, pool: [...next.pool, id] };
+  if (kind === "wild" && !solved) {
+    const key = FOREST_TASKS.some((t) => t.id === id) ? "forestPool" : "pool";
+    next = { ...next, [key]: [...(next[key] ?? []), id] };
+  }
   if (next.usage >= USAGE_CAP) {
     const lines = [...(next.dialog?.lines ?? []), { who: "알림", text: "사용량 한도! 쉼터에서 한도가 풀릴 때까지 푹 쉬었다. (사용량 회복)" }];
     next = say({ ...next, player: { ...REST_SPOT }, usage: 0 }, lines);
