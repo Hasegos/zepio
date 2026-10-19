@@ -9,7 +9,9 @@ describe("fetchDaily", () => {
     const fetchImpl = reply(day);
     const signal = new AbortController().signal;
     expect(await fetchDaily("2026-10-19", signal, fetchImpl)).toHaveLength(5);
-    expect(fetchImpl).toHaveBeenCalledWith("/data/daily/2026-10-19.json", { signal });
+    expect(fetchImpl).toHaveBeenCalledWith("/data/daily/2026-10-19.json", {
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it("404나 요청 실패나 JSON 오류면 null이다", async () => {

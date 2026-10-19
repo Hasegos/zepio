@@ -22,6 +22,7 @@ export default function PatternChallenge({ signal }) {
   const [now, setNow] = useState(() => Date.now());
   const [record, setRecord] = useState(null);
   const [mode, setMode] = useState("normal");
+  const [dateKey, setDateKey] = useState(() => kstDate(Date.now()));
   const [daily, setDaily] = useState({ status: "loading", date: "", puzzles: null });
   const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
   const [dailyResult, setDailyResult] = useState(null);
@@ -34,24 +35,23 @@ export default function PatternChallenge({ signal }) {
   }, [playing]);
 
   useEffect(() => {
-    const date = kstDate(Date.now());
     let active = true;
-    fetchDaily(date, signal).then((puzzles) => {
-      if (active) setDaily({ status: puzzles ? "ready" : "unavailable", date, puzzles });
+    fetchDaily(dateKey, signal).then((puzzles) => {
+      if (active) setDaily({ status: puzzles ? "ready" : "unavailable", date: dateKey, puzzles });
     });
     return () => {
       active = false;
     };
-  }, [signal]);
+  }, [signal, dateKey]);
 
   useEffect(() => {
     if (state.phase !== "result") return;
     if (mode === "daily") {
       const next = nextDailyRecord(getDaily(meta.id), daily.date, correctCount(state));
-      saveDaily(meta.id, next);
+      const saved = saveDaily(meta.id, next);
       saveResult(meta.id, state.finishedAt, getGameData(meta.id));
       setDailyRecord(next);
-      setDailyResult({ streak: currentStreak(next, daily.date), max: next.max });
+      setDailyResult({ streak: currentStreak(next, daily.date), max: next.max, saved });
       return;
     }
     const outcome = mergeResult(getGameData(meta.id), {
@@ -71,7 +71,15 @@ export default function PatternChallenge({ signal }) {
     dispatch({ type: "start", puzzles, now: at });
   }, []);
   const startNormal = useCallback(() => begin("normal", pickPuzzles(pool)), [begin]);
-  const startDaily = useCallback(() => begin("daily", daily.puzzles), [begin, daily.puzzles]);
+  const startDaily = useCallback(() => {
+    const today = kstDate(Date.now());
+    if (today !== daily.date) {
+      setDaily({ status: "loading", date: "", puzzles: null });
+      setDateKey(today);
+      return;
+    }
+    begin("daily", daily.puzzles);
+  }, [begin, daily.date, daily.puzzles]);
   const select = useCallback((option) => dispatch({ type: "select", option }), []);
   const submit = useCallback(() => dispatch({ type: "submit", now: Date.now() }), []);
   const next = useCallback(() => dispatch({ type: "next", now: Date.now() }), []);

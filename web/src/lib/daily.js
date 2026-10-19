@@ -5,6 +5,7 @@ const KST_FORMAT = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 const HISTORY_MAX = 60;
+const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * 시각을 한국 표준시(KST) 날짜 문자열로 바꾼다.
@@ -35,7 +36,7 @@ export function previousDate(date) {
  */
 function isValid(record) {
   return (
-    typeof record?.last === "string" &&
+    DATE_FORMAT.test(record?.last) &&
     Number.isInteger(record.streak) &&
     Number.isInteger(record.max) &&
     record.history !== null &&

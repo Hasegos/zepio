@@ -54,6 +54,9 @@ describe("nextDailyRecord", () => {
 
   it("깨진 저장 값은 기록이 없는 것으로 본다", () => {
     expect(nextDailyRecord({ last: 5 }, "2026-10-19", 1).streak).toBe(1);
+    const brokenDate = { last: "zzz", streak: 9, max: 9, history: {} };
+    expect(nextDailyRecord(brokenDate, "2026-10-19", 1)).toMatchObject({ last: "2026-10-19", streak: 1 });
+    expect(currentStreak(brokenDate, "2026-10-19")).toBe(0);
     expect(nextDailyRecord({ last: "2026-10-18", streak: 2, max: 2, history: null }, "2026-10-19", 1).streak).toBe(1);
   });
 });

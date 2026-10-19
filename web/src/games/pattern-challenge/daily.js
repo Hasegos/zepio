@@ -33,6 +33,21 @@ function isPuzzle(puzzle) {
   );
 }
 
+const TIMEOUT_MS = 8000;
+
+/**
+ * 화면이 사라질 때의 취소 신호에 시간 제한을 더한다. 지원하지 않는 브라우저에서는 가진 신호만 쓴다.
+ *
+ * @param signal 취소 신호 또는 undefined
+ * @returns 둘 중 먼저 오는 쪽으로 취소되는 신호
+ */
+function withTimeout(signal) {
+  if (typeof AbortSignal?.timeout !== "function") return signal;
+  const timeout = AbortSignal.timeout(TIMEOUT_MS);
+  if (!signal) return timeout;
+  return typeof AbortSignal.any === "function" ? AbortSignal.any([signal, timeout]) : signal;
+}
+
 /**
  * 날짜의 일일 문제 파일을 불러온다. 파일이 없거나 모양이 틀리거나 요청이 취소되면 null이다. 다른 문제로 대신하지 않는다.
  *
@@ -43,7 +58,7 @@ function isPuzzle(puzzle) {
  */
 export async function fetchDaily(date, signal, fetchImpl = fetch) {
   try {
-    const response = await fetchImpl(`/data/daily/${date}.json`, { signal });
+    const response = await fetchImpl(`/data/daily/${date}.json`, { signal: withTimeout(signal) });
     if (!response.ok) return null;
     const data = await response.json();
     const valid =

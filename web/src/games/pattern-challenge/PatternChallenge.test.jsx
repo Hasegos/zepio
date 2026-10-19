@@ -1,6 +1,7 @@
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import day from "../../../public/data/daily/2026-10-19.json";
+import nextDay from "../../../public/data/daily/2026-10-20.json";
 import { mountReact } from "../mount-react.jsx";
 import PatternChallenge from "./PatternChallenge.jsx";
 
@@ -112,5 +113,30 @@ describe("PatternChallenge 오늘의 도전", () => {
     await playFive();
     expect(text()).toContain("내 최고 기록");
     expect(stored().daily).toEqual({});
+  });
+
+  it("자정을 넘겨 열어 둔 화면은 도전 시작 때 새 날짜 문제를 불러온다", async () => {
+    vi.setSystemTime(new Date("2026-10-19T14:59:00Z"));
+    const files = { "/data/daily/2026-10-19.json": day, "/data/daily/2026-10-20.json": nextDay };
+    await mount(vi.fn(async (url) => ({ ok: url in files, json: async () => files[url] })));
+    expect(text()).toContain("2026-10-19 · 모두가 같은 5문제");
+
+    vi.setSystemTime(new Date("2026-10-19T15:00:30Z"));
+    await click(button("오늘의 도전 시작하기"));
+    await act(async () => {});
+    expect(text()).toContain("2026-10-20 · 모두가 같은 5문제");
+    expect(text()).not.toContain("문제 1 / 5");
+  });
+
+  it("저장소에 쓸 수 없으면 결과 화면에서 알려준다", async () => {
+    await mount(serve());
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota");
+    });
+    await click(button("오늘의 도전 시작하기"));
+    await playFive();
+    expect(text()).toContain("연속 1일 · 최고 1일");
+    expect(text()).toContain("기록을 저장할 수 없어서 연속 일수가 남지 않아요");
+    vi.restoreAllMocks();
   });
 });

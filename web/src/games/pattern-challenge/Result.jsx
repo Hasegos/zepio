@@ -10,7 +10,7 @@ const FALLBACK_HEADLINE = "아쉬워요, 다시 도전해 보세요!";
  *
  * @param props.state 끝난 판의 상태
  * @param props.record 저장한 최고 기록과 새 기록 여부, 일반 모드가 아니거나 저장 전에는 null
- * @param props.dailyResult 오늘의 도전이면 저장한 연속 일수 { streak, max }, 아니면 null
+ * @param props.dailyResult 오늘의 도전이면 연속 일수와 저장 성공 여부 { streak, max, saved }, 아니면 null
  * @param props.onRetry 다시 도전하기를 눌렀을 때 호출
  */
 export default function Result({ state, record, dailyResult, onRetry }) {
@@ -50,6 +50,11 @@ export default function Result({ state, record, dailyResult, onRetry }) {
             연속 {dailyResult.streak}일 · 최고 {dailyResult.max}일
           </p>
           <p className="mt-1 text-sm text-slate-700">내일 새로운 오늘의 도전이 열려요.</p>
+          {!dailyResult.saved && (
+            <p className="mt-1 text-sm text-danger-strong">
+              이 브라우저에서는 기록을 저장할 수 없어서 연속 일수가 남지 않아요.
+            </p>
+          )}
         </div>
       )}
 
