@@ -23,6 +23,13 @@
   --color-isle-ink: #1f3b4d;
   --color-isle-cream: #f4f8ee;
   --color-isle-accent: #c2410c;
+  --color-town-ink: #1f1b34;
+  --color-town-panel: #f8f1e1;
+  --color-town-line: #d8c9a6;
+  --color-town-accent: #b84a22;
+  --color-town-good: #2b7a39;
+  --color-town-bad: #b3302a;
+  --color-town-warn: #9a5b00;
   --animate-isle-pop: isle-pop 0.28s ease-out;
   @keyframes isle-pop {
     0% {
