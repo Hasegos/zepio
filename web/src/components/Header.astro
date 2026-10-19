@@ -1,5 +1,6 @@
 ---
 import { liveGames } from "../games/registry.js";
+import Mascot from "./Mascot.astro";
 
 const path = Astro.url.pathname;
 const featured = liveGames[0];
@@ -11,7 +12,10 @@ const links = [
 
 <header class="border-b border-slate-200 bg-white">
   <div class="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
-    <a href="/" class="text-xl font-extrabold text-primary">Zepio</a>
+    <a href="/" class="flex items-center gap-2 text-xl font-extrabold text-primary">
+      <Mascot size={30} />
+      Zepio
+    </a>
     <nav aria-label="주 메뉴" class="flex items-center gap-1 sm:gap-2">
       {
         links.map((link) => (
