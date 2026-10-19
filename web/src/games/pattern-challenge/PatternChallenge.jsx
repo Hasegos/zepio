@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
-import puzzles from "./data/fixed-puzzles.json";
+import pool from "./data/pool.json";
 import meta from "./meta.js";
 import Board from "./Board.jsx";
 import Result from "./Result.jsx";
+import { pickPuzzles, RUN_SLOTS } from "./pick-puzzles.js";
 import { PatternDefs } from "./PuzzleCell.jsx";
 import { initialState, reducer } from "./reducer.js";
 
@@ -23,7 +24,7 @@ export default function PatternChallenge() {
   const start = useCallback(() => {
     const at = Date.now();
     setNow(at);
-    dispatch({ type: "start", puzzles, now: at });
+    dispatch({ type: "start", puzzles: pickPuzzles(pool), now: at });
   }, []);
   const select = useCallback((option) => dispatch({ type: "select", option }), []);
   const submit = useCallback(() => dispatch({ type: "submit", now: Date.now() }), []);
@@ -36,7 +37,7 @@ export default function PatternChallenge() {
         <div className="flex flex-col items-center gap-5 py-8 text-center">
           <h2 className="text-2xl font-extrabold">패턴을 찾아 빈칸을 채워 보세요</h2>
           <p className="text-slate-600">
-            총 {puzzles.length}문제 · {meta.estimatedPlayTime}
+            총 {RUN_SLOTS.length}문제 · {meta.estimatedPlayTime}
           </p>
           <button
             type="button"
