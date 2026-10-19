@@ -183,3 +183,5 @@ main:has(.cozy-cafe) > h1, main:has(.cozy-cafe) > nav[aria-label="경로"] { pos
 .town-plot-label { width: 20%; height: 26%; display: flex; align-items: flex-start; justify-content: center; }
 .town-plot-label span { opacity: 0; transition: opacity 120ms; }
 .town-plot-label:hover span, .town-plot-label:focus-visible span { opacity: 1; }
+
+.town-map [data-actor] { transition: transform 250ms linear; }
