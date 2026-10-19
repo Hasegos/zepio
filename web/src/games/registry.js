@@ -1,3 +1,4 @@
+import cozyCafe from "./cozy-cafe/meta.js";
 import colorClash from "./color-clash/meta.js";
 import lightFlip from "./light-flip/meta.js";
 import memorySequence from "./memory-sequence/meta.js";
@@ -8,6 +9,7 @@ export const games = [
   { ...memorySequence, load: () => import("./memory-sequence/index.jsx") },
   { ...colorClash, load: () => import("./color-clash/index.jsx") },
   { ...lightFlip, load: () => import("./light-flip/index.jsx") },
+  { ...cozyCafe, load: () => import("./cozy-cafe/index.jsx") },
 ];
 
 export const liveGames = games.filter((game) => game.status === "live");

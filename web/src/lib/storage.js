@@ -60,6 +60,23 @@ export function saveResult(id, now, data) {
 }
 
 /**
+ * 한 게임의 진행 상황을 저장한다. 자동 저장용이라 플레이 횟수는 올리지 않고(처음 저장할 때만 1) 마지막 시간,
+ * 최근 목록, 데이터만 갱신한다. 저장소에 쓸 수 없어도 오류를 내지 않는다.
+ *
+ * @param id 게임 id
+ * @param now 현재 시각(밀리초)
+ * @param data 게임이 저장할 진행 상황 데이터
+ * @returns 저장에 성공했는지
+ */
+export function saveGameData(id, now, data) {
+  const records = loadRecords();
+  const plays = Number.isInteger(records.games[id]?.plays) ? records.games[id].plays : 1;
+  records.games[id] = { plays, lastAt: now, data };
+  records.recent = [id, ...records.recent.filter((recent) => recent !== id)].slice(0, RECENT_MAX);
+  return writeRecords(records);
+}
+
+/**
  * 한 게임의 일일 기록을 읽는다.
  *
  * @param id 게임 id

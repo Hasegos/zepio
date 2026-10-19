@@ -20,7 +20,7 @@ if (!content?.intro?.length || !content?.howToPlay?.length) {
 }
 ---
 
-<BaseLayout title={`${game.name} | Zepio`} description={game.description}>
+<BaseLayout title={game.seoTitle ?? `${game.name} | Zepio`} description={game.description}>
   <nav class="mb-3 text-sm text-slate-600" aria-label="경로">
     <a href="/" class="underline">홈</a> / {game.name}
   </nav>
