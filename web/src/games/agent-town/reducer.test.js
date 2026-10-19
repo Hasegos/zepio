@@ -522,7 +522,7 @@ describe("지역 저장", () => {
 
   it("홈 카드 요약에 뱃지 수가 나온다", () => {
     const play = { v: 1, save: snapshot({ ...started(), badges: ["town"] }), best: {} };
-    expect(summarize(play)).toContain("뱃지 1/4");
+    expect(summarize(play)).toContain("뱃지 1/5");
   });
 });
 
@@ -646,5 +646,68 @@ describe("토큰 항구와 서버 동굴", () => {
     expect(harbor).toMatchObject({ map: "harbor", badges: ["town", "harbor"], player: { x: 7, y: 1 } });
     const cave = restore({ ...JSON.parse(JSON.stringify(snapshot({ ...started(7), map: "cave", badges: ["cave"] }))), player: { x: 0, y: 0, dir: "up" } });
     expect(cave).toMatchObject({ map: "cave", player: { x: 5, y: 5 } });
+  });
+});
+
+describe("챔피언 리그", () => {
+  const all = ["town", "forest", "harbor", "cave"];
+  const geared = { gear: { ...FULL, cache: true, lantern: true, mcpDocs: true, mcpTicket: true }, slots: ["readRule", "guard", "secret"] };
+  const walk = (state, dir) => run(state, { type: "move", dir, roll: 1 });
+  const door = (trust, extra = {}) => walk({ ...at(started(), 10, 5, "up"), map: "league", trust, badges: all, ...geared, ...extra }, "up");
+
+  it("마을 북쪽 입구는 리그로, 리그 아래 입구는 마을로 이어진다", () => {
+    const s = { ...at(started(), 20, 1, "up"), trust: 40, badges: all };
+    const league = walk(s, "up");
+    expect(league).toMatchObject({ map: "league", player: { x: 10, y: 10, dir: "up" } });
+    expect(league.notice).toContain("챔피언 리그");
+    const back = walk({ ...league, player: { x: 10, y: 10, dir: "down" } }, "down");
+    expect(back).toMatchObject({ map: "town", player: { x: 20, y: 1, dir: "down" } });
+  });
+
+  it("뱃지가 모자라면 접수원이 길을 막고 모자란 뱃지를 알려 준다", () => {
+    const state = { ...started(), trust: 40, badges: ["town", "forest", "harbor"], player: { x: 20, y: 2, dir: "up" } };
+    expect(walk(state, "up").player).toMatchObject({ x: 20, y: 2 });
+    const text = run(state, { type: "interact" }).dialog.lines.map((l) => l.text).join(" ");
+    expect(text).toContain("보안");
+    const ok = run({ ...state, badges: all, player: { x: 19, y: 2, dir: "up" } }, { type: "interact" });
+    expect(ok.dialog.lines.map((l) => l.text).join(" ")).toContain("34");
+  });
+
+  it("챔피언 홀은 신뢰 34 이상이어야 열리고 첫 단계부터 시작한다", () => {
+    expect(door(33).dialog.lines[0].who).toBe("챔피언 제피");
+    expect(door(33).phase).toBe("map");
+    const start = talkThrough(door(34));
+    expect(start.battle).toMatchObject({ kind: "gym", gym: "league", id: "lg1" });
+    expect(start.battle.b.usage).toBe(0);
+  });
+
+  it("다섯 단계를 모두 이기면 챔피언 뱃지와 두 번째 엔딩을 본다", () => {
+    const end = fight(talkThrough(door(34)));
+    expect(end.phase).toBe("ending");
+    expect(end.badges).toEqual([...all, "league"]);
+    expect(end.ending).toMatchObject({ league: true, title: "챔피언 에이전트" });
+    expect(end.dialog.lines[0].who).toBe("챔피언 제피");
+    expect(run(talkThrough(end), { type: "resume" })).toMatchObject({ phase: "map", map: "league", player: { x: 10, y: 5 } });
+  });
+
+  it("지면 문 앞으로 돌아오고 뱃지는 없으며, 챔피언이 된 뒤에는 인사만 한다", () => {
+    const lost = fight(talkThrough(door(34, { gear: {} })), () => ({ id: "edit" }));
+    expect(lost.badges).toEqual(all);
+    expect(lost.gymPhase).toBe(0);
+    expect(lost.player).toMatchObject({ x: 10, y: 5 });
+    expect(door(34, { badges: [...all, "league"] }).phase).toBe("map");
+  });
+
+  it("마을 엔딩은 그대로 마을 엔딩이다", () => {
+    const town = { ...at(started(), 25, 5, "up"), trust: 14, ...geared };
+    const end = fight(talkThrough(walk(town, "up")));
+    expect(end.ending.league).toBe(false);
+    expect(end.dialog.lines[0].who).toBe("팀장 박");
+  });
+
+  it("리그 저장과 챔피언 뱃지를 복원한다", () => {
+    const raw = JSON.parse(JSON.stringify(snapshot({ ...started(7), map: "league", player: { x: 10, y: 10, dir: "up" }, badges: [...all, "league"] })));
+    expect(restore(raw)).toMatchObject({ map: "league", badges: [...all, "league"], player: { x: 10, y: 10 } });
+    expect(restore({ ...raw, player: { x: 0, y: 0, dir: "up" } }).player).toMatchObject({ x: 3, y: 5 });
   });
 });
