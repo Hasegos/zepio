@@ -3,7 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Mascot from "../components/Mascot.astro";
 import { liveGames } from "../games/registry.js";
 
-const CATEGORY_LABELS = { puzzle: "퍼즐", arcade: "아케이드", casual: "캐주얼" };
+const CATEGORY_LABELS = { puzzle: "퍼즐", arcade: "아케이드", casual: "캐주얼", simulation: "시뮬레이션" };
 const dailyGame = liveGames.find((game) => game.hasDaily);
 ---
 
