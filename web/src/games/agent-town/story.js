@@ -5,7 +5,7 @@ const say = (who, text) => ({ who, text });
 export const INTRO = [
   say("제피", "깨어났구나! 여기는 프롬프트 마을이야. 이 마을 사람들은 쉴 새 없이 부탁을 가져와."),
   say("제피", "풀숲을 걸으면 의뢰가 불쑥 나타나. 잘 끝내면 코인과 신뢰를 얻어."),
-  say("제피", "일 잘하는 법은 의뢰인의 말 속에 있어. 모호하면 묻고, 모르는 곳은 읽고, 큰 일은 계획하고, 위험하면 거절해!"),
+  say("제피", "일 잘하는 법은 의뢰인의 말 속에 있어. 모호하면 묻고, 모르는 곳은 읽고, 큰 일은 계획하고, 위험하면 거절해! 막히면 전투 중에 '제피 귀띔'을 눌러 봐."),
   say("제피", "나도 같이 갈게. 서브에이전트로 불러 주면 코드 위치를 찾아다 줄 수 있어."),
 ];
 
@@ -16,10 +16,18 @@ export const INTRO = [
  * @returns 대사 목록
  */
 export function zepiLines(state) {
+  const lines = zepiBase(state);
+  if (state.coins >= 10 && !state.gear.plan) {
+    lines.push(say("제피", "코인이 모였네! 도서관의 계획 모드는 큰 일에 꼭 필요해. 한번 들러 봐."));
+  }
+  return lines;
+}
+
+function zepiBase(state) {
   if (state.trust < GATE_TRUST) {
     return [
       say("제피", `동쪽 길은 경비 로봇이 막고 있어. 신뢰를 ${GATE_TRUST} 쌓으면 비켜 줄 거야.`),
-      say("제피", "길가에 서 있는 민수나 이 대리에게 말을 걸어 봐. 사람이 직접 부탁하는 의뢰는 신뢰를 많이 줘!"),
+      say("제피", "길가의 민수에게 먼저 말을 걸어 봐. 사람이 직접 부탁하는 의뢰는 신뢰와 코인을 많이 줘! 이 대리의 일은 커서 준비가 필요해."),
     ];
   }
   if (state.trust < BOSS_TRUST) {

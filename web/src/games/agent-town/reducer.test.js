@@ -112,6 +112,23 @@ describe("말 걸기", () => {
   });
 });
 
+describe("준비 안 된 도전 경고", () => {
+  it("큰 일을 맡기는 트레이너는 계획 모드가 없으면 제피가 미리 알려 준다", () => {
+    const s = at(started(), 6, 9, "down");
+    const warned = run(s, { type: "interact" });
+    expect(warned.dialog.lines.at(-1)).toMatchObject({ who: "제피" });
+    expect(warned.dialog.lines.at(-1).text).toContain("계획 모드");
+    const ready = run({ ...s, gear: { plan: true } }, { type: "interact" });
+    expect(ready.dialog.lines.at(-1).who).toBe("이 대리");
+  });
+
+  it("제피는 코인이 모이면 계획 모드를 권한다", () => {
+    const s = { ...at(started(), 8, 9, "up"), coins: 12 };
+    expect(run(s, { type: "interact" }).dialog.lines.at(-1).text).toContain("계획 모드");
+    expect(run({ ...s, gear: { plan: true } }, { type: "interact" }).dialog.lines.at(-1).text).not.toContain("계획 모드");
+  });
+});
+
 describe("전투 결과", () => {
   it("의뢰를 끝내면 코인과 신뢰를 받고 컨텍스트와 사용량이 이어진다", () => {
     const grass = { ...at(started(), 17, 8, "up"), trust: 1, cooldown: 0, gear: FULL };
