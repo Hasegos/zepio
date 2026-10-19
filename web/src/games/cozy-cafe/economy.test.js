@@ -1,83 +1,44 @@
 import { describe, expect, it } from "vitest";
-import { advance, assignManager, buildingIncome, buyStation, buyUpgrade, GOAL, hireStaff, incomePerSecond, initialState, OFFLINE_CAP_MS, plotUnlocked, stage, STATIONS, stationCost } from "./economy.js";
-const T = 1700000000000;
+import { hireStaff, orderValue, patienceBonus, serviceInterval } from "./economy.js";
+import { initialSimulation, advanceSimulation } from "./simulation.js";
 
-describe("마을 성장 경제", () => {
-  it("빈 지갑이어도 처음부터 자동 생산한다", () => {
-    const state=initialState(T);
-    expect(state.coins).toBe(0);
-    expect(incomePerSecond(state)).toBe(1);
-    expect(advance(state,T+20000).state.coins).toBe(20);
+describe("서빙 경제",()=>{
+  it("직접 서빙은 자동보다 수익과 팁이 높고 콤보는 최대 x5다",()=>{
+    const s={...initialSimulation(1),combo:5};
+    expect(orderValue(s,"espresso",true).coins).toBeGreaterThan(orderValue(s,"espresso",false).coins);
+    expect(orderValue(s,"espresso",false).tip).toBe(0);
+    expect(orderValue({...s,combo:100},"espresso",true)).toEqual(orderValue(s,"espresso",true));
   });
-  it("돈이 있어도 앞 건물 5레벨 전에는 부지를 살 수 없다", () => {
-    const state={...initialState(T),coins:1e9};
-    expect(plotUnlocked(state,"oven")).toBe(false);
-    expect(buyStation(state,"oven")).toBe(state);
-    const open={...state,levels:{...state.levels,espresso:5}};
-    expect(buyStation(open,"oven").levels.oven).toBe(1);
+  it("선택과 읽은 사연의 영구 효과가 해당 역할에만 적용된다",()=>{
+    const s=initialSimulation(1);
+    expect(orderValue({...s,choices:{style:"meal"}},"toast",true).coins).toBeGreaterThan(orderValue(s,"toast",true).coins);
+    expect(orderValue({...s,read:["doyun-2"]},"espresso",true).coins).toBeGreaterThan(orderValue(s,"espresso",true).coins);
+    expect(patienceBonus({...s,read:["dalbong-2"]})).toBe(6000);
+    expect(orderValue({...s,read:["moka-2"]},"drip",true).tip).toBeGreaterThan(orderValue(s,"drip",true).tip);
   });
-  it("순서대로 5구역을 열고 기존 건물은 조건과 무관하게 증축한다", () => {
-    let state={...initialState(T),coins:1e9};
-    for(const s of STATIONS) {
-      while(state.levels[s.id]<5) state=buyStation(state,s.id);
-    }
-    expect(stage(state)).toBe(5);
-    const legacy={...initialState(T),coins:1e6,levels:{...initialState(T).levels,beans:1}};
-    expect(buyStation(legacy,"beans").levels.beans).toBe(2);
+  it("직원 고용은 열림·잔액·역할별 상한을 검사하고 각자 다른 일을 한다",()=>{
+    const fresh=initialSimulation(1);
+    expect(hireStaff({...fresh,coins:1000},"barista").staff.barista).toBe(1);
+    let s={...fresh,coins:10000,elapsed:300000};
+    s={...s,queue:[{id:1,menu:"espresso",remaining:10000,patience:22000}]};
+    s=hireStaff(s,"patissier");s=hireStaff(s,"server");s=hireStaff(s,"barista");
+    expect(s.queue[0].remaining).toBe(18000);
+    expect(serviceInterval(s,"patissier")).toBe(12000);
+    expect(serviceInterval(s,"barista")).toBe(7000);
+    expect(patienceBonus(s)).toBe(8000);
+    expect(hireStaff(s,"bad")).toBe(s);
+    expect(hireStaff({...s,staff:{...s.staff,barista:3}},"barista").staff.barista).toBe(3);
   });
-  it("매니저는 실제 고용 수 이내에서만 배치되고 생산 효과를 옮길 수 있다", () => {
-    const base={...initialState(T),coins:1e6,levels:{...initialState(T).levels,espresso:5,oven:1}};
-    expect(assignManager(base,"espresso")).toBe(base);
-    let state=assignManager(hireStaff(base),"espresso");
-    expect(buildingIncome(state,"espresso")).toBe(10);
-    expect(assignManager(state,"oven")).toBe(state);
-    state=assignManager(assignManager(state,"espresso"),"oven");
-    expect(buildingIncome(state,"espresso")).toBe(5);
-    expect(buildingIncome(state,"oven")).toBe(8);
-    expect(assignManager(state,"beans")).toBe(state);
-  });
-  it("코인 부족, 잘못된 항목과 영구 효과 중복 구매를 막는다", () => {
-    const s=initialState(T);
-    expect(buyStation(s,"espresso")).toBe(s);
-    expect(buyStation(s,"bad")).toBe(s);
-    const rich={...s,coins:10000,total:10000};
-    const upgraded=buyUpgrade(rich,"efficiency");
-    expect(incomePerSecond(upgraded)).toBe(1.25);
-    expect(buyUpgrade(upgraded,"efficiency")).toBe(upgraded);
-  });
-  it("초당 생산율은 건물과 매니저 기본 수익의 합이다", () => {
-    const s={...initialState(T),staff:2,levels:{espresso:10,oven:5,terrace:1,beans:0,marketing:0},managers:{oven:true}};
-    expect(incomePerSecond(s)).toBe(STATIONS.reduce((n,b)=>n+buildingIncome(s,b.id),0)+4);
-  });
-  it("온라인과 복귀 수익이 일치하고 같은 시간은 중복 지급하지 않는다", () => {
-    const s=initialState(T);
-    const once=advance(s,T+60000);
-    let stepped=s;
-    for(let t=T+250;t<=T+60000;t+=250) stepped=advance(stepped,t).state;
-    expect(stepped.coins).toBe(once.state.coins);
-    expect(advance(once.state,T+60000).earned).toBe(0);
-    expect(advance(s,T+OFFLINE_CAP_MS*2).earned).toBe(28800);
-    expect(advance(s,T-1000).earned).toBe(0);
-  });
-  it("누적 목표 달성 시각은 한 번 기록한다", () => {
-    const s={...initialState(T),total:GOAL-1};
-    const first=advance(s,T+1000).state;
-    expect(first.goalAt).toBe(T+1000);
-    expect(advance(first,T+2000).state.goalAt).toBe(T+1000);
-  });
-  it("완전 방치와 순차 재투자만으로 모든 부지를 개방할 수 있다", () => {
-    let s=initialState(T);
-    const reached=[];
-    for(let sec=1;sec<=7200;sec++) {
-      s=advance(s,T+sec*1000).state;
-      for(const b of STATIONS) {
-        if(plotUnlocked(s,b.id)&&s.levels[b.id]<5&&s.coins>=stationCost(b.id,s.levels[b.id])) {
-          s=buyStation(s,b.id);
-          if(s.levels[b.id]===1) reached.push(b.id);
-        }
-      }
-    }
-    expect(reached).toEqual(["oven","terrace","beans","marketing"]);
-    expect(stage(s)).toBe(5);
+  it("8시간 이후는 지급하지 않고 되감긴 시계도 기준 시각을 뒤로 옮기지 않는다",()=>{
+    const now=1700000000000;
+    const s=initialSimulation(now);
+    const cap=advanceSimulation(s,now+8*3600000);
+    const long=advanceSimulation(s,now+24*3600000);
+    expect(long.earned).toBe(cap.earned);
+    expect(long.elapsed).toBe(8*3600000);
+    expect(advanceSimulation(long.state,now+24*3600000).earned).toBe(0);
+    const back=advanceSimulation(s,now-1000);
+    expect(back.state.lastAt).toBe(now);
+    expect(back.earned).toBe(0);
   });
 });
