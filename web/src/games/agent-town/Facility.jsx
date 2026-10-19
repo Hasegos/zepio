@@ -1,6 +1,6 @@
 import { CONTEXT_CAP, USAGE_CAP } from "./battle.js";
 import { Bar } from "./Hud.jsx";
-import { ITEMS } from "./party.js";
+import { isSlotItem, ITEMS, MAX_SLOTS, slotsOf } from "./party.js";
 import { BUILDINGS } from "./world.js";
 
 const ABOUT = {
@@ -15,9 +15,11 @@ const ABOUT = {
  *
  * @param props.state 게임 상태
  */
-export default function Facility({ state, onBuy, onCompact, onRest, onLeave }) {
+export default function Facility({ state, onBuy, onEquip, onCompact, onRest, onLeave }) {
   const place = BUILDINGS.find((b) => b.id === state.facility);
   const items = ITEMS.filter((it) => it.place === state.facility);
+  const slots = slotsOf(state.gear, state.slots);
+  const shop = items.length > 0;
   return (
     <div className="flex flex-col gap-3 rounded-xl border-4 border-town-ink bg-town-panel p-3 text-town-ink">
       <div className="flex items-center justify-between gap-2">
@@ -26,11 +28,37 @@ export default function Facility({ state, onBuy, onCompact, onRest, onLeave }) {
       </div>
       <p className="text-sm font-semibold">{ABOUT[state.facility]}</p>
 
-      {items.length > 0 && (
+      {shop && (
+        <div className="rounded-lg border-2 border-dashed border-town-ink bg-white p-2.5">
+          <p className="text-sm font-extrabold">
+            슬롯 {slots.length}/{MAX_SLOTS}
+            <span className="ml-1.5 text-xs font-semibold text-town-ink/85">규칙과 훅은 슬롯에 끼운 것만 전투에서 효과가 난다. 스킬은 슬롯 없이 항상 쓴다.</span>
+          </p>
+          <ul aria-label="끼운 장비" className="mt-1.5 flex min-h-7 flex-wrap gap-1.5">
+            {slots.length === 0 && <li className="text-xs font-semibold text-town-ink/80">비어 있다</li>}
+            {slots.map((id) => (
+              <li key={id}>
+                <button
+                  type="button"
+                  onClick={() => onEquip(id)}
+                  aria-label={`${ITEMS.find((it) => it.id === id).name} 빼기`}
+                  className="rounded-md border-2 border-town-ink bg-town-ink px-2 py-0.5 text-xs font-bold text-white hover:bg-town-accent"
+                >
+                  {ITEMS.find((it) => it.id === id).name} ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {shop && (
         <ul className="grid gap-2">
           {items.map((item) => {
             const owned = Boolean(state.gear[item.id]);
             const poor = state.coins < item.cost;
+            const slotItem = isSlotItem(item.id);
+            const equipped = slots.includes(item.id);
             return (
               <li key={item.id} className="flex items-center justify-between gap-3 rounded-lg border-2 border-town-ink bg-white p-2.5">
                 <div className="min-w-0">
@@ -42,11 +70,12 @@ export default function Facility({ state, onBuy, onCompact, onRest, onLeave }) {
                 </div>
                 <button
                   type="button"
-                  disabled={owned || poor}
-                  onClick={() => onBuy(item.id)}
-                  className="shrink-0 rounded-lg border-2 border-town-ink bg-town-accent px-3 py-2 text-sm font-extrabold text-white disabled:bg-slate-200 disabled:text-slate-700"
+                  disabled={owned ? !slotItem : poor}
+                  aria-pressed={owned && slotItem ? equipped : undefined}
+                  onClick={() => (owned ? onEquip(item.id) : onBuy(item.id))}
+                  className="shrink-0 rounded-lg border-2 border-town-ink bg-town-accent px-3 py-2 text-sm font-extrabold text-white disabled:bg-slate-200 disabled:text-slate-700 aria-pressed:bg-town-good"
                 >
-                  {owned ? "보유 중" : `${item.cost} 코인`}
+                  {!owned ? `${item.cost} 코인` : slotItem ? (equipped ? "끼움 ✔" : "끼우기") : "보유 중"}
                 </button>
               </li>
             );

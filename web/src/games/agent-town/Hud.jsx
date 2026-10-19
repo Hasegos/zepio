@@ -42,8 +42,9 @@ export function Bar({ label, value, max, mode = "full" }) {
  * 지도 위에 항상 보이는 상태 표시. 신뢰, 코인, 사용량, 컨텍스트, 동료를 담는다.
  *
  * @param props.state 게임 상태
+ * @param props.onCodex 도감 열기(지도에서 대화 중이 아닐 때만 넘긴다)
  */
-export default function Hud({ state, onTitle }) {
+export default function Hud({ state, onTitle, onCodex }) {
   const known = Object.keys(state.seen).length;
   return (
     <div className="flex flex-col gap-2 rounded-xl bg-town-ink p-3 text-white">
@@ -61,13 +62,24 @@ export default function Hud({ state, onTitle }) {
         {state.party.length > 0 && (
           <span className="text-white/85">동료 {state.party.map((id) => MEMBERS[id].name).join(" · ")}</span>
         )}
-        <button
-          type="button"
-          onClick={onTitle}
-          className="ml-auto rounded-md border border-white/50 px-2 py-0.5 text-xs font-bold text-white hover:bg-white/10"
-        >
-          제목으로
-        </button>
+        <span className="ml-auto flex gap-2">
+          {onCodex && (
+            <button
+              type="button"
+              onClick={onCodex}
+              className="rounded-md border border-white/50 px-2 py-0.5 text-xs font-bold text-white hover:bg-white/10"
+            >
+              도감 열기
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onTitle}
+            className="rounded-md border border-white/50 px-2 py-0.5 text-xs font-bold text-white hover:bg-white/10"
+          >
+            제목으로
+          </button>
+        </span>
       </div>
       <div className="flex gap-3">
         <Bar label="사용량" value={state.usage} max={USAGE_CAP} />

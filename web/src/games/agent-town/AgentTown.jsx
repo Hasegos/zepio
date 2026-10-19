@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { getGameData, saveGameData, saveResult } from "../../lib/storage.js";
 import Battle from "./Battle.jsx";
+import Codex from "./Codex.jsx";
 import DialogBox from "./DialogBox.jsx";
 import Facility from "./Facility.jsx";
 import Hud from "./Hud.jsx";
 import MapView, { WALK_MS } from "./MapView.jsx";
 import meta from "./meta.js";
+import { activeGear } from "./party.js";
 import { mergeEnding, readData, restore, snapshot } from "./record.js";
 import { initialState, reducer } from "./reducer.js";
 import Title, { Ending } from "./Title.jsx";
@@ -102,7 +104,7 @@ export default function AgentTown() {
         if (onButton && (key === "Enter" || key === " ")) return;
         e.preventDefault();
         rootRef.current?.querySelector("[data-dialog]")?.click();
-      } else if (s.phase === "map" && !s.dialog) {
+      } else if (s.phase === "map" && !s.dialog && !s.codex) {
         if (KEY_DIRS[key]) {
           e.preventDefault();
           move(KEY_DIRS[key]);
@@ -110,6 +112,8 @@ export default function AgentTown() {
           e.preventDefault();
           dispatch({ type: "interact" });
         }
+      } else if (s.phase === "map" && s.codex && key === "Escape") {
+        dispatch({ type: "codex" });
       } else if (s.phase === "facility" && key === "Escape") {
         dispatch({ type: "leave" });
       }
@@ -159,8 +163,15 @@ export default function AgentTown() {
           }}
         />
       )}
-      {(mapPhase || state.phase === "facility") && <Hud state={state} onTitle={toTitle} />}
-      {mapPhase && (
+      {(mapPhase || state.phase === "facility") && (
+        <Hud state={state} onTitle={toTitle} onCodex={mapPhase && !state.dialog ? act("select", { type: "codex" }) : undefined} />
+      )}
+      {mapPhase && state.codex && (
+        <div className="mt-3">
+          <Codex state={state} onClose={act("select", { type: "codex" })} />
+        </div>
+      )}
+      {mapPhase && !state.codex && (
         <div className="mt-3 flex flex-col gap-3">
           <MapView
             state={state}
@@ -183,6 +194,10 @@ export default function AgentTown() {
               sfx("coin");
               dispatch({ type: "buy", id });
             }}
+            onEquip={(id) => {
+              sfx("select");
+              dispatch({ type: "equip", id });
+            }}
             onCompact={act("heal", { type: "compact" })}
             onRest={act("heal", { type: "rest" })}
             onLeave={act("select", { type: "leave" })}
@@ -193,7 +208,7 @@ export default function AgentTown() {
         <Battle
           key={`${state.battle.id}`}
           battle={state.battle}
-          gear={state.gear}
+          gear={activeGear(state.gear, state.slots)}
           party={state.party}
           onMove={(id, arg) => dispatch({ type: "battleMove", id, arg })}
           onClose={act("select", { type: "battleClose" })}
