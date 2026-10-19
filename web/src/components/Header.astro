@@ -1,0 +1,39 @@
+---
+import { liveGames } from "../games/registry.js";
+
+const path = Astro.url.pathname;
+const featured = liveGames[0];
+const links = [
+  { href: "/", label: "홈", current: path === "/" },
+  { href: "/#games", label: "게임", current: path.startsWith("/games/") },
+];
+---
+
+<header class="border-b border-slate-200 bg-white">
+  <div class="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
+    <a href="/" class="text-xl font-extrabold text-primary">Zepio</a>
+    <nav aria-label="주 메뉴" class="flex items-center gap-1 sm:gap-2">
+      {
+        links.map((link) => (
+          <a
+            href={link.href}
+            aria-current={link.current ? "page" : undefined}
+            class="rounded-lg px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 aria-[current=page]:text-primary"
+          >
+            {link.label}
+          </a>
+        ))
+      }
+      {
+        featured && (
+          <a
+            href={`/games/${featured.slug}`}
+            class="ml-1 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+          >
+            Play Now
+          </a>
+        )
+      }
+    </nav>
+  </div>
+</header>
