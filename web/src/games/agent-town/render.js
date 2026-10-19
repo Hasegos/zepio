@@ -7,6 +7,8 @@ export const SCALE = 3;
 const PAL = {
   town: { ground: "#92d16c", speck: "#7bbd57", path: "#dcc48f", pathDot: "#c4a96f", leaf: "#2f8a3c", leafLight: "#58b653", leafDark: "#226b2e", trunk: "#7a4e2a" },
   forest: { ground: "#5a9a52", speck: "#468a46", path: "#b79a68", pathDot: "#9a7e4e", leaf: "#1f6a3a", leafLight: "#3f9a55", leafDark: "#154a2a", trunk: "#5a3a22" },
+  harbor: { ground: "#e6d6a4", speck: "#d2c08a", path: "#b98a56", pathDot: "#94693a", leaf: "#3f6fa8", leafLight: "#6a9ad0", leafDark: "#2a4f7e", trunk: "#2a2a2a" },
+  cave: { ground: "#3a4054", speck: "#2c3144", path: "#5c647c", pathDot: "#474e66", leaf: "#585f78", leafLight: "#7a829c", leafDark: "#3a4056", trunk: "#2a2e3e" },
 };
 
 const THEMES = {
@@ -71,6 +73,48 @@ function drawDeep(ctx, x, y, tx, ty) {
     px(ctx, x + a + 1, y + b - 1, 1, 2, "#7fd6b4");
     px(ctx, x + a - 1, y + b - 1, 1, 2, "#7fd6b4");
   }
+}
+
+function drawCrates(ctx, x, y, tx, ty, pal) {
+  drawGround(ctx, x, y, tx, ty, pal);
+  const a = Math.floor(noise(tx, ty, 3) * 3);
+  px(ctx, x + 1 + a, y + 3, 10, 10, "#a8733f");
+  px(ctx, x + 1 + a, y + 3, 10, 1, "#d0a066");
+  px(ctx, x + 1 + a, y + 7, 10, 1, "#7a5230");
+  px(ctx, x + 5 + a, y + 3, 1, 10, "#7a5230");
+  px(ctx, x + 1 + a, y + 12, 10, 1, "#5c3c22");
+  px(ctx, x + 10, y + 9, 5, 5, "#c28b4e");
+  px(ctx, x + 10, y + 9, 5, 1, "#e3b57a");
+  px(ctx, x + 10, y + 13, 5, 1, "#7a5230");
+}
+
+function drawCable(ctx, x, y, tx, ty, pal) {
+  drawGround(ctx, x, y, tx, ty, pal);
+  px(ctx, x + 1, y + 4 + Math.floor(noise(tx, ty, 1) * 3), 14, 2, "#202638");
+  px(ctx, x + 1, y + 10 + Math.floor(noise(tx, ty, 2) * 3), 14, 2, "#202638");
+  for (let i = 0; i < 3; i += 1) {
+    const a = 2 + Math.floor(noise(tx, ty, i + 4) * 11);
+    const b = 3 + Math.floor(noise(tx, ty, i + 8) * 10);
+    px(ctx, x + a, y + b, 1, 1, noise(tx, ty, i + 12) > 0.5 ? "#6fe0ff" : "#7dff9a");
+  }
+}
+
+function drawContainer(ctx, x, y, tx, ty, pal) {
+  drawGround(ctx, x, y, tx, ty, pal);
+  const color = noise(tx, ty, 6) > 0.5 ? pal.leaf : "#b8553a";
+  px(ctx, x, y + 1, TILE, 14, color);
+  px(ctx, x, y + 1, TILE, 1, pal.leafLight);
+  for (let i = 2; i < TILE; i += 3) px(ctx, x + i, y + 3, 1, 10, "rgba(0,0,0,0.25)");
+  px(ctx, x, y + 14, TILE, 1, "rgba(0,0,0,0.3)");
+}
+
+function drawRock(ctx, x, y, tx, ty, pal) {
+  drawGround(ctx, x, y, tx, ty, pal);
+  px(ctx, x, y + 1, TILE, 15, pal.leafDark);
+  px(ctx, x + 1, y, 14, 14, pal.leaf);
+  px(ctx, x + 2, y + 1, 6, 4, pal.leafLight);
+  px(ctx, x + 9, y + 8, 5, 4, pal.leafDark);
+  if (noise(tx, ty, 5) > 0.6) px(ctx, x + 4, y + 7, 1, 1, "#6fe0ff");
 }
 
 function drawPath(ctx, x, y, tx, ty, pal) {
@@ -161,7 +205,9 @@ export function drawWorld(canvas, mapId) {
       else if (ch === "f") drawDeep(ctx, x, y, tx, ty);
       else if (ch === "=" || ch === "W") drawPath(ctx, x, y, tx, ty, pal);
       else if (ch === "~") drawWater(ctx, x, y, tx, ty);
-      else if (ch === "T") drawTree(ctx, x, y, tx, ty, pal);
+      else if (ch === "b") drawCrates(ctx, x, y, tx, ty, pal);
+      else if (ch === "c") drawCable(ctx, x, y, tx, ty, pal);
+      else if (ch === "T") (map.theme === "harbor" ? drawContainer : map.theme === "cave" ? drawRock : drawTree)(ctx, x, y, tx, ty, pal);
       else if (ch === "S") drawSign(ctx, x, y, tx, ty, pal);
       else drawGround(ctx, x, y, tx, ty, pal);
     }
@@ -285,10 +331,10 @@ export function drawRequest(ctx, x, y, task, frame, scale = 1) {
  *
  * @param ctx 화면 캔버스 컨텍스트
  * @param world drawWorld로 그려 둔 지도 그림
- * @param view { mapId, player: {x, y, dir}, from: {x, y}|null, t: 0~1, npcs, tick }
+ * @param view { mapId, player: {x, y, dir}, from: {x, y}|null, t: 0~1, npcs, tick, light } light는 어두운 지도에서 보이는 반지름(칸)
  */
 export function drawFrame(ctx, world, view) {
-  const { mapId, player, from, t, npcs, tick } = view;
+  const { mapId, player, from, t, npcs, tick, light = 2.5 } = view;
   const map = MAPS[mapId];
   const fx = from ? from.x + (player.x - from.x) * t : player.x;
   const fy = from ? from.y + (player.y - from.y) * t : player.y;
@@ -317,5 +363,15 @@ export function drawFrame(ctx, world, view) {
     ctx.fillText(b.name, cx + 1, cy + 1);
     ctx.fillStyle = "#ffffff";
     ctx.fillText(b.name, cx, cy);
+  }
+  if (map.dark) {
+    const cx = Math.round(fx * TILE) - camX + TILE / 2;
+    const cy = Math.round(fy * TILE) - camY + TILE / 2;
+    const r = light * TILE;
+    const dark = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
+    dark.addColorStop(0, "rgba(6,8,18,0)");
+    dark.addColorStop(1, "rgba(6,8,18,0.96)");
+    ctx.fillStyle = dark;
+    ctx.fillRect(0, 0, VIEW_PX_W, VIEW_PX_H);
   }
 }

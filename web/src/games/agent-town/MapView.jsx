@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { drawFrame, drawWorld, SCALE, VIEW_PX_H, VIEW_PX_W } from "./render.js";
 import { facing, MAPS, npcsFor, progressOf } from "./world.js";
 
+const DARK_LIGHT = 2.5;
+const LANTERN_LIGHT = 5.5;
+
 export const WALK_MS = 120;
 const PAD = [
   { dir: "up", label: "위로", cls: "col-start-2 row-start-1", glyph: "▲" },
@@ -55,7 +58,7 @@ export default function MapView({ state, onMove, onInteract, disabled, children 
       const m = motion.current;
       const t = m.from ? Math.min(1, (now - m.at) / WALK_MS) : 1;
       ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
-      drawFrame(ctx, world, { mapId: s.map, player: s.player, from: m.from, t, npcs: npcsFor(s.map, progressOf(s)), tick: now });
+      drawFrame(ctx, world, { mapId: s.map, player: s.player, from: m.from, t, npcs: npcsFor(s.map, progressOf(s)), tick: now, light: s.gear.lantern ? LANTERN_LIGHT : DARK_LIGHT });
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
