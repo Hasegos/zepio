@@ -1,7 +1,8 @@
 import { CONTEXT_CAP, USAGE_CAP } from "./battle.js";
 import { MEMBERS } from "./party.js";
 import { ALL_TASK_IDS } from "./tasks.js";
-import { BOSS_TRUST } from "./world.js";
+import { GYM_IDS, GYMS } from "./gyms.js";
+import { MAPS } from "./world.js";
 
 /**
  * 가득 찰수록 색이 바뀌는 막대. 채워진 정도를 글자로도 보여 준다.
@@ -46,14 +47,20 @@ export function Bar({ label, value, max, mode = "full" }) {
  */
 export default function Hud({ state, onTitle, onCodex }) {
   const known = Object.keys(state.seen).length;
+  const next = GYM_IDS.map((id) => GYMS[id]).find((g) => !state.badges.includes(g.id));
   return (
     <div className="flex flex-col gap-2 rounded-xl bg-town-ink p-3 text-white">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-bold">
-        <span aria-label={`신뢰 ${state.trust}, 보스 조건 ${BOSS_TRUST}`}>
+        <span>{MAPS[state.map].name}</span>
+        <span aria-label={next ? `신뢰 ${state.trust}, ${next.leader} 조건 ${next.trust}` : `신뢰 ${state.trust}`}>
           <span aria-hidden="true" className="text-amber-300">
             ★
           </span>{" "}
-          신뢰 {state.trust}/{BOSS_TRUST}
+          신뢰 {state.trust}
+          {next && `/${next.trust}`}
+        </span>
+        <span aria-label={`뱃지 ${state.badges.length}개, 전체 ${GYM_IDS.length}개`}>
+          뱃지 {state.badges.length}/{GYM_IDS.length}
         </span>
         <span>코인 {state.coins}</span>
         <span>

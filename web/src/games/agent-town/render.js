@@ -1,8 +1,13 @@
-import { BUILDINGS, HEIGHT, TILE, tileAt, VIEW_H, VIEW_W, WIDTH } from "./world.js";
+import { MAPS, TILE, tileAt, VIEW_H, VIEW_W } from "./world.js";
 
 export const VIEW_PX_W = VIEW_W * TILE;
 export const VIEW_PX_H = VIEW_H * TILE;
 export const SCALE = 3;
+
+const PAL = {
+  town: { ground: "#92d16c", speck: "#7bbd57", path: "#dcc48f", pathDot: "#c4a96f", leaf: "#2f8a3c", leafLight: "#58b653", leafDark: "#226b2e", trunk: "#7a4e2a" },
+  forest: { ground: "#5a9a52", speck: "#468a46", path: "#b79a68", pathDot: "#9a7e4e", leaf: "#1f6a3a", leafLight: "#3f9a55", leafDark: "#154a2a", trunk: "#5a3a22" },
+};
 
 const THEMES = {
   blue: { roof: "#3f6fb8", roofDark: "#2f568f", wall: "#dbe6f5" },
@@ -31,14 +36,14 @@ const px = (ctx, x, y, w, h, color) => {
   ctx.fillRect(x, y, w, h);
 };
 
-function drawGround(ctx, x, y, tx, ty) {
-  px(ctx, x, y, TILE, TILE, "#92d16c");
+function drawGround(ctx, x, y, tx, ty, pal) {
+  px(ctx, x, y, TILE, TILE, pal.ground);
   for (let i = 0; i < 3; i += 1) {
     const a = Math.floor(noise(tx, ty, i) * 14);
     const b = Math.floor(noise(tx, ty, i + 9) * 14);
-    px(ctx, x + a, y + b, 1, 1, "#7bbd57");
+    px(ctx, x + a, y + b, 1, 1, pal.speck);
   }
-  if (noise(tx, ty, 20) > 0.86) {
+  if (pal === PAL.town && noise(tx, ty, 20) > 0.86) {
     const a = 3 + Math.floor(noise(tx, ty, 21) * 9);
     const b = 3 + Math.floor(noise(tx, ty, 22) * 9);
     px(ctx, x + a, y + b, 2, 2, "#fff2a8");
@@ -68,12 +73,12 @@ function drawDeep(ctx, x, y, tx, ty) {
   }
 }
 
-function drawPath(ctx, x, y, tx, ty) {
-  px(ctx, x, y, TILE, TILE, "#dcc48f");
+function drawPath(ctx, x, y, tx, ty, pal) {
+  px(ctx, x, y, TILE, TILE, pal.path);
   for (let i = 0; i < 4; i += 1) {
     const a = Math.floor(noise(tx, ty, i) * 14);
     const b = Math.floor(noise(tx, ty, i + 7) * 14);
-    px(ctx, x + a, y + b, 2, 1, "#c4a96f");
+    px(ctx, x + a, y + b, 2, 1, pal.pathDot);
   }
 }
 
@@ -86,18 +91,18 @@ function drawWater(ctx, x, y, tx, ty) {
   }
 }
 
-function drawTree(ctx, x, y, tx, ty) {
-  drawGround(ctx, x, y, tx, ty);
-  px(ctx, x + 6, y + 10, 4, 6, "#7a4e2a");
-  px(ctx, x + 2, y + 2, 12, 9, "#2f8a3c");
-  px(ctx, x + 1, y + 4, 14, 5, "#2f8a3c");
-  px(ctx, x + 4, y + 1, 8, 2, "#2f8a3c");
-  px(ctx, x + 4, y + 3, 4, 3, "#58b653");
-  px(ctx, x + 9, y + 7, 4, 2, "#226b2e");
+function drawTree(ctx, x, y, tx, ty, pal) {
+  drawGround(ctx, x, y, tx, ty, pal);
+  px(ctx, x + 6, y + 10, 4, 6, pal.trunk);
+  px(ctx, x + 2, y + 2, 12, 9, pal.leaf);
+  px(ctx, x + 1, y + 4, 14, 5, pal.leaf);
+  px(ctx, x + 4, y + 1, 8, 2, pal.leaf);
+  px(ctx, x + 4, y + 3, 4, 3, pal.leafLight);
+  px(ctx, x + 9, y + 7, 4, 2, pal.leafDark);
 }
 
-function drawSign(ctx, x, y, tx, ty) {
-  drawGround(ctx, x, y, tx, ty);
+function drawSign(ctx, x, y, tx, ty, pal) {
+  drawGround(ctx, x, y, tx, ty, pal);
   px(ctx, x + 7, y + 8, 2, 7, "#7a4e2a");
   px(ctx, x + 2, y + 2, 12, 7, "#d9a867");
   px(ctx, x + 2, y + 2, 12, 1, "#f0cf94");
@@ -137,28 +142,31 @@ function drawBuilding(ctx, b) {
  * 지도 전체를 한 번만 그려 둔 그림을 만든다. 움직이는 것은 매 프레임 이 위에 그린다.
  *
  * @param canvas 그릴 캔버스(크기는 이 함수가 맞춘다)
+ * @param mapId 지도 식별자
  * @returns 그렸으면 true, 캔버스를 쓸 수 없으면 false
  */
-export function drawWorld(canvas) {
-  canvas.width = WIDTH * TILE;
-  canvas.height = HEIGHT * TILE;
+export function drawWorld(canvas, mapId) {
+  const map = MAPS[mapId];
+  const pal = PAL[map.theme];
+  canvas.width = map.width * TILE;
+  canvas.height = map.height * TILE;
   const ctx = canvas.getContext("2d");
   if (!ctx) return false;
-  for (let ty = 0; ty < HEIGHT; ty += 1) {
-    for (let tx = 0; tx < WIDTH; tx += 1) {
+  for (let ty = 0; ty < map.height; ty += 1) {
+    for (let tx = 0; tx < map.width; tx += 1) {
       const x = tx * TILE;
       const y = ty * TILE;
-      const ch = tileAt(tx, ty);
+      const ch = tileAt(mapId, tx, ty);
       if (ch === ",") drawTall(ctx, x, y, tx, ty);
       else if (ch === "f") drawDeep(ctx, x, y, tx, ty);
-      else if (ch === "=") drawPath(ctx, x, y, tx, ty);
+      else if (ch === "=" || ch === "W") drawPath(ctx, x, y, tx, ty, pal);
       else if (ch === "~") drawWater(ctx, x, y, tx, ty);
-      else if (ch === "T") drawTree(ctx, x, y, tx, ty);
-      else if (ch === "S") drawSign(ctx, x, y, tx, ty);
-      else drawGround(ctx, x, y, tx, ty);
+      else if (ch === "T") drawTree(ctx, x, y, tx, ty, pal);
+      else if (ch === "S") drawSign(ctx, x, y, tx, ty, pal);
+      else drawGround(ctx, x, y, tx, ty, pal);
     }
   }
-  for (const b of BUILDINGS) drawBuilding(ctx, b);
+  for (const b of map.buildings) drawBuilding(ctx, b);
   return true;
 }
 
@@ -277,14 +285,15 @@ export function drawRequest(ctx, x, y, task, frame, scale = 1) {
  *
  * @param ctx 화면 캔버스 컨텍스트
  * @param world drawWorld로 그려 둔 지도 그림
- * @param view { player: {x, y, dir}, from: {x, y}|null, t: 0~1, npcs, tick }
+ * @param view { mapId, player: {x, y, dir}, from: {x, y}|null, t: 0~1, npcs, tick }
  */
 export function drawFrame(ctx, world, view) {
-  const { player, from, t, npcs, tick } = view;
+  const { mapId, player, from, t, npcs, tick } = view;
+  const map = MAPS[mapId];
   const fx = from ? from.x + (player.x - from.x) * t : player.x;
   const fy = from ? from.y + (player.y - from.y) * t : player.y;
-  const maxX = WIDTH * TILE - VIEW_PX_W;
-  const maxY = HEIGHT * TILE - VIEW_PX_H;
+  const maxX = map.width * TILE - VIEW_PX_W;
+  const maxY = map.height * TILE - VIEW_PX_H;
   const camX = Math.max(0, Math.min(maxX, Math.round(fx * TILE + TILE / 2 - VIEW_PX_W / 2)));
   const camY = Math.max(0, Math.min(maxY, Math.round(fy * TILE + TILE / 2 - VIEW_PX_H / 2)));
   ctx.imageSmoothingEnabled = false;
@@ -301,7 +310,7 @@ export function drawFrame(ctx, world, view) {
   for (const thing of things) thing.draw();
   ctx.font = "bold 8px sans-serif";
   ctx.textAlign = "center";
-  for (const b of BUILDINGS) {
+  for (const b of map.buildings) {
     const cx = (b.x + b.w / 2) * TILE - camX;
     const cy = b.y * TILE - camY + 12;
     ctx.fillStyle = "rgba(0,0,0,0.45)";

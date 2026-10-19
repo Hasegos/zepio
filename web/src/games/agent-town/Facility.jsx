@@ -1,7 +1,7 @@
 import { CONTEXT_CAP, USAGE_CAP } from "./battle.js";
 import { Bar } from "./Hud.jsx";
 import { isSlotItem, ITEMS, MAX_SLOTS, slotsOf } from "./party.js";
-import { BUILDINGS } from "./world.js";
+import { MAPS } from "./world.js";
 
 const ABOUT = {
   library: "스킬과 CLAUDE.md 규칙을 파는 곳이다. 한 번 사면 계속 쓴다.",
@@ -16,7 +16,7 @@ const ABOUT = {
  * @param props.state 게임 상태
  */
 export default function Facility({ state, onBuy, onEquip, onCompact, onRest, onLeave }) {
-  const place = BUILDINGS.find((b) => b.id === state.facility);
+  const place = MAPS[state.map].buildings.find((b) => b.facility === state.facility);
   const items = ITEMS.filter((it) => it.place === state.facility);
   const slots = slotsOf(state.gear, state.slots);
   const shop = items.length > 0;

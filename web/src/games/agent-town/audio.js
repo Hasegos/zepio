@@ -45,6 +45,18 @@ export const TRACKS = {
       [["C3", 2], ["G3", 2]], [["A2", 2], ["E3", 2]], [["F2", 2], ["C3", 2]], [["G2", 2], ["D3", 2]],
     ]) },
   },
+  forest: {
+    bpm: 92,
+    lead: { wave: "triangle", gain: 0.05, notes: bars([
+      [["A4", 2], ["C5", 1], ["E5", 1]], [["D5", 2], ["C5", 2]],
+      [["B4", 2], ["D5", 1], ["E5", 1]], [["A4", 3], [null, 1]],
+      [["A4", 2], ["C5", 1], ["E5", 1]], [["G5", 2], ["E5", 2]],
+      [["D5", 2], ["C5", 1], ["B4", 1]], [["A4", 3], [null, 1]],
+    ]) },
+    bass: { wave: "sine", gain: 0.08, notes: bars([
+      [["A2", 4]], [["F2", 4]], [["G2", 4]], [["A2", 4]], [["A2", 4]], [["C3", 4]], [["F2", 4]], [["A2", 4]],
+    ]) },
+  },
   battle: {
     bpm: 152,
     lead: { wave: "square", gain: 0.035, notes: bars([
@@ -98,6 +110,7 @@ export const SFX = {
   block: [0, 0.09].map((at) => ({ wave: "square", from: 300, to: 260, dur: 0.07, gain: 0.05, at })),
   coin: [{ wave: "square", from: 988, to: 988, dur: 0.06, gain: 0.045 }, { wave: "square", from: 1319, to: 1319, dur: 0.16, gain: 0.045, at: 0.07 }],
   heal: [{ wave: "triangle", from: 440, to: 880, dur: 0.3, gain: 0.06 }],
+  warp: ["C5", "G5", "E6"].map((n, i) => ({ wave: "triangle", from: noteFreq(n), to: noteFreq(n) * 1.5, dur: 0.12, gain: 0.05, at: i * 0.09 })),
   leave: ["E4", "C4", "A3"].map((n, i) => ({ wave: "triangle", from: noteFreq(n), to: noteFreq(n), dur: 0.14, gain: 0.05, at: i * 0.13 })),
 };
 
