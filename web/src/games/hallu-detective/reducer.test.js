@@ -10,8 +10,16 @@ const solve = (state, id) => {
   const p = PUZZLES.find((q) => q.id === id);
   let s = open(id, state);
   if (p.kind === "find") s = p.answer.reduce((acc, i) => reducer(acc, { type: "toggle", i }), s);
-  else if (p.kind === "match") s = p.answer.reduce((acc, option, i) => reducer(acc, { type: "choose", i, option }), s);
-  else {
+  else if (p.kind === "liars") s = reducer(s, { type: "choose", i: 0, option: p.answer[0] });
+  else if (p.kind === "grid") {
+    const n = p.slots.length;
+    for (const [c, options] of p.answer.entries()) {
+      for (const [slot, opt] of options.entries()) {
+        s = run(s, { type: "cell", c, slot, opt }, { type: "cell", c, slot, opt });
+        expect(s.puzzle.input[c][slot * n + opt]).toBe(2);
+      }
+    }
+  } else {
     const order = [...p.answer];
     s = { ...s, puzzle: { ...s.puzzle, input: order } };
   }
@@ -63,12 +71,34 @@ describe("퍼즐 풀기", () => {
     expect(run(s, { type: "move", i: 5, dir: 1 })).toBe(s);
   });
 
-  it("짝짓기는 선택지를 고르고 범위를 벗어난 값은 무시한다", () => {
-    const s = open("p05", everything);
+  it("범인 고르기는 용의자를 고르고 범위를 벗어난 값은 무시한다", () => {
+    const s = open("l1", everything);
+    expect(s.puzzle.input).toEqual([null]);
     expect(run(s, { type: "choose", i: 0, option: 2 }).puzzle.input[0]).toBe(2);
-    expect(run(s, { type: "choose", i: 9, option: 0 })).toBe(s);
+    expect(run(s, { type: "choose", i: 1, option: 0 })).toBe(s);
     expect(run(s, { type: "choose", i: 0, option: 9 })).toBe(s);
     expect(run(s, { type: "toggle", i: 0 })).toBe(s);
+    const wrong = run(open("l1"), { type: "choose", i: 0, option: 1 }, { type: "submit" });
+    expect(wrong.puzzle.result.ok).toBe(false);
+    expect(wrong.wrong.l1).toBe(1);
+  });
+
+  it("격자는 칸을 누를 때마다 비어 있음, ✗, ●로 돌아가고 잘못된 칸은 무시한다", () => {
+    const s = open("g1", everything);
+    expect(s.puzzle.input).toHaveLength(2);
+    expect(s.puzzle.input[0]).toHaveLength(9);
+    const states = [1, 2, 0].map((_, k) => run(s, ...Array(k + 1).fill({ type: "cell", c: 0, slot: 1, opt: 2 })).puzzle.input[0][1 * 3 + 2]);
+    expect(states).toEqual([1, 2, 0]);
+    expect(run(s, { type: "cell", c: 5, slot: 0, opt: 0 })).toBe(s);
+    expect(run(s, { type: "cell", c: 0, slot: 3, opt: 0 })).toBe(s);
+    expect(run(s, { type: "cell", c: 0, slot: 0, opt: -1 })).toBe(s);
+    expect(run(s, { type: "cell", c: 0, slot: 0.5, opt: 0 })).toBe(s);
+    expect(run(open("p01", everything), { type: "cell", c: 0, slot: 0, opt: 0 }).puzzle.input).toEqual([]);
+  });
+
+  it("격자는 다시하기가 표를 지운다", () => {
+    const s = run(open("g1", everything), { type: "cell", c: 0, slot: 0, opt: 0 }, { type: "reset" });
+    expect(s.puzzle.input.every((cells) => cells.every((v) => v === 0))).toBe(true);
   });
 
   it("메모는 색이 돌아가며 바뀌고 다시하기가 입력과 메모를 지운다", () => {
@@ -84,8 +114,11 @@ describe("퍼즐 풀기", () => {
     expect(s.notice).toContain("먼저");
     expect(s.wrong.p01).toBeUndefined();
     expect(s.puzzle.result).toBeNull();
-    const match = run(open("p05", everything), { type: "submit" });
-    expect(match.notice).toContain("먼저");
+    const liars = run(open("l1", everything), { type: "submit" });
+    expect(liars.notice).toContain("먼저");
+    const grid = run(open("g1", everything), { type: "submit" });
+    expect(grid.notice).toContain("●");
+    expect(grid.wrong.g1).toBeUndefined();
   });
 
   it("오답 횟수는 99에서 멈추고 푼 퍼즐을 다시 틀려도 늘지 않는다", () => {
@@ -112,9 +145,9 @@ describe("힌트와 코인", () => {
     expect(s.hints.p01).toBe(3);
     expect(s.coins).toBe(START_COINS - 3);
     expect(run(s, { type: "hint" })).toBe(s);
-    s = run(open("p02", { ...initialState(), coins: 0 }), { type: "hint" });
+    s = run(open("l1", { ...initialState(), coins: 0 }), { type: "hint" });
     expect(s.notice).toContain("코인");
-    expect(s.hints.p02).toBeUndefined();
+    expect(s.hints.l1).toBeUndefined();
   });
 
   it("사무소의 숨은 코인은 한 번만 얻고 빈 곳은 안내만 한다", () => {
@@ -160,8 +193,22 @@ describe("저장", () => {
     expect(restore({ ...good, wrong: [] })).toBeNull();
   });
 
+  it("예전 열두 퍼즐 저장(없는 퍼즐 번호)은 버리고 처음부터 시작한다", () => {
+    const good = snapshot(initialState());
+    expect(restore({ ...good, solved: { p02: { score: 100, wrong: 0 } } })).toBeNull();
+    expect(restore({ ...good, hints: { p12: 1 } })).toBeNull();
+    expect(restore({ ...good, solved: { g4: { score: 100, wrong: 0 } } })).not.toBeNull();
+  });
+
+  it("소리 끔 설정은 저장 데이터에 남고 엔딩 기록을 합쳐도 유지된다", () => {
+    expect(readData({ v: 1, muted: true }).muted).toBe(true);
+    expect(readData({ v: 1, muted: "yes" }).muted).toBe(false);
+    expect(readData(null).muted).toBe(false);
+    expect(mergeEnding({ v: 1, muted: true, best: {} }, { p01: { score: 100, wrong: 0 } }, null).muted).toBe(true);
+  });
+
   it("엔딩 기록은 최고 점수를 남기고 횟수를 더한다", () => {
-    const solved = { p01: { score: 100, wrong: 0 }, p02: { score: 60, wrong: 2 } };
+    const solved = { p01: { score: 100, wrong: 0 }, l1: { score: 60, wrong: 2 } };
     const first = mergeEnding(null, solved, null);
     expect(first.best).toEqual({ endings: 1, score: 160 });
     expect(mergeEnding(first, { p01: { score: 20, wrong: 4 } }, null).best).toEqual({ endings: 2, score: 160 });

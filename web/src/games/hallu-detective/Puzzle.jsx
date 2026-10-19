@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { scoreFor } from "./logic.js";
-import { PUZZLES } from "./puzzles.js";
+import { PUZZLES, WRONG_PENALTY } from "./puzzles.js";
 
 const MEMO = [
   { name: "표시 없음", cls: "border-det-line bg-white" },
@@ -47,20 +47,84 @@ function Row({ index, memo, showMemo, onMemo, children, text }) {
         <span className="mr-1.5 font-extrabold text-det-accent">{index + 1}.</span>
         {text}
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        {children}
-        {showMemo && (
-          <button type="button" onClick={onMemo} className={`${btn} ${light} px-2 py-1 text-xs`}>
-            메모: {color.name}
-          </button>
-        )}
-      </div>
+      {(children || showMemo) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {children}
+          {showMemo && (
+            <button type="button" onClick={onMemo} className={`${btn} ${light} px-2 py-1 text-xs`}>
+              메모: {color.name}
+            </button>
+          )}
+        </div>
+      )}
     </li>
   );
 }
 
+const CELL = [
+  { mark: "", name: "비어 있음", cls: "border-det-line bg-white" },
+  { mark: "✗", name: "아님", cls: "border-det-line bg-det-paper text-det-bad" },
+  { mark: "●", name: "맞음", cls: "border-det-ink bg-det-accent text-white" },
+];
+
 /**
- * 퍼즐 화면을 보여 준다. 근거 문서와 문제를 보여 주고 고르기, 순서 놓기, 짝짓기를 받으며 아래 버튼 줄에 힌트, 나중에 풀기, 메모, 다시하기, 결정이 있다.
+ * 격자 논리 표를 보여 준다. 분류마다 줄은 칸(자리나 순서), 열은 항목이고, 칸을 누를 때마다 비어 있음, ✗, ●가 돌아가며 바뀐다.
+ *
+ * @param props.puzzle 격자 퍼즐
+ * @param props.input 분류마다 표 칸의 상태(0 비어 있음, 1 ✗, 2 ●)
+ * @param props.dispatch 행동을 보낸다
+ */
+function Grid({ puzzle, input, dispatch }) {
+  const n = puzzle.slots.length;
+  return (
+    <div className="grid gap-3">
+      {puzzle.cats.map((cat, c) => (
+        <div key={cat.name} className="overflow-x-auto rounded-xl border-2 border-det-ink bg-white p-2">
+          <table className="w-full border-collapse text-center text-xs font-extrabold text-det-ink">
+            <caption className="mb-1 text-left text-sm text-det-accent">{cat.name}</caption>
+            <thead>
+              <tr>
+                <td />
+                {cat.options.map((option) => (
+                  <th key={option} scope="col" className="px-0.5 pb-1 align-bottom leading-tight">
+                    {option}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {puzzle.slots.map((slot, s) => (
+                <tr key={slot}>
+                  <th scope="row" className="pr-2 text-left leading-tight">
+                    {slot}
+                  </th>
+                  {cat.options.map((option, opt) => {
+                    const state = CELL[input[c][s * n + opt]];
+                    return (
+                      <td key={option} className="p-0.5">
+                        <button
+                          type="button"
+                          aria-label={`${cat.name} ${slot} - ${option}: ${state.name}`}
+                          onClick={() => dispatch({ type: "cell", c, slot: s, opt })}
+                          className={`h-10 w-full min-w-9 rounded-md border-2 text-base font-extrabold ${state.cls}`}
+                        >
+                          {state.mark}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * 퍼즐 화면을 보여 준다. 근거 문서와 문제를 보여 주고 고르기, 순서 놓기, 범인 고르기, 표 채우기를 받으며 아래 버튼 줄에 힌트, 나중에 풀기, 메모, 다시하기, 결정이 있다.
  *
  * @param props.state 게임 상태
  * @param props.dispatch 행동을 보낸다
@@ -87,12 +151,15 @@ export default function Puzzle({ state, dispatch }) {
         <p className="mt-1 text-sm font-semibold text-white/90">{puzzle.intro}</p>
       </header>
 
-      <Docs docs={puzzle.docs} />
+      {puzzle.docs.length > 0 && <Docs docs={puzzle.docs} />}
 
       <p className="text-sm font-extrabold text-det-ink">{puzzle.prompt}</p>
 
-      <ul aria-label="문제" className="grid gap-2">
+      <ul aria-label={puzzle.kind === "grid" ? "단서" : puzzle.kind === "liars" ? "진술" : "문제"} className="grid gap-2">
         {puzzle.items.map((text, i) => {
+          if (puzzle.kind === "liars" || puzzle.kind === "grid") {
+            return <Row key={text} index={i} text={text} memo={view.memo[i]} showMemo={view.showMemo} onMemo={() => dispatch({ type: "memo", i })} />;
+          }
           if (puzzle.kind === "find") {
             const picked = view.input.includes(i);
             return (
@@ -109,7 +176,7 @@ export default function Puzzle({ state, dispatch }) {
               </Row>
             );
           }
-          if (puzzle.kind === "order") {
+          {
             const item = puzzle.items[view.input[i]];
             return (
               <Row key={item} index={i} text={item} memo={view.memo[i]} showMemo={view.showMemo} onMemo={() => dispatch({ type: "memo", i })}>
@@ -128,25 +195,31 @@ export default function Puzzle({ state, dispatch }) {
               </Row>
             );
           }
-          return (
-            <Row key={text} index={i} text={text} memo={view.memo[i]} showMemo={view.showMemo} onMemo={() => dispatch({ type: "memo", i })}>
-              <select
-                aria-label={`${text}의 출처`}
-                value={view.input[i] ?? ""}
-                onChange={(e) => dispatch({ type: "choose", i, option: e.target.value === "" ? null : Number(e.target.value) })}
-                className="rounded-lg border-2 border-det-ink bg-white px-2 py-2 text-sm font-bold text-det-ink"
-              >
-                <option value="">고르세요</option>
-                {puzzle.options.map((option, o) => (
-                  <option key={option} value={o}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </Row>
-          );
         })}
       </ul>
+
+      {puzzle.kind === "liars" && (
+        <div className="flex items-center gap-2 rounded-xl border-2 border-det-ink bg-det-paper p-2.5 text-det-ink">
+          <label htmlFor="culprit" className="text-sm font-extrabold">
+            범인은
+          </label>
+          <select
+            id="culprit"
+            value={view.input[0] ?? ""}
+            onChange={(e) => dispatch({ type: "choose", i: 0, option: e.target.value === "" ? null : Number(e.target.value) })}
+            className="rounded-lg border-2 border-det-ink bg-white px-2 py-2 text-sm font-bold text-det-ink"
+          >
+            <option value="">고르세요</option>
+            {puzzle.options.map((option, o) => (
+              <option key={option} value={o}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {puzzle.kind === "grid" && <Grid puzzle={puzzle} input={view.input} dispatch={dispatch} />}
 
       {opened > 0 && (
         <ol aria-label="연 힌트" className="grid gap-1.5 rounded-xl border-2 border-dashed border-det-accent bg-white p-3 text-sm font-semibold text-det-ink">
@@ -186,7 +259,7 @@ export default function Puzzle({ state, dispatch }) {
           ) : (
             <>
               <h3 className="text-xl font-extrabold text-det-bad">아쉬워요, 다시 생각해 보세요</h3>
-              <p className="text-sm font-semibold">{state.solved[puzzle.id] ? "이미 푼 퍼즐이라 점수는 그대로예요." : "틀리면 점수가 20점 깎여요. 힌트를 열거나 메모로 정리해 보세요."}</p>
+              <p className="text-sm font-semibold">{state.solved[puzzle.id] ? "이미 푼 퍼즐이라 점수는 그대로예요." : `틀리면 점수가 ${WRONG_PENALTY}점 깎여요. 힌트를 열거나 메모로 정리해 보세요.`}</p>
               <button type="button" onClick={() => dispatch({ type: "closeResult" })} className={`${btn} ${accent}`}>
                 다시 풀기
               </button>
