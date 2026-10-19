@@ -65,7 +65,7 @@ export default function Title({ saved, best, onNew, onContinue }) {
 /**
  * 엔딩 화면. 한 줄 평과 기록을 보여 주고 공유와 마을 돌아가기를 제공한다.
  *
- * @param props.ending { trust, coins, tasksDone, disasters, steps, codex }
+ * @param props.ending { trust, coins, tasksDone, disasters, steps, codex, title }
  * @param props.saved 기록을 저장했는지(false면 경고)
  */
 export function Ending({ ending, saved, onResume, onTitle }) {
@@ -79,6 +79,7 @@ export function Ending({ ending, saved, onResume, onTitle }) {
           ["신뢰", ending.trust],
           ["해결한 의뢰", ending.tasksDone],
           ["도감", `${ending.codex}/${ALL_TASK_IDS.length}`],
+          ["칭호", ending.title],
           ["사고", `${ending.disasters}회`],
           ["걸음", ending.steps],
           ["코인", ending.coins],

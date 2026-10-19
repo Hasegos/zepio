@@ -10,7 +10,7 @@ import {
   usageCost,
 } from "./battle.js";
 import { adaptive, fullPipeline, readEditTest, runBattle, yolo } from "./bots.js";
-import { buy } from "./party.js";
+import { activeGear, buy } from "./party.js";
 import { ALL_TASK_IDS, BOSS_PHASES, TRAINER_TASKS, WILD_TASKS, taskById } from "./tasks.js";
 
 const NONE = {};
@@ -240,6 +240,12 @@ describe("전략별 밸런스(모든 의뢰, 장비 있음/없음)", () => {
     expect(r.fail).toEqual([]);
   });
 
+  it("슬롯 3칸만 끼워도 적응형 전략은 모든 의뢰를 끝낸다", () => {
+    for (const slots of [["readRule", "askRule", "guard"], ["secret", "guard", "autotest"], []]) {
+      expect(sweep(activeGear(ALL, slots), () => adaptive).fail, slots.join()).toEqual([]);
+    }
+  });
+
   it("고치기만 하는 전략은 단서가 있는 의뢰에서 크게 진다", () => {
     const r = sweep(NONE, () => yolo);
     expect(r.wins).toBeLessThan(ALL_TASK_IDS.length * 0.45);
@@ -310,5 +316,47 @@ describe("제피 귀띔", () => {
     };
     const r = sweep(ALL, () => follow);
     expect(r.fail).toEqual([]);
+  });
+});
+
+describe("환각 의뢰", () => {
+  it("자료를 읽지 않고 쓰면 지어낸 내용이 생기고, 테스트로는 못 잡는다", () => {
+    const b = play(startBattle(task("report")), NONE, "edit");
+    expect(b.fake).toBe(true);
+    expect(b.bugs).toBe(0);
+    expect(play(b, NONE, "test").fake).toBe(true);
+  });
+
+  it("지어낸 채로 끝내려 하면 의뢰인이 출처를 묻고 퇴짜를 놓는다", () => {
+    const b = play(startBattle(task("report")), NONE, "edit", "edit");
+    expect(b.rejects).toBe(1);
+    expect(b.fake).toBe(false);
+    expect(b.done).toBeNull();
+    expect(b.lines.join(" ")).toContain("출처");
+  });
+
+  it("읽고 쓰면 바로 통과하고, 나중에 읽거나 리뷰를 맡겨도 바로잡는다", () => {
+    expect(play(startBattle(task("report")), NONE, "read", "edit", "edit", "edit").done.kind).toBe("win");
+    const faked = play(startBattle(task("report")), NONE, "edit");
+    expect(play(faked, NONE, "read").fake).toBe(false);
+    expect(playMove(faked, NONE, "summon", "reviewer").fake).toBe(false);
+  });
+
+  it("먼저 읽기 규칙이 켜져 있으면 지어내지 않는다", () => {
+    const b = play(startBattle(task("report")), { readRule: true }, "edit");
+    expect(b.fake).toBe(false);
+    expect(b.located).toBe(true);
+  });
+
+  it("제피가 자료 읽기를 귀띔하고, 지어낸 뒤에는 다시 읽으라고 한다", () => {
+    const b = startBattle(task("apidoc"));
+    expect(hintFor(b, NONE)).toContain("자료를 읽고");
+    expect(hintFor(play(b, NONE, "edit"), NONE)).toContain("다시 읽어서");
+  });
+
+  it("환각 의뢰는 4개 이상이고 모두 근거를 읽어야 하는 의뢰다", () => {
+    const hallu = ALL_TASK_IDS.filter((id) => task(id).hallu);
+    expect(hallu.length).toBeGreaterThanOrEqual(4);
+    for (const id of hallu) expect(task(id).locate, id).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import { CONTEXT_CAP, playMove, startBattle, USAGE_CAP } from "./battle.js";
-import { buy, ITEMS, MEMBERS } from "./party.js";
+import { currentTitle } from "./codex.js";
+import { activeGear, buy, isSlotItem, ITEMS, MEMBERS, slotsOf, toggleSlot, MAX_SLOTS } from "./party.js";
 import { makeRng, shuffle } from "./rng.js";
 import {
   BOSS_DONE,
@@ -47,6 +48,7 @@ export function newGame(seed) {
     context: 0,
     usage: 0,
     gear: {},
+    slots: [],
     party: [],
     cleared: {},
     seen: {},
@@ -151,7 +153,14 @@ function interact(s) {
 
 function applyPayout(s, b, kind, id) {
   const d = b.done;
-  const base = { ...s, context: Math.min(b.context, CONTEXT_CAP), usage: Math.min(b.usage, USAGE_CAP), battle: null };
+  const solved = d.kind === "win" || d.kind === "refuse";
+  const base = {
+    ...s,
+    context: Math.min(b.context, CONTEXT_CAP),
+    usage: Math.min(b.usage, USAGE_CAP),
+    battle: null,
+    seen: solved ? { ...s.seen, [id]: "win" } : s.seen,
+  };
   const settled = { ...base, phase: "map", saveTick: s.saveTick + 1 };
   if (kind === "boss") return afterBossPhase(settled, d);
   let next = settled;
@@ -195,7 +204,15 @@ function afterBossPhase(s, d) {
       finished: true,
       phase: "ending",
       dialog: { lines: ENDING, i: 0, then: null },
-      ending: { trust: s.trust, coins: s.coins, tasksDone: s.tasksDone, disasters: s.disasters, steps: s.steps, codex: Object.keys(s.seen).length },
+      ending: {
+        trust: s.trust,
+        coins: s.coins,
+        tasksDone: s.tasksDone,
+        disasters: s.disasters,
+        steps: s.steps,
+        codex: Object.keys(s.seen).length,
+        title: currentTitle({ ...s, finished: true }),
+      },
     };
   }
   const refreshed = { ...s, bossPhase, usage: Math.max(0, s.usage - BOSS_USAGE_REFRESH) };
@@ -218,9 +235,11 @@ export function reducer(state, action) {
     case "title":
       return initialState();
     case "move":
-      return state.phase === "map" && !state.dialog ? walk(state, action.dir, action.roll ?? 1) : state;
+      return state.phase === "map" && !state.dialog && !state.codex ? walk(state, action.dir, action.roll ?? 1) : state;
     case "interact":
-      return state.phase === "map" && !state.dialog ? interact(state) : state;
+      return state.phase === "map" && !state.dialog && !state.codex ? interact(state) : state;
+    case "codex":
+      return state.phase === "map" && !state.dialog ? { ...state, codex: !state.codex } : state;
     case "advance": {
       if (!state.dialog) return state;
       const { dialog } = state;
@@ -231,7 +250,7 @@ export function reducer(state, action) {
     case "battleMove": {
       if (state.phase !== "battle") return state;
       const { b } = state.battle;
-      const next = playMove(b, state.gear, action.id, action.arg);
+      const next = playMove(b, activeGear(state.gear, state.slots), action.id, action.arg);
       return next === b ? state : { ...state, battle: { ...state.battle, b: next } };
     }
     case "battleClose": {
@@ -244,7 +263,17 @@ export function reducer(state, action) {
       if (item?.place !== state.facility) return { ...state, notice: "여기서는 살 수 없어요" };
       const r = buy(state.gear, state.coins, action.id);
       if (!r.ok) return { ...state, notice: r.reason };
-      return { ...state, gear: r.gear, coins: r.coins, notice: `${item.name}을(를) 갖췄다!`, saveTick: state.saveTick + 1 };
+      const now = slotsOf(state.gear, state.slots);
+      const slots = isSlotItem(item.id) && now.length < MAX_SLOTS ? [...now, item.id] : now;
+      const fitted = slots.includes(item.id) ? " 슬롯에 끼웠다." : isSlotItem(item.id) ? " 슬롯이 가득 차서 보관해 둔다." : "";
+      return { ...state, gear: r.gear, slots, coins: r.coins, notice: `${item.name}을(를) 갖췄다!${fitted}`, saveTick: state.saveTick + 1 };
+    }
+    case "equip": {
+      if (state.phase !== "facility") return state;
+      const r = toggleSlot(state.gear, state.slots, action.id);
+      if (!r.ok) return { ...state, notice: r.reason };
+      const name = ITEMS.find((it) => it.id === action.id).name;
+      return { ...state, slots: r.slots, notice: r.equipped ? `${name}을(를) 슬롯에 끼웠다.` : `${name}을(를) 슬롯에서 뺐다.`, saveTick: state.saveTick + 1 };
     }
     case "compact":
       return state.phase === "facility" && state.facility === "compact"

@@ -78,6 +78,61 @@ export const MEMBERS = {
   },
 };
 
+export const MAX_SLOTS = 3;
+
+/**
+ * 슬롯에 끼우는 장비(CLAUDE.md 규칙과 훅)인지 알려 준다. 스킬은 슬롯 없이 항상 쓴다.
+ *
+ * @param id 물건 식별자
+ * @returns 슬롯 장비이면 true
+ */
+export function isSlotItem(id) {
+  const item = ITEMS.find((it) => it.id === id);
+  return Boolean(item) && item.kind !== "스킬";
+}
+
+/**
+ * 지금 끼워 둔 슬롯 장비를 구한다. 슬롯 정보가 없는 예전 저장은 산 순서대로 앞의 세 개를 끼운 것으로 본다.
+ *
+ * @param gear 가진 장비 { id: true }
+ * @param slots 끼운 장비 식별자 목록, 없으면 undefined
+ * @returns 끼운 장비 식별자 목록
+ */
+export function slotsOf(gear, slots) {
+  if (Array.isArray(slots)) return slots;
+  return Object.keys(gear)
+    .filter((id) => gear[id] && isSlotItem(id))
+    .slice(0, MAX_SLOTS);
+}
+
+/**
+ * 전투에서 실제로 효과를 내는 장비를 구한다. 스킬은 가진 것 모두, 규칙과 훅은 끼운 것만이다.
+ *
+ * @param gear 가진 장비 { id: true }
+ * @param slots 끼운 장비 식별자 목록
+ * @returns 효과가 켜진 장비 { id: true }
+ */
+export function activeGear(gear, slots) {
+  const on = new Set(slotsOf(gear, slots));
+  return Object.fromEntries(Object.keys(gear).filter((id) => gear[id] && (!isSlotItem(id) || on.has(id))).map((id) => [id, true]));
+}
+
+/**
+ * 슬롯 장비를 끼우거나 뺀다.
+ *
+ * @param gear 가진 장비
+ * @param slots 끼운 장비 식별자 목록
+ * @param id 물건 식별자
+ * @returns { ok, slots, equipped, reason? } equipped는 끼웠으면 true, 뺐으면 false
+ */
+export function toggleSlot(gear, slots, id) {
+  const now = slotsOf(gear, slots);
+  if (!gear[id] || !isSlotItem(id)) return { ok: false, slots: now, reason: "끼울 수 없는 장비예요" };
+  if (now.includes(id)) return { ok: true, slots: now.filter((s) => s !== id), equipped: false };
+  if (now.length >= MAX_SLOTS) return { ok: false, slots: now, reason: `슬롯이 가득 찼어요(${MAX_SLOTS}칸). 하나를 먼저 빼세요` };
+  return { ok: true, slots: [...now, id], equipped: true };
+}
+
 /**
  * 살 수 있는지 확인하고 새 장비와 코인을 돌려준다.
  *

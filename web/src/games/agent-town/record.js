@@ -1,5 +1,5 @@
 import { CONTEXT_CAP, USAGE_CAP } from "./battle.js";
-import { ITEMS, MEMBERS } from "./party.js";
+import { isSlotItem, ITEMS, MAX_SLOTS, MEMBERS, slotsOf } from "./party.js";
 import { ALL_TASK_IDS, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
 import { HEIGHT, START, WIDTH, walkable } from "./world.js";
 
@@ -21,6 +21,7 @@ export function snapshot(state) {
     context: state.context,
     usage: state.usage,
     gear: state.gear,
+    slots: slotsOf(state.gear, state.slots),
     party: state.party,
     cleared: state.cleared,
     seen: state.seen,
@@ -67,6 +68,7 @@ export function restore(raw) {
     raw.party.every((id) => Object.hasOwn(MEMBERS, id)) &&
     new Set(raw.party).size === raw.party.length &&
     plain(raw.gear, GEAR_IDS) &&
+    slotsOk(raw.slots, raw.gear) &&
     plain(raw.cleared, Object.keys(TRAINER_TASKS)) &&
     plain(raw.seen, ALL_TASK_IDS);
   if (!ok) return null;
@@ -82,6 +84,7 @@ export function restore(raw) {
     context: raw.context,
     usage: raw.usage,
     gear: raw.gear,
+    slots: slotsOf(raw.gear, raw.slots),
     party: raw.party,
     cleared: raw.cleared,
     seen: raw.seen,
@@ -100,6 +103,17 @@ export function restore(raw) {
     ending: null,
     saveTick: 0,
   };
+}
+
+/** 슬롯 정보가 없으면(예전 저장) 통과, 있으면 가진 슬롯 장비만 중복 없이 칸 수 안에서 담겨야 한다. */
+function slotsOk(slots, gear) {
+  if (slots === undefined) return true;
+  return (
+    Array.isArray(slots) &&
+    slots.length <= MAX_SLOTS &&
+    new Set(slots).size === slots.length &&
+    slots.every((id) => isSlotItem(id) && gear?.[id] === true)
+  );
 }
 
 function plain(obj, allowed) {

@@ -95,7 +95,7 @@ describe("AgentTown", () => {
     expect(text()).toContain("신뢰 5/14");
     const saved = getGameData(ID).save;
     expect(saved).toMatchObject({ coins: 8, trust: 5 });
-    expect(saved.seen.button).toBe(true);
+    expect(saved.seen.button).toBe("win");
     expect(saved.pool).toEqual([]);
   });
 
@@ -178,5 +178,40 @@ describe("AgentTown", () => {
     expect(typed().length).toBeGreaterThan(5);
     await click(dialog());
     expect(dialog().textContent).not.toBe(first);
+  });
+
+  it("도감을 열면 만난 의뢰와 칭호가 보이고, 열린 동안은 걷지 않으며 Escape로 닫는다", async () => {
+    seed({ seen: { button: "win", typo: true } });
+    await mount();
+    await click(button("이어하기"));
+    await click(button("도감 열기"));
+    expect(text()).toContain("칭호: 신입 에이전트");
+    expect(text()).toContain("버튼 색 바꾸기");
+    expect(text()).toContain("???");
+    const before = getGameData(ID).save.steps;
+    await press("ArrowRight");
+    expect(getGameData(ID).save.steps).toBe(before);
+    await press("Escape");
+    expect(text()).not.toContain("칭호:");
+    expect(el.querySelector('[role="img"][aria-label^="프롬프트 마을"]')).toBeTruthy();
+  });
+
+  it("도서관에서 슬롯 장비를 빼면 저장되고, 빠진 자리에 다른 장비를 끼울 수 있다", async () => {
+    seed({
+      gear: { readRule: true, askRule: true, guard: true, secret: true },
+      slots: ["readRule", "askRule", "guard"],
+      player: { x: 4, y: 5, dir: "up" },
+    });
+    await mount();
+    await click(button("이어하기"));
+    await press("ArrowUp");
+    expect(text()).toContain("슬롯 3/3");
+    await click(el.querySelector('ul[aria-label="끼운 장비"] button'));
+    expect(text()).toContain("슬롯 2/3");
+    expect(getGameData(ID).save.slots).toEqual(["askRule", "guard"]);
+    const rule = [...el.querySelectorAll("li")].find((li) => li.textContent.includes("고치기 전에 먼저 읽어") && li.querySelector("button[aria-pressed]"));
+    expect(rule.querySelector("button").getAttribute("aria-pressed")).toBe("false");
+    await click(rule.querySelector("button"));
+    expect(getGameData(ID).save.slots).toEqual(["askRule", "guard", "readRule"]);
   });
 });

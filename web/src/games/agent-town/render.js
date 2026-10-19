@@ -244,8 +244,8 @@ export function drawNpc(ctx, x, y, npc, frame, scale = 1) {
  */
 export function drawRequest(ctx, x, y, task, frame, scale = 1) {
   const r = (dx, dy, w, h, color) => px(ctx, x + dx * scale, y + dy * scale, w * scale, h * scale, color);
-  const tone = task.danger ? "#e8685c" : task.injection ? "#a07ae0" : task.urgent ? "#f2c14e" : "#f4efe3";
-  const edge = task.danger ? "#a53a31" : task.injection ? "#6a45a8" : task.urgent ? "#b88a1a" : "#a89f8a";
+  const tone = task.danger ? "#e8685c" : task.injection ? "#a07ae0" : task.hallu ? "#5fc4b4" : task.urgent ? "#f2c14e" : "#f4efe3";
+  const edge = task.danger ? "#a53a31" : task.injection ? "#6a45a8" : task.hallu ? "#2f8a7c" : task.urgent ? "#b88a1a" : "#a89f8a";
   const bob = frame ? 1 : 0;
   r(3, 14, 10, 1, "rgba(0,0,0,0.2)");
   r(1, 2 - bob, 14, 10, edge);

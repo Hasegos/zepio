@@ -221,7 +221,7 @@ describe("시설", () => {
 });
 
 describe("팀장 박", () => {
-  const door = (trust, extra = {}) => run({ ...at(started(), 25, 5, "up"), trust, gear: FULL, ...extra }, { type: "move", dir: "up", roll: 1 });
+  const door = (trust, extra = {}) => run({ ...at(started(), 25, 5, "up"), trust, gear: FULL, slots: ["readRule", "guard", "secret"], ...extra }, { type: "move", dir: "up", roll: 1 });
 
   it("신뢰가 모자라면 들어갈 수 없다", () => {
     const s = door(BOSS_TRUST - 1);
@@ -307,5 +307,66 @@ describe("경제", () => {
     expect(coins).toBeGreaterThan(ITEMS.reduce((sum, it) => sum + it.cost, 0) * 2);
     expect(trust).toBeGreaterThan(BOSS_TRUST);
     expect(BOSS_PHASES).toHaveLength(3);
+  });
+});
+
+describe("장비 슬롯과 도감", () => {
+  const shop = (extra = {}) => ({ ...at(started(), 4, 4, "up"), phase: "facility", facility: "forge", coins: 100, ...extra });
+
+  it("산 규칙과 훅은 슬롯이 비어 있으면 자동으로 끼우고, 가득 차면 보관만 한다", () => {
+    let s = shop();
+    for (const id of ["guard", "secret", "autotest"]) s = run(s, { type: "buy", id });
+    expect(s.slots).toEqual(["guard", "secret", "autotest"]);
+    const full = run({ ...s, facility: "library", coins: 100 }, { type: "buy", id: "readRule" });
+    expect(full.gear.readRule).toBe(true);
+    expect(full.slots).toEqual(["guard", "secret", "autotest"]);
+    expect(full.notice).toContain("가득");
+  });
+
+  it("끼우고 빼는 행동은 시설에서만 되고 저장 신호를 올린다", () => {
+    const s = shop({ gear: { guard: true, secret: true }, slots: ["guard"] });
+    const out = run(s, { type: "equip", id: "secret" });
+    expect(out.slots).toEqual(["guard", "secret"]);
+    expect(out.saveTick).toBe(s.saveTick + 1);
+    expect(run(out, { type: "equip", id: "guard" }).slots).toEqual(["secret"]);
+    expect(run({ ...s, phase: "map" }, { type: "equip", id: "secret" }).slots).toEqual(["guard"]);
+    expect(run(s, { type: "equip", id: "plan" }).notice).toContain("끼울 수 없는");
+  });
+
+  it("의뢰를 해결하면 도감에 해결로 남는다", () => {
+    let s = { ...started(), pool: ["button"], cooldown: 0, trust: 3, player: { x: 16, y: 11, dir: "right" } };
+    s = run(s, { type: "move", dir: "right", roll: 0 });
+    expect(s.seen.button).toBe(true);
+    s = fight(s);
+    expect(s.seen.button).toBe("win");
+  });
+
+  it("도감 화면을 열면 걷지도 말을 걸지도 못하고, 닫으면 다시 걷는다", () => {
+    const s = started();
+    const open = run(s, { type: "codex" });
+    expect(open.codex).toBe(true);
+    expect(run(open, { type: "move", dir: "left", roll: 1 })).toBe(open);
+    expect(run(open, { type: "interact" })).toBe(open);
+    expect(run(open, { type: "codex" }).codex).toBe(false);
+    expect(run({ phase: "title" }, { type: "codex" }).codex).toBeUndefined();
+  });
+
+  it("엔딩 정보에 대표 칭호가 담긴다", () => {
+    const door = { ...at(started(), 25, 5, "up"), trust: BOSS_TRUST, gear: FULL, slots: ["readRule", "guard", "secret"] };
+    const end = fight(talkThrough(run(door, { type: "move", dir: "up", roll: 1 })));
+    expect(end.ending.title).toBe("신뢰받는 에이전트");
+  });
+
+  it("슬롯은 저장하고 복원하며, 없는 저장은 예전 방식으로, 어긋난 저장은 버린다", () => {
+    const s = { ...started(7), gear: { guard: true, secret: true, plan: true }, slots: ["secret"] };
+    const raw = JSON.parse(JSON.stringify(snapshot(s)));
+    expect(restore(raw).slots).toEqual(["secret"]);
+    const { slots, ...old } = raw;
+    expect(slots).toEqual(["secret"]);
+    expect(restore(old).slots).toEqual(["guard", "secret"]);
+    expect(restore({ ...raw, slots: ["autotest"] })).toBeNull();
+    expect(restore({ ...raw, slots: ["plan"] })).toBeNull();
+    expect(restore({ ...raw, slots: ["guard", "guard"] })).toBeNull();
+    expect(restore({ ...raw, slots: "x" })).toBeNull();
   });
 });

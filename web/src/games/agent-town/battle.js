@@ -24,6 +24,7 @@ export function startBattle(task, carry = {}) {
     safe: !task.danger,
     revealed: !task.injection,
     bugs: 0,
+    fake: false,
     rejects: 0,
     context: carry.context ?? 0,
     usage: carry.usage ?? 0,
@@ -110,6 +111,8 @@ export function hintFor(b, gear) {
   }
   if (t.injection && !b.revealed) return "제피: 문서 안에 수상한 지시가 숨어 있을지도 몰라. 먼저 읽어 볼까?";
   if (t.ambiguous && !b.clarified) return "제피: 의뢰인 말이 모호하게 들려. 무엇을 원하는지 물어보는 게 좋지 않을까?";
+  if (t.hallu && b.fake) return "제피: 자료를 안 읽고 쓴 부분이 걱정돼. 다시 읽어서 확인하자. 리뷰어가 있으면 맡겨도 돼.";
+  if (t.hallu && !b.located) return "제피: 숫자나 출처는 자료를 읽고 써야 해. 지어내면 안 돼. 먼저 읽어 보자.";
   if (t.locate && !b.located) return "제피: 어디를 고쳐야 할지 아직 몰라. 먼저 코드를 읽어 보자.";
   if (t.big && !b.planned) {
     return gear.plan
@@ -135,6 +138,9 @@ function readFile(s, gear, auto) {
     s.revealed = true;
     s.lines.push(s.task.reveal);
     s.lines.push("수상한 지시다. 따르지 않는 게 좋겠다.");
+  } else if (s.fake) {
+    s.fake = false;
+    s.lines.push("자료를 읽어 보니 근거 없는 문장이 섞여 있었다. 출처에 맞게 바로잡았다.");
   } else {
     s.lines.push(s.task.locate ? "관련 코드를 찾았다." : "읽어 봤지만 새로운 건 없었다.");
   }
@@ -217,7 +223,10 @@ function editCode(s, gear) {
       s.lines.push("계획 없이 큰 일을 손대니 코드가 점점 꼬인다.");
     }
   }
-  if (t.locate && !s.located) {
+  if (t.locate && !s.located && t.hallu) {
+    s.fake = true;
+    s.lines.push("자료를 읽지 않고 그럴듯하게 채워 넣었다. 출처가 없는 문장이 생긴 것 같다.");
+  } else if (t.locate && !s.located) {
     s.bugs += 1;
     s.lines.push("어디를 고치는지도 모르고 급하게 손댔다. 어딘가 불안하다.");
   } else {
@@ -265,6 +274,10 @@ function summon(s, memberId) {
   } else {
     s.bugs = 0;
     s.lines.push(`${name}가 변경을 꼼꼼히 리뷰했다.`);
+    if (s.fake) {
+      s.fake = false;
+      s.lines.push(`${name}: "이 문장은 자료에 없어요. 출처를 확인해서 고쳤어요."`);
+    }
     if (t.danger && !s.safe) s.lines.push(`${name}: "이 명령은 위험해요. 지우기 전에 한 번 확인하세요."`);
     if (t.ambiguous && !s.clarified) s.lines.push(`${name}: "요구사항이 모호해요. 의뢰인에게 물어보는 게 좋겠어요."`);
     if (t.injection && !s.revealed) {
@@ -306,6 +319,12 @@ function settle(s) {
       s.bugs = 0;
       s.progress = t.goal - 1;
       s.lines.push(`${t.client}: "버그가 났어요! 테스트는 하신 거죠?"`);
+    } else if (s.fake) {
+      s.rejects += 1;
+      s.patience -= 3;
+      s.fake = false;
+      s.progress = t.goal - 1;
+      s.lines.push(`${t.client}: "이 내용은 자료에 없는데요? 출처가 어디죠?" 지어낸 내용이 들통났다.`);
     } else {
       const clean = s.rejects === 0 && s.patience * 2 >= t.patience;
       const coins = t.coins + (clean ? Math.ceil(t.coins * 0.3) : 0);
