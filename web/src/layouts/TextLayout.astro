@@ -1,0 +1,14 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+
+const { title, description, heading = title, noindex = false } = Astro.props;
+---
+
+<BaseLayout title={`${title} | Zepio`} description={description} noindex={noindex}>
+  <article
+    class="[&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-bold [&_li]:mt-1 [&_p]:mt-3 [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5"
+  >
+    <h1 class="text-3xl font-extrabold">{heading}</h1>
+    <slot />
+  </article>
+</BaseLayout>
