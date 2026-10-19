@@ -1,9 +1,11 @@
+import colorClash from "./color-clash/meta.js";
 import memorySequence from "./memory-sequence/meta.js";
 import patternChallenge from "./pattern-challenge/meta.js";
 
 export const games = [
   { ...patternChallenge, load: () => import("./pattern-challenge/index.jsx") },
   { ...memorySequence, load: () => import("./memory-sequence/index.jsx") },
+  { ...colorClash, load: () => import("./color-clash/index.jsx") },
 ];
 
 export const liveGames = games.filter((game) => game.status === "live");
