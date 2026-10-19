@@ -5,6 +5,7 @@ import Pads from "./Pads.jsx";
 import { mergeResult } from "./record.js";
 import Result from "./Result.jsx";
 import { accuracy, COLORS, DURATION_MS, initialState, makeRound, reducer, secondsLeft } from "./reducer.js";
+import { useGameBack } from "../useGameBack.js";
 
 const TICK_MS = 100;
 
@@ -14,6 +15,7 @@ const TICK_MS = 100;
  */
 export default function ColorClash() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  useGameBack(state.phase === "intro" ? 0 : 1, () => dispatch({ type: "back" }));
   const [now, setNow] = useState(() => Date.now());
   const [record, setRecord] = useState(null);
   const timerRef = useRef(null);

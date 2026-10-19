@@ -10,6 +10,7 @@ import { mergeEnding, readData, restore, snapshot } from "./record.js";
 import { initialState, reducer, summary } from "./reducer.js";
 import { PUZZLES } from "./puzzles.js";
 import { getGameData, saveGameData, saveResult } from "../../lib/storage.js";
+import { useGameBack } from "../useGameBack.js";
 
 const TRACK = { office: "office", puzzle: "puzzle", ending: "ending" };
 const SOUND = { open: "select", submit: "select", toggle: "tick", move: "tick", choose: "tick", cell: "tick", memo: "tick" };
@@ -64,6 +65,7 @@ export default function HalluDetective() {
   const endedRef = useRef(false);
   const [muted, setMuted] = useState(() => readData(getGameData(meta.id)).muted);
   const audio = useAudio(muted, createAudio);
+  useGameBack(state.phase === "office" ? 0 : 1, () => dispatch({ type: state.phase === "ending" ? "resume" : "leave" }));
   const hintTotal = Object.values(state.hints).reduce((sum, n) => sum + n, 0);
   const seen = useRef({ coins: state.coins, hints: hintTotal });
   const result = state.puzzle?.result;

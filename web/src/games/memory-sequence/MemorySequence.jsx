@@ -5,6 +5,7 @@ import Pads from "./Pads.jsx";
 import { mergeResult } from "./record.js";
 import Result from "./Result.jsx";
 import { initialState, MAX_ROUND, PAD_COUNT, reducer, START_LENGTH, timing } from "./reducer.js";
+import { useGameBack } from "../useGameBack.js";
 
 const SHOW_DELAY = 700;
 
@@ -24,6 +25,7 @@ function randomPad() {
  */
 export default function MemorySequence() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  useGameBack(state.phase === "intro" ? 0 : 1, () => dispatch({ type: "back" }));
   const [lit, setLit] = useState(null);
   const [record, setRecord] = useState(null);
   const headingRef = useRef(null);

@@ -6,6 +6,7 @@ import { makeStages, STAGE_RANGES } from "./puzzle.js";
 import { mergeResult } from "./record.js";
 import Result from "./Result.jsx";
 import { formatDuration, initialState, reducer, totals } from "./reducer.js";
+import { useGameBack } from "../useGameBack.js";
 
 /**
  * Light Flip 한 판을 진행한다. 시작 화면, 5판 풀이, 결과 화면을 오간다.
@@ -13,6 +14,7 @@ import { formatDuration, initialState, reducer, totals } from "./reducer.js";
  */
 export default function LightFlip() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  useGameBack(state.phase === "intro" ? 0 : 1, () => dispatch({ type: "back" }));
   const [now, setNow] = useState(() => Date.now());
   const [record, setRecord] = useState(null);
   const headingRef = useRef(null);
