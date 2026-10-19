@@ -1,4 +1,5 @@
 import { GOAL, initialState, STATIONS, UPGRADES } from "./economy.js";
+import { restoreSimulation } from "./simulation.js";
 
 /** 저장 데이터의 코인 상한. 깨진 값이 무한대로 번지지 않게 한다. */
 const COIN_MAX = 1e18;
@@ -49,7 +50,7 @@ export function parseSave(data, now) {
     ? [...new Set(data.upgrades)].filter((id) => known.includes(id))
     : [];
   const lastAt = cleanTime(data.lastAt, now, now);
-  return {
+  const result = {
     ...fresh,
     coins,
     total,
@@ -60,4 +61,6 @@ export function parseSave(data, now) {
     startedAt: cleanTime(data.startedAt, lastAt, lastAt),
     goalAt: total >= GOAL ? cleanTime(data.goalAt, now, now) : 0,
   };
+  if (data.service) result.service = restoreSimulation(data.service, result);
+  return result;
 }

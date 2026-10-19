@@ -23,7 +23,7 @@ export const STAFF = { id: "barista", name: "바리스타 직원", baseCost: 150
  * unlockAt은 누적 수익이 이 값 이상이 되면 구매 목록에 나타나는 기준이다.
  */
 export const UPGRADES = [
-  { id: "touch", name: "바리스타의 손길", desc: "커피 내리기 수익 2배", cost: 500, unlockAt: 100, effect: { type: "tap", value: 2 } },
+  { id: "touch", name: "바리스타의 손길", desc: "직접 작업 돕기 효과 2배", cost: 500, unlockAt: 100, effect: { type: "tap", value: 2 } },
   { id: "efficiency", name: "효율적인 운영", desc: "전체 수익 +25%", cost: 6000, unlockAt: 1000, effect: { type: "all", value: 1.25 } },
   {
     id: "blend",
@@ -110,7 +110,7 @@ function stationIncome(state, station) {
 }
 
 /**
- * 지금 초당 수익을 구한다(설비와 직원의 합에 전체 배수를 곱한다).
+ * 설비·직원 기반 수익 지표를 구한다. 오프라인 예상 수익과 온라인 주문 단가의 기준이다.
  *
  * @param state 진행 상황
  * @returns 코인/초
@@ -144,8 +144,26 @@ function earn(state, amount, now) {
   return { ...state, coins: state.coins + amount, total, goalAt: state.goalAt || (total >= GOAL ? now : 0) };
 }
 
+/** 완료된 주문의 매출을 정산한다. 주문의 중복 완료 방지는 시뮬레이션이 맡는다. */
+export function settleSales(state, amount, now) {
+  return amount > 0 && Number.isFinite(amount) ? earn(state, amount, now) : state;
+}
+
+/** 구매 상태를 실제 제조 시간, 도착 간격, 작업자 수와 메뉴 단가로 변환한다. */
+export function operatingProfile(state) {
+  return {
+    workers: 1 + Math.min(3, state.staff),
+    coffeeMs: Math.max(1200, Math.round(5500 / (1 + Math.sqrt(state.levels.espresso) * 0.2 + Math.max(0, state.staff - 3) * 0.05))),
+    breadMs: Math.max(1500, Math.round(6500 / (1 + Math.sqrt(state.levels.oven) * 0.2))),
+    arrivalMs: Math.max(2000, Math.round(6500 / (1 + Math.sqrt(state.levels.marketing) * 0.5))),
+    coffeeSlots: state.levels.espresso >= 5 ? 2 : 1,
+    seats: state.levels.terrace >= 3 ? 4 : state.levels.terrace > 0 ? 3 : 2,
+    price: Math.max(6, Math.round(6 * multiplier(state, "all") + incomePerSecond(state) * 8)),
+  };
+}
+
 /**
- * 시간이 흐른 만큼 수익을 반영한다. 틱과 접속 복귀가 이 한 경로만 쓰므로 같은 시간이 두 번 지급되지 않는다.
+ * 자리를 비운 시간의 예상 수익을 요약 정산한다. 온라인 주문 정산과 동시에 호출하지 않는다.
  * 지난 시간은 마지막 계산 시각(lastAt)부터이고 OFFLINE_CAP_MS까지만 센다. 시계가 거꾸로 갔으면 지급 없이 기준만 옮긴다.
  *
  * @param state 진행 상황
@@ -159,7 +177,7 @@ export function advance(state, now) {
 }
 
 /**
- * 커피 내리기를 눌러 코인을 번다.
+ * 기존 경제 공식 회귀와 오프라인 밸런스 도구의 탭 수익을 계산한다. 실제 화면 조작은 작업 돕기를 쓴다.
  *
  * @param state 진행 상황
  * @param now 현재 시각

@@ -1,4 +1,5 @@
 main:has(.cozy-cafe) { max-width: 1256px; }
+main:has(.cozy-cafe) > h1, main:has(.cozy-cafe) > nav[aria-label="경로"] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .cozy-cafe { --cafe-ink: #49372c; --cafe-muted: #807363; --cafe-green: #446553; --cafe-line: #e5ddcc; color: var(--cafe-ink); background: #f8f4e9; border: 1px solid #e5ddce; border-radius: 24px; box-shadow: 0 12px 40px #59462c0b; overflow: hidden; isolation: isolate; }
 .cozy-cafe button { cursor: pointer; touch-action: manipulation; }
 .cozy-cafe button:focus-visible { outline: 3px solid #a9672f; outline-offset: 4px; }
@@ -197,4 +198,65 @@ main:has(.cozy-cafe) { max-width: 1256px; }
   .cozy-cafe *, .cozy-cafe *::before, .cozy-cafe *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .cozy-cafe .cafe-float { opacity: 1; }
   .cozy-cafe .cafe-purchase-glow { display: none; }
+}
+.cafe-world--simulation .cafe-scene { overflow: hidden; }
+.cafe-actor-position { position: absolute; inset: 0; pointer-events: none; transition: transform 250ms linear; }
+.cafe-actor { position: absolute; top: 0; left: 0; width: 11%; aspect-ratio: 1; transform: translate(-50%, -90%); background-image: url('/games/cozy-cafe/actors.webp'); background-size: 800% 500%; background-position: var(--sprite-first) var(--sprite-row); background-repeat: no-repeat; filter: drop-shadow(0 3px 2px #31261935); }
+.cafe-actor.is-walking { animation: cafe-walk-frames 640ms steps(4, jump-none) infinite; }
+.cafe-actor.is-working { animation: cafe-working 750ms ease-in-out infinite alternate; }
+.cafe-actor.is-seated, .cafe-actor.is-making { animation: cafe-walk-frames 1600ms steps(4, jump-none) infinite; }
+.cafe-actor-label { display: none; }
+.cafe-order-bubble, .cafe-task-bubble { position: absolute; top: -24%; left: 50%; transform: translateX(-50%); min-width: 37px; padding: 3px 7px 6px; border: 1px solid #d2bd94; border-radius: 9px; background: #fffbee; color: #5c4936; font-size: 10px; font-weight: 800; text-align: center; white-space: nowrap; box-shadow: 0 2px 5px #3f2a2820; }
+.cafe-order-bubble::after, .cafe-task-bubble::after { content: ''; position: absolute; bottom: -5px; left: 44%; width: 8px; height: 8px; background: #fffbee; border-right: 1px solid #d2bd94; border-bottom: 1px solid #d2bd94; transform: rotate(45deg); }
+.cafe-order-bubble i { position: absolute; bottom: 2px; left: 2px; max-width: calc(100% - 4px); height: 2px; background: #91a66c; border-radius: 5px; }
+.cafe-task-bubble { background: #e6eedb; border-color: #a8bd8a; top: -20%; }
+.cafe-task-bubble::after { background: #e6eedb; border-color: #a8bd8a; }
+.cafe-held-cup { position: absolute; top: 52%; left: 49%; width: 14%; height: 15%; border-radius: 0 0 5px 5px; background: #fff6db; border: 1px solid #c0a274; box-shadow: 2px 0 0 #fff6db; }
+.cafe-table { position: absolute; width: 17%; transform: translate(-50%, -45%); z-index: 550; pointer-events: none; }
+.cafe-table svg { width: 100%; height: auto; filter: drop-shadow(0 4px 3px #3c29132b); }
+.cafe-table--outdoor { z-index: 570; }
+.cafe-seat-marker { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); background: #fcf8e7df; border: 1px solid #dcd0b5; border-radius: 6px; padding: 2px 7px; white-space: nowrap; font-size: 8px; font-weight: 700; color: #5c6747; }
+.cafe-table--dirty .cafe-seat-marker { background: #f6dfbf; color: #91572d; }
+.cafe-dirty-cups { position: absolute; top: 38%; left: 28%; width: 44%; border-radius: 4px; background: #efe2c4; color: #78634d; font-size: 7px; text-align: center; border: 1px solid #aa8c63; }
+.cafe-world--simulation .cafe-scene-caption { z-index: 950; }
+.cafe-world--simulation .cafe-floats { z-index: 960; }
+.cafe-world--simulation .cafe-float { top: 56%; left: 57%; }
+.cafe-float small { font-size: 11px; }
+.cafe-world--simulation .cafe-open { z-index: 960; }
+.cafe-operations { border: 1px solid #dfd6c2; border-radius: 14px; background: #fffaf0; padding: 15px; margin: 0 0 16px; }
+.cafe-operations-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cafe-operations-title h4 { font-size: 14px; font-weight: 800; }
+.cafe-operations-title > span { padding: 3px 8px; border-radius: 10px; background: #e9eddc; color: #5a714b; font-size: 11px; }
+.cafe-service-counts { display: flex; flex-wrap: wrap; gap: 14px; margin: 9px 0; color: #8a7b66; font-size: 11px; }
+.cafe-service-counts b { color: #66583e; margin-left: 3px; }
+.cafe-live-orders { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; margin-top: 10px; }
+.cafe-live-orders > li { display: flex; justify-content: space-between; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid #e4dccb; border-radius: 10px; background: #f7f1e2; min-width: 0; }
+.cafe-live-orders strong { display: block; font-size: 12px; }
+.cafe-live-orders small { display: block; color: #8f7c5f; font-size: 10px; margin-top: 3px; }
+.cafe-live-orders li > span { font-size: 10px; color: #697b53; white-space: nowrap; }
+.cafe-live-orders button { min-height: 44px; padding: 7px 9px; border: 1px solid #aabc91; border-radius: 8px; font-size: 11px; color: #49613a; background: #e7edd9; white-space: nowrap; }
+.cafe-live-orders button[aria-pressed=true] { background: #527047; color: #fff9e8; }
+.cafe-live-orders .cafe-no-orders { grid-column: 1 / -1; font-size: 12px; padding: 14px; color: #8d7b60; }
+.cafe-worker-status { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 10px; color: #7d705b; margin-top: 12px; }
+.cafe-worker-status span { display: flex; align-items: center; gap: 4px; }
+.cafe-worker-status i { width: 5px; height: 5px; border-radius: 50%; background: #c9c5b8; }
+.cafe-worker-status i[data-working=true] { background: #7c9964; }
+.cafe-operations-note { font-size: 10px; margin-top: 10px; color: #8f8066; line-height: 1.7; }
+.cafe-income > small:first-child { display: block; font-size: 8px; }
+@keyframes cafe-walk-frames { from { background-position-x: var(--sprite-first); } to { background-position-x: var(--sprite-last); } }
+@keyframes cafe-working { from { transform: translate(-50%,-90%) rotate(-2deg); } to { transform: translate(-50%,-92%) rotate(2deg); } }
+@media (max-width: 599px) {
+  .cafe-world--simulation .cafe-actor { width: 13%; }
+  .cafe-order-bubble, .cafe-task-bubble { font-size: 8px; min-width: 26px; padding: 2px 4px 5px; border-radius: 5px; }
+  .cafe-seat-marker { font-size: 7px; padding: 1px 3px; bottom: -3px; }
+  .cafe-dirty-cups { font-size: 5px; }
+  .cafe-live-orders { grid-template-columns: minmax(0,1fr); }
+  .cafe-live-orders strong { font-size: 13px; }
+  .cafe-live-orders small { font-size: 11px; }
+  .cafe-live-orders button { font-size: 12px; }
+  .cafe-operations { padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cozy-cafe .cafe-actor-position { transition: none !important; }
+  .cozy-cafe .cafe-float { opacity: 0; }
 }

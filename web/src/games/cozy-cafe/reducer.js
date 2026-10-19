@@ -1,97 +1,79 @@
-import {
-  advance,
-  buyStation,
-  buyUpgrade,
-  hireStaff,
-  initialState as initialEconomy,
-  STATIONS,
-  tap,
-  UPGRADES,
-} from "./economy.js";
+import { advance, buyStation, buyUpgrade, hireStaff, initialState as initialEconomy, settleSales, STATIONS, UPGRADES } from "./economy.js";
 import { parseSave } from "./save.js";
+import { assistSimulation, initialSimulation, restoreSimulation, stepSimulation } from "./simulation.js";
 
-/** 이 시간(밀리초) 이상 지난 만큼의 수익은 "자리를 비운 동안의 수익"으로 알린다. */
 export const AWAY_MIN_MS = 60_000;
 
-/**
- * 화면 상태를 만든다. econ만 저장되고 나머지는 화면에서만 쓰는 값이다.
- *
- * @param now 현재 시각(밀리초)
- * @returns { econ, away, goalOpen, notice, noticeId }
- */
+/** 경제와 영업 상태를 만들고 시각은 호출하는 쪽에서 받는다. */
 export function initialState(now) {
-  return { econ: initialEconomy(now), away: null, goalOpen: false, notice: "", noticeId: 0 };
+  const econ = initialEconomy(now);
+  return { econ, sim: initialSimulation(econ), away: null, goalOpen: false, notice: "", noticeId: 0 };
 }
 
-/**
- * 시간 경과를 반영하고, 오래 비운 만큼이면 안내를 띄우며, 목표에 처음 이르면 목표 카드를 연다.
- * 모든 동작이 이 한 경로로 시간을 지급하므로 같은 시간이 두 번 지급되지 않는다.
- *
- * @param state 화면 상태
- * @param now 현재 시각
- * @returns 시간이 반영된 화면 상태
- */
-function settle(state, now) {
-  const { state: econ, earned, elapsed } = advance(state.econ, now);
-  const away = elapsed >= AWAY_MIN_MS && earned > 0 ? { earned, ms: elapsed } : state.away;
-  const goalOpen = state.goalOpen || (state.econ.goalAt === 0 && econ.goalAt > 0);
-  return { ...state, econ, away, goalOpen };
+/** 온라인은 전달 완료 주문만, 복귀는 오프라인 수익을 한 번만 정산한다. */
+function settle(state, now, offline = false) {
+  const elapsed = Math.max(0, now - state.econ.lastAt);
+  let econ;
+  let sim = state.sim;
+  let away = state.away;
+  if (offline || elapsed > 30000) {
+    const result = advance(state.econ, now);
+    econ = result.state;
+    if (result.elapsed >= AWAY_MIN_MS && result.earned > 0) away = { earned: result.earned, ms: result.elapsed };
+    if (elapsed >= AWAY_MIN_MS) {
+      sim = { ...initialSimulation(econ), served: sim.served, tips: sim.tips, lost: sim.lost, revenue: sim.revenue, nextId: sim.nextId };
+    }
+  } else {
+    const result = stepSimulation(sim, state.econ, elapsed);
+    sim = result.sim;
+    econ = { ...settleSales(state.econ, result.earned, now), lastAt: now };
+  }
+  return { ...state, econ, sim, away, goalOpen: state.goalOpen || (state.econ.goalAt === 0 && econ.goalAt > 0) };
 }
 
-/**
- * 구매 결과를 화면 상태에 반영하고 낭독용 안내를 남긴다.
- *
- * @param state 구매 전 화면 상태
- * @param econ 구매 뒤 진행 상황(같은 객체이면 구매 실패)
- * @param done 성공했을 때의 안내
- * @returns 새 화면 상태
- */
+/** 구매 결과의 안내를 갱신한다. */
 function bought(state, econ, done) {
-  const text = econ === state.econ ? "코인이 모자라요" : done;
-  return { ...state, econ, notice: text, noticeId: state.noticeId + 1 };
+  return { ...state, econ, notice: econ === state.econ ? "코인이 모자라요" : done, noticeId: state.noticeId + 1 };
 }
 
-/**
- * 화면 상태를 전이한다. 시간은 action.now로만 받아 순수하게 유지한다.
- *
- * @param state 현재 상태
- * @param action load(data), tick, tap, station(id), hire, upgrade(id), dismissAway, closeGoal, reset 중 하나. 모두 now를 가진다
- * @returns 다음 상태
- */
+/** 조작과 영업 및 저장 복구를 단일 상태 전이로 처리한다. */
 export function reducer(state, action) {
   switch (action.type) {
-    case "load":
-      return settle({ ...initialState(action.now), econ: parseSave(action.data, action.now) }, action.now);
-    case "tick":
-      return settle(state, action.now);
+    case "load": {
+      const { service, ...econ } = parseSave(action.data, action.now);
+      return settle({ ...initialState(action.now), econ, sim: restoreSimulation(service, econ) }, action.now, true);
+    }
+    case "tick": return settle(state, action.now);
+    case "resume": return settle(state, action.now, true);
+    case "priority": {
+      const next = settle(state, action.now);
+      if (!next.sim.guests.some((g) => g.id === action.id && g.status === "waiting")) return next;
+      return { ...next, sim: { ...next.sim, guests: next.sim.guests.map((g) => ({ ...g, priority: g.id === action.id })) }, notice: `${action.id}번 주문을 다음에 처리해요`, noticeId: next.noticeId + 1 };
+    }
     case "tap": {
-      const settled = settle(state, action.now);
-      const econ = tap(settled.econ, action.now);
-      return { ...settled, econ, goalOpen: settled.goalOpen || (settled.econ.goalAt === 0 && econ.goalAt > 0) };
+      const next = settle(state, action.now);
+      const busy = next.sim.workers.some((w) => w.phase !== "idle");
+      return { ...next, sim: assistSimulation(next.sim, next.econ), notice: busy ? "작업을 도왔어요" : "손님이 오면 주인이 자동으로 주문을 받아요", noticeId: next.noticeId + 1 };
     }
     case "station": {
-      const settled = settle(state, action.now);
+      const next = settle(state, action.now);
+      const econ = buyStation(next.econ, action.id);
       const name = STATIONS.find((s) => s.id === action.id)?.name ?? "";
-      const econ = buyStation(settled.econ, action.id);
-      return bought(settled, econ, `${name} ${econ.levels[action.id]}레벨`);
+      return bought(next, econ, `${name} ${econ.levels[action.id]}레벨`);
     }
     case "hire": {
-      const settled = settle(state, action.now);
-      const econ = hireStaff(settled.econ);
-      return bought(settled, econ, `직원 ${econ.staff}명 고용`);
+      const next = settle(state, action.now);
+      const econ = hireStaff(next.econ);
+      return bought(next, econ, `직원 ${econ.staff}명 고용`);
     }
     case "upgrade": {
-      const settled = settle(state, action.now);
+      const next = settle(state, action.now);
       const name = UPGRADES.find((u) => u.id === action.id)?.name ?? "";
-      return bought(settled, buyUpgrade(settled.econ, action.id), `${name} 구매`);
+      return bought(next, buyUpgrade(next.econ, action.id), `${name} 구매`);
     }
-    case "dismissAway":
-      return { ...state, away: null };
-    case "closeGoal":
-      return { ...state, goalOpen: false };
-    case "reset":
-      return initialState(action.now);
-    default:
-      return state;
+    case "dismissAway": return { ...state, away: null };
+    case "closeGoal": return { ...state, goalOpen: false };
+    case "reset": return initialState(action.now);
+    default: return state;
   }
 }

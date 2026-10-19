@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { getGameData, saveGameData } from "../../lib/storage.js";
-import { GOAL, incomePerSecond, stage as stageOf, stationCost, staffCost, tapValue } from "./economy.js";
+import { GOAL, incomePerSecond, stage as stageOf, stationCost, staffCost } from "./economy.js";
 import { formatCoins, formatCompact, formatRate } from "./format.js";
 import Icon from "./icons.jsx";
 import meta from "./meta.js";
-import { AwayDialog, EquipmentPanel, GoalDialog, UpgradePanel } from "./Panels.jsx";
+import { AwayDialog, EquipmentPanel, GoalDialog, OperationsPanel, UpgradePanel } from "./Panels.jsx";
 import { initialState, reducer } from "./reducer.js";
 import Scene from "./Scene.jsx";
 import "./cozy-cafe.css";
@@ -23,7 +23,7 @@ function loadState() {
 /** 다음 미보유 설비 또는 직원의 실제 구매 비용을 안내한다. */
 function NextGoal({ econ }) {
   const goals = [
-    { done: econ.levels.espresso > 0, label: "첫 자동 수익을 열어 보세요", name: "에스프레소 머신", cost: stationCost("espresso", 0), icon: "espresso" },
+    { done: econ.levels.espresso > 0, label: "커피 제조를 더 빠르게 해요", name: "에스프레소 머신", cost: stationCost("espresso", 0), icon: "espresso" },
     { done: econ.staff > 0, label: "함께할 바리스타를 맞이해요", name: "첫 직원 고용", cost: staffCost(0), icon: "staff" },
     { done: econ.levels.oven > 0, label: "갓 구운 빵의 향기를 더해요", name: "베이커리 오븐", cost: stationCost("oven", 0), icon: "oven" },
     { done: econ.levels.terrace > 0, label: "햇살 좋은 자리를 준비해요", name: "테라스 좌석", cost: stationCost("terrace", 0), icon: "terrace" },
@@ -80,15 +80,13 @@ export default function CozyCafe() {
   const [tab, setTab] = useState("equipment");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [feedback, setFeedback] = useState([]);
   const [paused, setPaused] = useState(document.visibilityState === "hidden");
-  const sequence = useRef(0);
   const latest = useRef(state);
-  const { econ } = state;
+  const { econ, sim } = state;
   const growth = stageOf(econ);
 
   useEffect(() => { latest.current = state; });
-  const persist = useCallback(() => saveGameData(meta.id, Date.now(), latest.current.econ), []);
+  const persist = useCallback(() => saveGameData(meta.id, Date.now(), { ...latest.current.econ, service: latest.current.sim }), []);
 
   useEffect(() => {
     persist();
@@ -102,8 +100,8 @@ export default function CozyCafe() {
     const onVisibility = () => {
       const hidden = document.visibilityState === "hidden";
       setPaused(hidden);
-      if (hidden) { persist(); setFeedback([]); }
-      else dispatch({ type: "tick", now: Date.now() });
+      if (hidden) persist();
+      else dispatch({ type: "resume", now: Date.now() });
       startTick();
     };
     document.addEventListener("visibilitychange", onVisibility);
@@ -117,17 +115,9 @@ export default function CozyCafe() {
     };
   }, [persist]);
 
-  useEffect(() => {
-    if (!feedback.length) return;
-    const timer = setTimeout(() => setFeedback([]), 1000);
-    return () => clearTimeout(timer);
-  }, [feedback]);
-
-  /** 수익은 기존 액션으로 지급하고 최대 여섯 개의 표시 효과만 남긴다. */
+  /** 작업 돕기는 현재 이동이나 제조를 앞당기고 직접 코인을 지급하지 않는다. */
   function brew() {
     dispatch({ type: "tap", now: Date.now() });
-    const item = { id: ++sequence.current, value: formatCoins(tapValue(econ)) };
-    setFeedback((items) => [...items.slice(-5), item]);
   }
 
   /** 게임 안에서 두 번 확인한 초기화 요청을 처리한다. */
@@ -137,7 +127,6 @@ export default function CozyCafe() {
     saveGameData(meta.id, now, initialState(now).econ);
     setConfirmReset(false);
     setSettingsOpen(false);
-    setFeedback([]);
   }
 
   /** 방향키로 관리 탭과 키보드 초점을 함께 옮긴다. */
@@ -154,7 +143,7 @@ export default function CozyCafe() {
     <section className="cozy-cafe" data-paused={paused} aria-label="Cozy Cafe 카페 운영">
       <header className="cafe-topbar">
         <div className="cafe-brand"><span className="cafe-brand-mark"><Icon id="cup" /></span><div><p className="cafe-eyebrow">A LITTLE CUP OF HAPPINESS</p><h2>Cozy Cafe<span>나의 작은 카페</span></h2></div></div>
-        <div className="cafe-wallet"><Icon id="coin" /><div><span className="cafe-wallet-label">보유 코인</span><CoinBalance value={econ.coins} paused={paused} /></div><span className="cafe-income">+{formatRate(incomePerSecond(econ))}<small>/초</small></span></div>
+        <div className="cafe-wallet"><Icon id="coin" /><div><span className="cafe-wallet-label">보유 코인 · 주문 전달 시 결제</span><CoinBalance value={econ.coins} paused={paused} /></div><span className="cafe-income"><small>오프라인 예상</small> +{formatRate(incomePerSecond(econ))}<small>/초</small></span></div>
         <button type="button" aria-label="설정" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)} className="cafe-settings-button"><Icon id="settings" /></button>
       </header>
       {settingsOpen && (
@@ -166,10 +155,11 @@ export default function CozyCafe() {
       <div className="cafe-layout">
         <div className="cafe-play">
           <div className="cafe-scene-heading"><div><span className="cafe-eyebrow">MY COZY CORNER</span><h3>{STAGE_NAMES[growth - 1]}</h3></div><span key={growth} className="cafe-stage"><Icon id="leaf" /> 성장 {growth} / 5</span></div>
-          <Scene stage={growth} staff={econ.staff} levels={econ.levels} brewing={feedback.length > 0} onBrew={brew} feedback={feedback} purchaseId={state.notice === "코인이 모자라요" ? 0 : state.noticeId} />
-          <div className="cafe-brew-area"><p>한 잔의 커피에서 시작되는<br /><strong>작고 포근한 나의 이야기</strong></p><button type="button" onClick={brew} className="cafe-brew"><Icon id="cup" /><span>커피 내리기 <small>직접 내려 더 빠르게 성장해요</small></span><b>+{formatCoins(tapValue(econ))}</b></button></div>
+          <Scene stage={growth} staff={econ.staff} levels={econ.levels} sim={sim} onBrew={brew} purchaseId={/레벨|고용|구매/.test(state.notice) ? state.noticeId : 0} />
+          <div className="cafe-brew-area"><p>손님이 머물고, 이야기가 쌓이는<br /><strong>작고 포근한 나의 카페</strong></p><button type="button" onClick={brew} className="cafe-brew"><Icon id="cup" /><span>작업 돕기 <small>이동·제조·정리를 더 빠르게</small></span><b>도움</b></button></div>
+          <OperationsPanel sim={sim} dispatch={dispatch} />
           <NextGoal econ={econ} />
-          <dl className="cafe-stats"><div><dt>누적 수익</dt><dd>{formatCompact(econ.total)}<small> 코인</small></dd></div><div><dt>함께하는 직원</dt><dd>{econ.staff}<small> 명</small></dd></div><div><dt>운영 방식</dt><dd className="cafe-save-note">자동 저장 <span>이 브라우저에 보관</span></dd></div></dl>
+          <dl className="cafe-stats"><div><dt>누적 수익</dt><dd>{formatCompact(econ.total)}<small> 코인</small></dd></div><div><dt>함께하는 직원</dt><dd>{econ.staff}<small> 명</small></dd></div><div><dt>처리한 주문</dt><dd>{sim.served}<small> 건 · 자동 저장</small></dd></div></dl>
         </div>
         <aside className="cafe-shop" aria-label="카페 성장 상점">
           <div className="cafe-shop-heading"><p className="cafe-eyebrow">MAKE IT YOURS</p><h3>조금 더, 포근하게</h3><p>작은 변화가 멋진 카페를 만들어요.</p></div>
