@@ -11,6 +11,7 @@ import { mergeBest, readData } from "./record.js";
 import { initialState, reducer } from "./reducer.js";
 import Result from "./Result.jsx";
 import { hashSeed } from "./rng.js";
+import { useGameBack } from "../useGameBack.js";
 
 /**
  * 오늘의 섬으로 놀 때 쓰는 시드를 구한다.
@@ -39,6 +40,7 @@ function linesFor(run) {
 export default function TinyIsle() {
   const [data, setData] = useState(() => readData(getGameData(meta.id)));
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  useGameBack(state.phase === "menu" ? 0 : 1, () => dispatch({ type: "menu" }));
   const [record, setRecord] = useState(null);
   const savedFor = useRef(null);
   const [today, setToday] = useState(() => kstDate(Date.now()));

@@ -14,8 +14,12 @@ import { mergeEnding, readData, restore, snapshot } from "./record.js";
 import { initialState, reducer } from "./reducer.js";
 import Title, { Ending } from "./Title.jsx";
 import { MAPS } from "./world.js";
+import { useGameBack } from "../useGameBack.js";
 
 const TRACK = { title: "title", ending: "ending" };
+
+/** 화면 깊이: 제목이 첫 화면이고 시설·전투·엔딩은 지도 위에 한 단계 더 쌓인다. */
+const DEPTH = { title: 0, map: 1, facility: 2, battle: 2, ending: 2 };
 
 const KEY_DIRS = {
   ArrowUp: "up",
@@ -35,6 +39,12 @@ const ACT_KEYS = ["Enter", " ", "z", "e"];
  */
 export default function AgentTown() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  useGameBack(DEPTH[state.phase] ?? 0, () => {
+    if (state.phase === "facility") dispatch({ type: "leave" });
+    else if (state.phase === "map") dispatch({ type: "title" });
+    else if (state.phase === "ending" && !state.dialog) dispatch({ type: "resume" });
+    else return false;
+  });
   const [data, setData] = useState(() => readData(getGameData(meta.id)));
   const [endSaved, setEndSaved] = useState(null);
   const latest = useRef(state);

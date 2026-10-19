@@ -72,6 +72,8 @@ export function reducer(state, action) {
         inputIndex: 0,
       };
     }
+    case "back":
+      return initialState();
     default:
       return state;
   }

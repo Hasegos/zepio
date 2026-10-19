@@ -58,6 +58,8 @@ export function reducer(state, action) {
     case "tick":
       if (state.phase !== "playing" || action.now - state.startedAt < DURATION_MS) return state;
       return finish(state);
+    case "back":
+      return initialState();
     default:
       return state;
   }

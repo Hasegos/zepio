@@ -66,6 +66,8 @@ export function reducer(state, action) {
         questionStartedAt: action.now,
       };
     }
+    case "back":
+      return initialState();
     default:
       return state;
   }

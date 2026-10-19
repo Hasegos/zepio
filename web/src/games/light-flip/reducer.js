@@ -60,6 +60,8 @@ export function reducer(state, action) {
       const index = state.index + 1;
       return { ...state, done, index, board: state.stages[index].board, history: [], solved: false };
     }
+    case "back":
+      return initialState();
     default:
       return state;
   }
