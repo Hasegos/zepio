@@ -1,5 +1,7 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useAudio } from "../useAudio.js";
 import ShareButton from "../ShareButton.jsx";
+import { createAudio } from "./audio.js";
 import { titleFor } from "./logic.js";
 import meta from "./meta.js";
 import Office from "./Office.jsx";
@@ -8,6 +10,9 @@ import { mergeEnding, readData, restore, snapshot } from "./record.js";
 import { initialState, reducer, summary } from "./reducer.js";
 import { PUZZLES } from "./puzzles.js";
 import { getGameData, saveGameData, saveResult } from "../../lib/storage.js";
+
+const TRACK = { office: "office", puzzle: "puzzle", ending: "ending" };
+const SOUND = { open: "select", submit: "select", toggle: "tick", move: "tick", choose: "tick", cell: "tick", memo: "tick" };
 
 const big =
   "rounded-xl border-4 border-det-ink px-4 py-3 text-base font-extrabold shadow-[0_3px_0_0_#1c2742] active:translate-y-0.5";
@@ -57,6 +62,39 @@ export default function HalluDetective() {
   latest.current = state;
   const rootRef = useRef(null);
   const endedRef = useRef(false);
+  const [muted, setMuted] = useState(() => readData(getGameData(meta.id)).muted);
+  const audio = useAudio(muted, createAudio);
+  const hintTotal = Object.values(state.hints).reduce((sum, n) => sum + n, 0);
+  const seen = useRef({ coins: state.coins, hints: hintTotal });
+  const result = state.puzzle?.result;
+
+  useEffect(() => {
+    audio.music(TRACK[state.phase]);
+  }, [audio, state.phase]);
+
+  useEffect(() => {
+    if (result) audio.sfx(result.ok ? "correct" : "wrong");
+  }, [audio, result]);
+
+  useEffect(() => {
+    if (state.coins > seen.current.coins) audio.sfx("coin");
+    else if (hintTotal > seen.current.hints) audio.sfx("hint");
+    seen.current = { coins: state.coins, hints: hintTotal };
+  }, [audio, state.coins, hintTotal]);
+
+  const send = useCallback(
+    (action) => {
+      audio.sfx(SOUND[action.type]);
+      dispatch(action);
+    },
+    [audio],
+  );
+
+  const toggleMuted = useCallback(() => {
+    const next = !muted;
+    setMuted(next);
+    saveGameData(meta.id, Date.now(), { ...readData(getGameData(meta.id)), muted: next });
+  }, [muted]);
 
   useEffect(() => {
     if (!state.saveTick) return;
@@ -78,13 +116,23 @@ export default function HalluDetective() {
 
   return (
     <section ref={rootRef} tabIndex={-1} className="scroll-mt-2 rounded-2xl outline-none bg-white p-3 shadow-sm sm:p-5">
+      <div className="mb-2 flex justify-end">
+        <button
+          type="button"
+          aria-pressed={!muted}
+          onClick={toggleMuted}
+          className="rounded-md border-2 border-det-ink px-2 py-0.5 text-xs font-bold text-det-ink hover:bg-det-paper"
+        >
+          <span aria-hidden="true">{muted ? "🔇" : "🔊"} </span>소리
+        </button>
+      </div>
       {state.phase === "office" && (
         <>
           <h2 className="mb-3 text-lg font-extrabold text-det-ink">탐정 사무소 · 사건 {PUZZLES.length}건</h2>
-          <Office state={state} onOpen={(id) => dispatch({ type: "open", id })} onSpot={(id) => dispatch({ type: "spot", id })} />
+          <Office state={state} onOpen={(id) => send({ type: "open", id })} onSpot={(id) => send({ type: "spot", id })} />
         </>
       )}
-      {state.phase === "puzzle" && <Puzzle key={state.puzzle.id} state={state} dispatch={dispatch} />}
+      {state.phase === "puzzle" && <Puzzle key={state.puzzle.id} state={state} dispatch={send} />}
       {state.phase === "ending" && <Ending state={state} saved={saved} onResume={() => dispatch({ type: "resume" })} />}
     </section>
   );

@@ -1,4 +1,4 @@
-import { checkAnswer, initialInput, isOpen, scoreFor, totalScore } from "./logic.js";
+import { checkAnswer, initialInput, isComplete, isOpen, scoreFor, totalScore } from "./logic.js";
 import { PUZZLES, SPOTS, START_COINS } from "./puzzles.js";
 
 const MEMO_COLORS = 4;
@@ -35,8 +35,9 @@ function withInput(state, input) {
 function submit(state) {
   const { puzzle } = state;
   const def = puzzleOf(puzzle.id);
-  const empty = def.kind === "find" ? puzzle.input.length === 0 : puzzle.input.includes(null);
-  if (empty) return { ...state, notice: "답을 먼저 골라 주세요." };
+  if (!isComplete(def, puzzle.input)) {
+    return { ...state, notice: def.kind === "grid" ? "모든 줄에 ●를 하나씩 놓아 주세요." : "답을 먼저 골라 주세요." };
+  }
   if (!checkAnswer(def, puzzle.input)) {
     if (state.solved[def.id]) return { ...state, notice: "", puzzle: { ...puzzle, result: { ok: false } } };
     const wrong = { ...state.wrong, [def.id]: Math.min(MAX_WRONG, (state.wrong[def.id] ?? 0) + 1) };
@@ -88,13 +89,23 @@ export function reducer(state, action) {
       return withInput(state, next);
     }
     case "choose": {
-      if (!inPuzzle || puzzleOf(state.puzzle.id).kind !== "match") return state;
-      const def = puzzleOf(state.puzzle.id);
-      if (!Number.isInteger(action.i) || action.i < 0 || action.i >= def.items.length) return state;
+      const def = inPuzzle && puzzleOf(state.puzzle.id);
+      if (!def || def.kind !== "liars") return state;
+      if (!Number.isInteger(action.i) || action.i < 0 || action.i >= state.puzzle.input.length) return state;
       const { option } = action;
       if (option !== null && (!Number.isInteger(option) || option < 0 || option >= def.options.length)) return state;
       const next = [...state.puzzle.input];
       next[action.i] = option;
+      return withInput(state, next);
+    }
+    case "cell": {
+      const def = inPuzzle && puzzleOf(state.puzzle.id);
+      if (!def || def.kind !== "grid") return state;
+      const n = def.slots.length;
+      const valid = (v, max) => Number.isInteger(v) && v >= 0 && v < max;
+      if (!valid(action.c, def.cats.length) || !valid(action.slot, n) || !valid(action.opt, n)) return state;
+      const at = action.slot * n + action.opt;
+      const next = state.puzzle.input.map((cells, c) => (c === action.c ? cells.map((v, i) => (i === at ? (v + 1) % 3 : v)) : cells));
       return withInput(state, next);
     }
     case "memo": {

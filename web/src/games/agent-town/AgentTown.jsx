@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { getGameData, saveGameData, saveResult } from "../../lib/storage.js";
+import { useAudio } from "../useAudio.js";
+import { createAudio } from "./audio.js";
 import Battle from "./Battle.jsx";
 import Codex from "./Codex.jsx";
 import DialogBox from "./DialogBox.jsx";
@@ -11,7 +13,6 @@ import { activeGear } from "./party.js";
 import { mergeEnding, readData, restore, snapshot } from "./record.js";
 import { initialState, reducer } from "./reducer.js";
 import Title, { Ending } from "./Title.jsx";
-import { useAudio } from "./useAudio.js";
 import { MAPS } from "./world.js";
 
 const TRACK = { title: "title", ending: "ending" };
@@ -42,7 +43,7 @@ export default function AgentTown() {
   const endedFor = useRef(null);
   const rootRef = useRef(null);
   const [muted, setMuted] = useState(() => readData(getGameData(meta.id)).muted);
-  const audio = useAudio(muted);
+  const audio = useAudio(muted, createAudio);
   const prevView = useRef({ phase: state.phase, map: state.map, x: state.player?.x, y: state.player?.y });
 
   const onMap = state.phase === "map" || state.phase === "facility";

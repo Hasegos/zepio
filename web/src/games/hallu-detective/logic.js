@@ -8,15 +8,33 @@ export const TITLES = [
 ];
 
 /**
- * 퍼즐 하나의 처음 입력 상태를 만든다. 고르기는 빈 목록, 순서 놓기는 주어진 순서, 짝짓기는 모두 비어 있다.
+ * 퍼즐 하나의 처음 입력 상태를 만든다. 고르기는 빈 목록, 순서 놓기는 주어진 순서, 범인 고르기는 빈 칸 하나, 격자는 분류마다 빈 표다.
  *
  * @param puzzle 퍼즐
  * @returns 입력 상태
  */
 export function initialInput(puzzle) {
   if (puzzle.kind === "find") return [];
-  if (puzzle.kind === "order") return puzzle.items.map((_, i) => i);
-  return puzzle.items.map(() => null);
+  if (puzzle.kind === "liars") return [null];
+  if (puzzle.kind === "grid") return puzzle.cats.map(() => Array(puzzle.slots.length ** 2).fill(0));
+  return puzzle.items.map((_, i) => i);
+}
+
+/**
+ * 답을 다 채웠는지 확인한다. 고르기는 하나 이상, 범인 고르기는 빈칸 없이, 격자는 분류마다 줄당 ●가 하나씩 있어야 한다.
+ *
+ * @param puzzle 퍼즐
+ * @param input 입력 상태
+ * @returns 결정할 수 있으면 true
+ */
+export function isComplete(puzzle, input) {
+  if (puzzle.kind === "find") return input.length > 0;
+  if (puzzle.kind === "order") return true;
+  if (puzzle.kind === "grid") {
+    const n = puzzle.slots.length;
+    return input.every((cells) => [...Array(n).keys()].every((slot) => cells.slice(slot * n, slot * n + n).filter((v) => v === 2).length === 1));
+  }
+  return !input.includes(null);
 }
 
 /**
@@ -30,6 +48,10 @@ export function checkAnswer(puzzle, input) {
   if (puzzle.kind === "find") {
     const picked = [...input].sort((a, b) => a - b);
     return picked.length === puzzle.answer.length && picked.every((v, i) => v === puzzle.answer[i]);
+  }
+  if (puzzle.kind === "grid") {
+    const n = puzzle.slots.length;
+    return puzzle.answer.every((options, c) => input[c].filter((v) => v === 2).length === n && options.every((option, slot) => input[c][slot * n + option] === 2));
   }
   return input.length === puzzle.answer.length && input.every((v, i) => v === puzzle.answer[i]);
 }

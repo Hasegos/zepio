@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getGameData, saveGameData } from "../../lib/storage.js";
 import { mountReact } from "../mount-react.jsx";
 import HalluDetective from "./HalluDetective.jsx";
+import { PUZZLES } from "./puzzles.js";
 import { initialState } from "./reducer.js";
 import { snapshot } from "./record.js";
 
@@ -82,6 +83,64 @@ describe("HalluDetective", () => {
     expect(el.querySelector('ol[aria-label="연 힌트"]').textContent).toContain("힌트 1");
     expect(text()).toContain("힌트 코인 2");
     expect(getGameData(ID).save.hints.p01).toBe(1);
+  });
+
+  it("범인 고르기 퍼즐은 진술을 보여 주고 용의자를 골라 맞히면 해설이 나온다", async () => {
+    await mount();
+    await click(button("금고 속 쿠키"));
+    expect(text()).toContain("정확히 1명만 진실을 말합니다");
+    expect(el.querySelector('ul[aria-label="진술"]').querySelectorAll("li")).toHaveLength(3);
+    const select = el.querySelector("#culprit");
+    const pick = async (value) =>
+      act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(select, String(value));
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    await click(button("결정"));
+    expect(text()).toContain("먼저");
+    await pick(1);
+    await click(button("결정"));
+    expect(text()).toContain("아쉬워요");
+    await click(button("다시 풀기"));
+    await pick(0);
+    await click(button("결정"));
+    expect(text()).toContain("정답! 80점");
+    expect(text()).toContain("범인은 민수입니다");
+  });
+
+  it("격자 퍼즐은 칸을 눌러 ✗와 ●를 채우고 모두 맞히면 정답이다", async () => {
+    await mount();
+    await click(button("도시락 주문표"));
+    expect(el.querySelectorAll("table")).toHaveLength(2);
+    expect(el.querySelector('ul[aria-label="단서"]').querySelectorAll("li")).toHaveLength(4);
+    await click(button("결정"));
+    expect(text()).toContain("모든 줄에 ●");
+    const g1 = PUZZLES.find((p) => p.id === "g1");
+    for (const [c, options] of g1.answer.entries()) {
+      for (const [slot, opt] of options.entries()) {
+        const cell = () => el.querySelector(`button[aria-label^="${g1.cats[c].name} ${g1.slots[slot]} - ${g1.cats[c].options[opt]}:"]`);
+        await click(cell());
+        expect(cell().textContent).toBe("✗");
+        await click(cell());
+        expect(cell().textContent).toBe("●");
+      }
+    }
+    await click(button("결정"));
+    expect(text()).toContain("정답! 100점");
+    expect(text()).toContain("정답은 민수:");
+  });
+
+  it("소리 버튼은 설정을 저장하고 다시 열어도 유지된다", async () => {
+    await mount();
+    const toggle = () => button("소리");
+    expect(toggle().getAttribute("aria-pressed")).toBe("true");
+    await click(toggle());
+    expect(toggle().getAttribute("aria-pressed")).toBe("false");
+    expect(getGameData(ID).muted).toBe(true);
+    await act(async () => instance.unmount());
+    el.remove();
+    await mount();
+    expect(button("소리").getAttribute("aria-pressed")).toBe("false");
   });
 
   it("나중에 풀기로 사무소에 돌아간다", async () => {
