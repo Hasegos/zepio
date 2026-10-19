@@ -3,6 +3,7 @@ import { summarize as cozyCafe } from "./cozy-cafe/record.js";
 import { summarize as lightFlip } from "./light-flip/record.js";
 import { summarize as memorySequence } from "./memory-sequence/record.js";
 import { summarize as patternChallenge } from "./pattern-challenge/record.js";
+import { summarize as tinyIsle } from "./tiny-isle/record.js";
 
 export const summarizers = {
   "pattern-challenge": patternChallenge,
@@ -10,4 +11,5 @@ export const summarizers = {
   "color-clash": colorClash,
   "light-flip": lightFlip,
   "cozy-cafe": cozyCafe,
+  "tiny-isle": tinyIsle,
 };
