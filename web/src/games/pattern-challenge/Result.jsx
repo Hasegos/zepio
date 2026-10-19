@@ -9,9 +9,10 @@ const FALLBACK_HEADLINE = "아쉬워요, 다시 도전해 보세요!";
  * 결과 요약과 문제별 해설을 보여주고 다시 도전을 받는다.
  *
  * @param props.state 끝난 판의 상태
+ * @param props.record 저장한 최고 기록과 새 기록 여부, 저장 전에는 null
  * @param props.onRetry 다시 도전하기를 눌렀을 때 호출
  */
-export default function Result({ state, onRetry }) {
+export default function Result({ state, record, onRetry }) {
   const headingRef = useRef(null);
   const total = state.puzzles.length;
   const correct = correctCount(state);
@@ -41,6 +42,13 @@ export default function Result({ state, onRetry }) {
           <dd className="text-2xl font-extrabold">{formatDuration(state.finishedAt - state.startedAt)}</dd>
         </div>
       </dl>
+
+      {record && (
+        <p className="text-center text-sm text-slate-600">
+          {record.isNewBest && <strong className="mr-2 text-success-strong">새 기록!</strong>}내 최고 기록:{" "}
+          {record.data.bestCorrect} / {total} 정답 · {formatDuration(record.data.bestMs)}
+        </p>
+      )}
 
       <button
         type="button"

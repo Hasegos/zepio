@@ -15,6 +15,7 @@ const click = (node) => act(async () => node.click());
 const advance = (ms) => act(async () => vi.advanceTimersByTimeAsync(ms));
 
 beforeEach(async () => {
+  localStorage.clear();
   vi.useFakeTimers();
   vi.spyOn(Math, "random").mockReturnValue(0);
   el = document.createElement("div");
@@ -78,5 +79,23 @@ describe("MemorySequence", () => {
 
     await act(async () => instance.unmount());
     expect(clearTimer.mock.calls.map(([id]) => id)).toContain(setTimer.mock.results[lightOff].value);
+  });
+
+  it("결과가 나오면 기록을 저장하고 더 높은 라운드를 넘으면 새 기록으로 알린다", async () => {
+    await click(button("시작하기"));
+    await advance(5000);
+    await click(pad(2));
+    expect(text()).toContain("내 최고 기록: 0 / 15 라운드");
+    expect(text()).not.toContain("새 기록!");
+    expect(JSON.parse(localStorage.getItem("zepio:v1")).games["memory-sequence"].plays).toBe(1);
+
+    await click(button("다시 도전하기"));
+    await advance(5000);
+    for (let i = 0; i < 3; i += 1) await click(pad(1));
+    await advance(5000);
+    await click(pad(2));
+    expect(text()).toContain("새 기록!");
+    expect(text()).toContain("내 최고 기록: 1 / 15 라운드");
+    expect(JSON.parse(localStorage.getItem("zepio:v1")).games["memory-sequence"].plays).toBe(2);
   });
 });

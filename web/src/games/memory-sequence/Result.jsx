@@ -18,9 +18,10 @@ function headline(state) {
  * 결과 요약과 틀린 곳을 보여주고 다시 도전을 받는다.
  *
  * @param props.state 끝난 판의 상태
+ * @param props.record 저장한 최고 기록과 새 기록 여부, 저장 전에는 null
  * @param props.onRetry 다시 도전하기를 눌렀을 때 호출
  */
-export default function Result({ state, onRetry }) {
+export default function Result({ state, record, onRetry }) {
   const headingRef = useRef(null);
 
   useEffect(() => {
@@ -58,6 +59,13 @@ export default function Result({ state, onRetry }) {
       <p className="text-center text-sm text-slate-600">
         마지막 순서: {state.sequence.map((pad) => pad + 1).join(" → ")}
       </p>
+
+      {record && (
+        <p className="text-center text-sm text-slate-600">
+          {record.isNewBest && <strong className="mr-2 text-success-strong">새 기록!</strong>}내 최고 기록:{" "}
+          {record.data.bestRound} / {MAX_ROUND} 라운드 · {formatDuration(record.data.bestMs)}
+        </p>
+      )}
 
       <button
         type="button"

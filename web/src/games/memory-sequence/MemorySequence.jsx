@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { getGameData, saveResult } from "../../lib/storage.js";
 import meta from "./meta.js";
 import Pads from "./Pads.jsx";
+import { mergeResult } from "./record.js";
 import Result from "./Result.jsx";
 import { initialState, MAX_ROUND, PAD_COUNT, reducer, START_LENGTH, timing } from "./reducer.js";
 
@@ -23,11 +25,23 @@ function randomPad() {
 export default function MemorySequence() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const [lit, setLit] = useState(null);
+  const [record, setRecord] = useState(null);
   const headingRef = useRef(null);
   const { phase, sequence, round, inputIndex } = state;
   const playing = phase === "showing" || phase === "input";
 
+  useEffect(() => {
+    if (state.phase !== "result") return;
+    const outcome = mergeResult(getGameData(meta.id), {
+      cleared: state.cleared,
+      ms: state.finishedAt - state.startedAt,
+    });
+    saveResult(meta.id, state.finishedAt, outcome.data);
+    setRecord(outcome);
+  }, [state]);
+
   const start = useCallback(() => {
+    setRecord(null);
     dispatch({ type: "start", pads: Array.from({ length: START_LENGTH }, randomPad), now: Date.now() });
   }, []);
 
@@ -112,7 +126,7 @@ export default function MemorySequence() {
           </p>
         </div>
       )}
-      {phase === "result" && <Result state={state} onRetry={start} />}
+      {phase === "result" && <Result state={state} record={record} onRetry={start} />}
     </section>
   );
 }
