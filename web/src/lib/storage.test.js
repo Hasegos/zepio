@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getDaily, getGameData, loadRecords, saveDaily, saveResult } from "./storage.js";
+import { clearRecords, getDaily, getGameData, loadRecords, saveDaily, saveResult } from "./storage.js";
 
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.restoreAllMocks());
@@ -66,5 +66,18 @@ describe("storage", () => {
       throw new Error("quota");
     });
     expect(saveDaily("a", { last: "x", streak: 1, max: 1, history: {} })).toBe(false);
+  });
+
+  it("기록 지우기는 게임 기록과 일일 기록을 모두 지우고, 저장소를 못 써도 오류가 없다", () => {
+    saveResult("a", 1, { best: 1 });
+    saveDaily("a", { last: "2026-10-19", streak: 1, max: 1, history: {} });
+    expect(clearRecords()).toBe(true);
+    expect(localStorage.getItem("zepio:v1")).toBeNull();
+    expect(loadRecords()).toEqual({ v: 1, games: {}, recent: [], daily: {} });
+
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    expect(clearRecords()).toBe(false);
   });
 });

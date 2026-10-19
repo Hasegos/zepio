@@ -1,0 +1,70 @@
+---
+import TextLayout from "../layouts/TextLayout.astro";
+---
+
+<TextLayout
+  title="개인정보처리방침"
+  description="Zepio가 저장하는 정보와 처리 방식, 기록 삭제 방법을 안내합니다."
+>
+  <p>
+    Zepio는 회원가입이 없고 이름, 이메일 주소 같은 개인정보를 직접 수집하지 않습니다. 이 방침은 Zepio를 이용할 때 어떤
+    정보가 저장되고 어떻게 지울 수 있는지 설명합니다.
+  </p>
+
+  <h2>이 브라우저에 저장되는 정보</h2>
+  <p>
+    게임 기록은 브라우저 저장소(<code>localStorage</code>, 키 <code>zepio:v1</code>)에만 저장됩니다.
+  </p>
+  <ul>
+    <li>게임별 플레이 횟수, 마지막 플레이 시간, 최고 기록, 최근 플레이한 게임</li>
+    <li>오늘의 도전의 연속 일수와 최근 점수</li>
+  </ul>
+  <p>
+    이 정보는 서버로 전송되지 않으며 이 기기의 이 브라우저에서만 쓰입니다. 쿠키는 사용하지 않습니다. 브라우저 데이터를
+    지우거나 아래 버튼을 누르면 사라지고, 다른 기기나 브라우저와는 공유되지 않습니다.
+  </p>
+
+  <h2>접속 기록</h2>
+  <p>
+    Zepio는 외부 호스팅과 전송망(CDN) 사업자를 통해 제공됩니다. 이 과정에서 접속 주소(IP), 브라우저 종류 같은 접속 기록이
+    해당 사업자에 의해 처리될 수 있습니다. Zepio는 이 정보를 이용자를 식별하는 데 쓰지 않습니다.
+  </p>
+
+  <h2>분석 도구와 광고</h2>
+  <p>
+    현재 방문 통계 같은 분석 도구와 광고, 제3자 추적 스크립트를 사용하지 않습니다. 앞으로 도입하게 되면 수집하는 항목과
+    목적을 이 방침에 먼저 알립니다.
+  </p>
+
+  <h2>이 브라우저의 기록 지우기</h2>
+  <p>저장된 게임 기록과 오늘의 도전 연속 일수를 모두 지웁니다. 지운 기록은 되돌릴 수 없습니다.</p>
+  <p>
+    <button
+      type="button"
+      data-clear-records
+      class="rounded-xl border-2 border-danger-strong bg-white px-5 py-2.5 font-bold text-danger-strong"
+    >
+      이 브라우저의 기록 지우기
+    </button>
+  </p>
+  <p data-clear-status role="status" class="min-h-6 text-sm font-semibold"></p>
+
+  <h2>문의</h2>
+  <p>이 방침에 대한 문의는 <a href="/contact/">문의</a> 페이지를 이용해 주세요.</p>
+
+  <p class="text-sm text-slate-600">최종 수정일: 2026-10-19</p>
+</TextLayout>
+
+<script>
+  import { clearRecords } from "../lib/storage.js";
+
+  const button = document.querySelector("[data-clear-records]");
+  const status = document.querySelector("[data-clear-status]");
+
+  button?.addEventListener("click", () => {
+    const confirmed = confirm("이 브라우저에 저장된 게임 기록과 오늘의 도전 연속 일수를 모두 지웁니다. 계속할까요?");
+    if (!confirmed || !status) return;
+    const cleared = clearRecords();
+    status.textContent = cleared ? "기록을 지웠어요." : "기록을 지우지 못했어요. 브라우저 설정에서 사이트 데이터를 지워 주세요.";
+  });
+</script>

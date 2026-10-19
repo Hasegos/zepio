@@ -1,0 +1,45 @@
+---
+import { liveGames } from "../games/registry.js";
+import TextLayout from "../layouts/TextLayout.astro";
+---
+
+<TextLayout
+  title="소개"
+  heading="Zepio 소개"
+  description="Zepio는 다운로드나 회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임 플랫폼입니다."
+>
+  <p>
+    Zepio는 다운로드나 회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임 플랫폼입니다. 짧게 시작해서 가볍게 즐길 수
+    있는 게임을 하나씩 늘려 가고 있습니다.
+  </p>
+
+  <h2>이런 원칙으로 만듭니다</h2>
+  <ul>
+    <li>회원가입과 로그인이 없습니다. 열고 바로 시작합니다.</li>
+    <li>설치가 필요 없습니다. PC와 모바일 브라우저에서 같은 주소로 즐깁니다.</li>
+    <li>무료입니다.</li>
+    <li>
+      게임 기록은 내 브라우저에만 저장됩니다. 자세한 내용은 <a href="/privacy/">개인정보처리방침</a>에서 확인할 수 있습니다.
+    </li>
+  </ul>
+
+  <h2>지금 즐길 수 있는 게임</h2>
+  <ul>
+    {
+      liveGames.map((game) => (
+        <li>
+          <a href={`/games/${game.slug}/`}>{game.name}</a> — {game.description}
+        </li>
+      ))
+    }
+  </ul>
+
+  <h2>오늘의 도전</h2>
+  <p>
+    Pattern Challenge에서는 매일 새로 열리는 5문제를 모두가 같은 문제로 풀 수 있습니다. 하루에 한 번 도전하고 연속 일수를
+    이어 가 보세요.
+  </p>
+
+  <h2>문의</h2>
+  <p>게임 제안이나 오류 제보는 <a href="/contact/">문의</a> 페이지를 이용해 주세요.</p>
+</TextLayout>

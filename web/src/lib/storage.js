@@ -96,3 +96,16 @@ function writeRecords(records) {
     return false;
   }
 }
+/**
+ * 이 브라우저에 저장된 기록을 모두 지운다. 저장소를 쓸 수 없어도 오류를 내지 않는다.
+ *
+ * @returns 지웠으면 true, 지우지 못했으면 false
+ */
+export function clearRecords() {
+  try {
+    localStorage.removeItem(KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
