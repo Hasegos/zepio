@@ -1,69 +1,82 @@
-export const PLOTS = [
-  { id: "espresso", x: 175, y: 300, road: 400 },
-  { id: "oven", x: 475, y: 300, road: 400 },
-  { id: "terrace", x: 775, y: 300, road: 400 },
-  { id: "beans", x: 325, y: 530, road: 610 },
-  { id: "marketing", x: 675, y: 530, road: 610 },
-];
+import { FIRST_REGULARS, regularById } from "./characters.js";
+import { OFFLINE_CAP_MS, orderValue, patienceBonus, serviceInterval } from "./economy.js";
+import { menuById } from "./recipes.js";
+import { refreshStory } from "./story.js";
 
-/** 개방된 건물 사이의 연결 도로와 진입로를 만든다. */
-function itinerary(from, to, guest) {
-  const offset = (guest.id % 3 - 1) * 19;
-  const front = to.y + 28 + Math.floor(guest.id / 3) % 2 * 18;
-  return [{ x: guest.x, y: from.road }, ...(from.road !== to.road ? [{ x: 500, y: from.road }, { x: 500, y: to.road }] : []), { x: to.x, y: to.road }, { x: to.x, y: front }, { x: to.x + offset, y: front }];
+/** 새 카페의 경제·영업·이야기를 만든다. 시각은 호출자가 전달한다. */
+export function initialSimulation(now = 0) {
+  return refreshStory({
+    v: 2, coins: 0, total: 0, startedAt: now, lastAt: now, elapsed: 0, remainder: 0,
+    staff: { barista: 1, patissier: 0, server: 0 }, menus: ["espresso", "drip", "milk", "toast"], discovered: [],
+    counts: { doyun: 0, dalbong: 0, moka: 0 }, choices: {}, seen: [], read: [], inbox: [], timeline: [], latest: "inherit",
+    queue: [], nextOrder: 1, arrivalIn: 1000, autoIn: { barista: 14000, patissier: 12000 },
+    combo: 0, bestCombo: 0, served: 0, directServed: 0, autoServed: 0, missed: 0, tips: 0,
+    brandPoints: 0, legacy: null,
+  });
 }
 
-/** 마을 주민의 초기 상태를 만든다. */
-export function initialSimulation() {
-  return { v: 2, clock: 0, guests: [], visits: 0, served: 0 };
+/** 도착 순서와 준비한 메뉴로 새 주문을 만든다. */
+function spawn(state) {
+  const people = FIRST_REGULARS.filter((person) => person.id === "doyun" || (person.id === "dalbong" ? state.elapsed >= 120000 : state.elapsed >= 420000));
+  const index = state.nextOrder - 1;
+  const person = people[index % people.length];
+  const walkin = index % 5 === 4;
+  const guest = walkin ? null : person.id;
+  const favorite = !walkin && state.menus.includes(person.menu) ? person.menu : state.menus[index % state.menus.length];
+  const patience = (walkin ? 30000 : person.patience) + patienceBonus(state);
+  return { id: state.nextOrder, guest, name: walkin ? "골목 손님" : person.name, menu: favorite, remaining: patience, patience };
 }
 
-/** 주민은 연결된 길을 따라 걷고 건물 앞에서 머문다. 수익은 경제 엔진에서 계산한다. */
-export function stepSimulation(source, econ, elapsed) {
-  const sim = structuredClone(source);
-  const dt = Math.min(30000, Math.max(0, Number.isFinite(elapsed) ? elapsed : 0));
-  const plots = PLOTS.filter((p) => econ.levels[p.id] > 0);
-  if (!plots.length) return { sim, earned: 0 };
-  const count = Math.min(18, 3 + plots.length * 2 + Math.floor(Math.sqrt(Object.values(econ.levels).reduce((a, b) => a + b, 0))));
-  while (sim.guests.length < count) {
-    const id = sim.guests.length;
-    const target = plots[id % plots.length];
-    sim.guests.push({ id, x: 90 + id * 37 % 180, y: 400, stop: id * 340, route: [{ x: target.x, y: 400 }, ...(target.road === 610 ? [{ x: 500, y: 400 }, { x: 500, y: 610 }, { x: target.x, y: 610 }] : []), { x: target.x, y: target.y + 28 + Math.floor(id / 3) % 2 * 18 }, { x: target.x + (id % 3 - 1) * 19, y: target.y + 28 + Math.floor(id / 3) % 2 * 18 }], target: target.id, visit: 0, walking: true });
+/** 접수된 주문 하나를 실제로 전달하고 관계·매출을 한 번만 정산한다. */
+export function serveOrder(source, menu, direct = true) {
+  const index = source.queue.findIndex((order) => order.menu === menu && order.remaining > 0);
+  if (index < 0) return source;
+  const state = { ...source, queue: [...source.queue], counts: { ...source.counts } };
+  const [order] = state.queue.splice(index, 1);
+  const result = orderValue(state, menu, direct, order.remaining / order.patience);
+  state.coins += result.coins;
+  state.total += result.coins;
+  state.tips += result.tip;
+  state.served += 1;
+  if (order.guest) state.counts[order.guest] += 1;
+  if (direct) { state.combo = Math.min(5, state.combo + 1); state.bestCombo = Math.max(state.bestCombo, state.combo); state.directServed += 1; }
+  else state.autoServed += 1;
+  return refreshStory(state);
+}
+
+/** 타이머 한 구간의 입장·인내심·역할별 자동 서빙을 계산한다. */
+function step(source, dt) {
+  let state = { ...source, elapsed: source.elapsed + dt, queue: source.queue.map((order) => ({ ...order, remaining: order.remaining - dt })), autoIn: { ...source.autoIn } };
+  const missed = state.queue.filter((order) => order.remaining <= 0).length;
+  if (missed) { state.combo = 0; state.missed += missed; state.queue = state.queue.filter((order) => order.remaining > 0); }
+  state.arrivalIn -= dt;
+  while (state.arrivalIn <= 0) {
+    if (state.queue.length < 4) { state.queue.push(spawn(state)); state.nextOrder += 1; }
+    state.arrivalIn += 8000;
   }
-  let remaining = dt;
-  while (remaining > 0) {
-    const step = Math.min(100, remaining);
-    for (const g of sim.guests) {
-      if (g.stop > 0) { g.stop -= step; g.walking = false; continue; }
-      if (!g.route.length) {
-        const from = PLOTS.find((p) => p.id === g.target) ?? plots[0];
-        g.visit += 1;
-        sim.visits += 1;
-        const to = plots[(g.id + g.visit) % plots.length];
-        g.target = to.id;
-        g.route = itinerary(from, to, g);
-        g.stop = 1800 + g.id % 4 * 600;
-        continue;
-      }
-      const point = g.route[0];
-      const dx = point.x - g.x;
-      const dy = point.y - g.y;
-      const distance = Math.hypot(dx, dy);
-      const speed = (30 + g.id % 4 * 4) * step / 1000;
-      g.walking = true;
-      g.flip = dx < 0;
-      if (distance <= speed) { g.x = point.x; g.y = point.y; g.route.shift(); }
-      else { g.x += dx / distance * speed; g.y += dy / distance * speed; }
+  for (const role of ["barista", "patissier"]) {
+    if (!state.staff[role]) continue;
+    state.autoIn[role] -= dt;
+    while (state.autoIn[role] <= 0) {
+      const order = state.queue.find((entry) => menuById(entry.menu)?.kind === (role === "barista" ? "drink" : "dessert"));
+      if (order) state = serveOrder(state, order.menu, false);
+      state.autoIn = { ...state.autoIn, [role]: state.autoIn[role] + serviceInterval(state, role) };
     }
-    remaining -= step;
   }
-  sim.clock += dt;
-  sim.served = sim.visits;
-  return { sim, earned: 0 };
+  return refreshStory(state);
 }
 
-/** 이동 상태는 재생성하여 오래된 영업 저장 데이터와 손상된 경로를 격리한다. */
-export function restoreSimulation(data) {
-  const visits = data?.v === 2 && Number.isSafeInteger(data.visits) && data.visits >= 0 ? Math.min(1e12, data.visits) : 0;
-  return { ...initialSimulation(), visits, served: visits };
+/** 지난 시간을 최대 8시간 재생하며 마지막 정산 시각을 뒤로 옮기지 않는다. */
+export function advanceSimulation(source, now) {
+  const elapsed = Math.min(OFFLINE_CAP_MS, Math.max(0, now - source.lastAt));
+  let state = source;
+  const buffered = elapsed + (source.remainder || 0);
+  for (let left = buffered; left >= 1000; left -= 1000) state = step(state, 1000);
+  state = { ...state, remainder: buffered % 1000, lastAt: Math.max(source.lastAt, now) };
+  return { state, elapsed, earned: state.coins - source.coins, served: state.served - source.served };
+}
+
+/** 장면은 단골 소개와 영업 상태만 읽고 게임 상태를 변경하지 않는다. */
+export function guestAppearance(order) {
+  return regularById(order.guest) ?? { id: "walkin", name: "골목 손님", color: "#b7a692" };
 }
