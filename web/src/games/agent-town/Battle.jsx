@@ -13,6 +13,7 @@ const HINT = {
   test: "테스트를 돌린다",
   summon: "동료를 부른다",
   hint: "다음에 할 일을 귀띔받는다",
+  model: "빠름은 아끼지만 큰 일에서 대충 쓴다",
   refuse: "의뢰를 거절한다",
 };
 
@@ -41,6 +42,7 @@ function learned(b) {
   if (t.danger && b.safe) out.push("위험 해소");
   if (t.injection && b.revealed) out.push("숨은 지시 발견");
   if (b.bugs > 0) out.push("버그 의심");
+  if (b.fast) out.push("빠른 모델");
   return out;
 }
 
