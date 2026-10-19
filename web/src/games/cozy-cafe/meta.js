@@ -2,9 +2,9 @@ export default {
   id: "cozy-cafe",
   slug: "cozy-cafe",
   name: "Cozy Cafe",
-  seoTitle: "Cozy Cafe - 카페 키우기 방치형 게임 | Zepio",
+  seoTitle: "Cozy Cafe - 카페 마을 키우기 방치형 게임 | Zepio",
   description:
-    "손님을 맞고 주문을 제조·서빙하며 키우는 카페 경영 시뮬레이션입니다. 직원을 고용하고 메뉴와 테라스를 확장해 체인점에 도전하세요.",
+    "작은 카페에서 시작해 빵집, 정원, 로스터리와 상점 거리를 키우는 방치형 마을 게임입니다. 매니저를 배치하고 자동 수익으로 새 부지를 열어 보세요.",
   category: "simulation",
   thumbnail: "/games/cozy-cafe/thumb.svg",
   estimatedPlayTime: "자유",

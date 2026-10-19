@@ -56,11 +56,16 @@ export function parseSave(data, now) {
     total,
     levels,
     staff: Math.floor(clean(data.staff, STAFF_MAX)),
+    lastCheer: cleanTime(data.lastCheer, now, 0),
+    managers: {},
     upgrades,
     lastAt,
     startedAt: cleanTime(data.startedAt, lastAt, lastAt),
     goalAt: total >= GOAL ? cleanTime(data.goalAt, now, now) : 0,
   };
+  const assigned = STATIONS.filter((s) => levels[s.id] > 0 && (data.townVersion ? data.managers?.[s.id] === true : true)).slice(0, result.staff);
+  result.managers = Object.fromEntries(assigned.map((s) => [s.id, true]));
+  if (!levels.espresso) result.levels.espresso = 1;
   if (data.service) result.service = restoreSimulation(data.service, result);
   return result;
 }
