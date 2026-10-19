@@ -30,6 +30,12 @@
   --color-town-good: #2b7a39;
   --color-town-bad: #b3302a;
   --color-town-warn: #9a5b00;
+  --color-det-ink: #1c2742;
+  --color-det-paper: #fbf3dc;
+  --color-det-line: #d9c9a0;
+  --color-det-accent: #a84a0a;
+  --color-det-good: #2b7a39;
+  --color-det-bad: #b3302a;
   --animate-isle-pop: isle-pop 0.28s ease-out;
   @keyframes isle-pop {
     0% {
