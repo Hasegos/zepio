@@ -1,0 +1,17 @@
+import patternChallenge from "./pattern-challenge/meta.js";
+
+export const games = [
+  { ...patternChallenge, load: () => import("./pattern-challenge/index.jsx") },
+];
+
+export const liveGames = games.filter((game) => game.status === "live");
+
+/**
+ * 슬러그로 게임을 찾는다.
+ *
+ * @param slug 게임 URL의 슬러그
+ * @returns 게임 항목, 없으면 undefined
+ */
+export function getGame(slug) {
+  return games.find((game) => game.slug === slug);
+}
