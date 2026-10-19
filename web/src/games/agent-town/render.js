@@ -2,6 +2,7 @@ import { BUILDINGS, HEIGHT, TILE, tileAt, VIEW_H, VIEW_W, WIDTH } from "./world.
 
 export const VIEW_PX_W = VIEW_W * TILE;
 export const VIEW_PX_H = VIEW_H * TILE;
+export const SCALE = 3;
 
 const THEMES = {
   blue: { roof: "#3f6fb8", roofDark: "#2f568f", wall: "#dbe6f5" },
