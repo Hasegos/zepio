@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { codexGroups, currentTitle, titlesOf } from "./codex.js";
+import { townShareText } from "./share-text.js";
 import { activeGear, isSlotItem, MAX_SLOTS, slotsOf, toggleSlot } from "./party.js";
 import { ALL_TASK_IDS } from "./tasks.js";
 
@@ -105,5 +106,27 @@ describe("레거시 숲 도감과 칭호", () => {
     expect(earned({ ...base, seen: { cron: "win" } }, "conqueror")).toBe(false);
     const all = Object.fromEntries(["spaghetti", "migrate", "cron", "deps", "license", "monolith"].map((id) => [id, "win"]));
     expect(currentTitle({ ...base, seen: all })).toBe("레거시 정복자");
+  });
+});
+
+describe("챔피언 리그 도감과 칭호", () => {
+  it("도감에 챔피언 제피의 시험이 있다", () => {
+    const group = codexGroups({}).find((g) => g.group === "챔피언 제피의 시험");
+    expect(group.entries).toHaveLength(5);
+  });
+
+  it("챔피언 뱃지는 가장 귀한 칭호이고 도감 마스터보다 앞선다", () => {
+    const all = Object.fromEntries(ALL_TASK_IDS.map((id) => [id, true]));
+    expect(currentTitle({ ...base, seen: all, badges: ["town"] })).toBe("도감 마스터");
+    expect(currentTitle({ ...base, seen: all, badges: ["town", "league"] })).toBe("챔피언 에이전트");
+    expect(currentTitle({ ...base, badges: ["league"] })).toBe("챔피언 에이전트");
+  });
+
+  it("공유 글은 엔딩에 따라 문구가 다르다", () => {
+    const ending = { codex: 30, disasters: 1, title: "신뢰받는 에이전트" };
+    expect(townShareText(ending)).toContain("팀장 박의 시험 합격!");
+    const champ = townShareText({ ...ending, league: true, title: "챔피언 에이전트" });
+    expect(champ).toContain("챔피언 리그 제패!");
+    expect(champ).toContain("챔피언 에이전트");
   });
 });

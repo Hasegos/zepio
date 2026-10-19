@@ -3,6 +3,7 @@ import {
   buildingAtDoor,
   facing,
   GATE_TRUST,
+  LEAGUE_BADGES,
   MAPS,
   npcsFor,
   progressOf,
@@ -80,7 +81,7 @@ describe("지도", () => {
         expect(warpAt(map.id, w.x, w.y)).toBe(w);
         const back = MAPS[w.to].warps.find((b) => b.to === map.id);
         expect(back, `${w.to}→${map.id}`).toBeDefined();
-        expect(walkable(w.to, w.tx, w.ty, { trust: 99, badges: ["town"] })).toBe(true);
+        expect(walkable(w.to, w.tx, w.ty, { trust: 99, badges: LEAGUE_BADGES })).toBe(true);
         expect(Math.abs(back.x - w.tx) + Math.abs(back.y - w.ty)).toBe(1);
       }
     }
@@ -218,5 +219,28 @@ describe("토큰 항구와 서버 동굴", () => {
       const gym = map.buildings.find((b) => b.facility === "gym");
       expect(tileAt(map.id, gym.door[0], gym.door[1] + 1), map.id).toBe("=");
     }
+  });
+});
+
+describe("챔피언 리그", () => {
+  it("리그 접수원은 뱃지 네 개가 모두 있어야 길을 비킨다", () => {
+    const three = { trust: 40, badges: ["town", "forest", "harbor"] };
+    expect(reachable(TOWN, START, three).has("20,0")).toBe(false);
+    expect(npcsFor(TOWN, three).find((n) => n.id === "clerk")).toMatchObject({ x: 20, y: 1 });
+    const all = { trust: 40, badges: LEAGUE_BADGES };
+    expect(reachable(TOWN, START, all).has("20,0")).toBe(true);
+    expect(npcsFor(TOWN, all).find((n) => n.id === "clerk").x).toBe(19);
+  });
+
+  it("리그 홀에는 NPC가 없다", () => {
+    expect(npcsFor("league", none)).toEqual([]);
+  });
+
+  it("리그 홀에서 건물 문, 표지판에 닿고 의뢰가 나오는 칸은 없다", () => {
+    const seen = reachable("league", { x: 10, y: 10 }, none);
+    for (const b of MAPS.league.buildings) expect(seen.has(`${b.door[0]},${b.door[1]}`), b.id).toBe(true);
+    for (const target of MAPS.league.signs) expect(nextTo(seen, target), target.id).toBe(true);
+    expect(seen.has("10,11")).toBe(true);
+    expect(MAPS.league.terrain.some((row) => row.includes(MAPS.league.encounter))).toBe(false);
   });
 });

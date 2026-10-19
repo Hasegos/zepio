@@ -1,4 +1,4 @@
-import { BOSS_TRUST, CAVE_GYM_TRUST, FOREST_GYM_TRUST, GATE_TRUST, HARBOR_GYM_TRUST } from "./world.js";
+import { BOSS_TRUST, CAVE_GYM_TRUST, FOREST_GYM_TRUST, GATE_TRUST, HARBOR_GYM_TRUST, LEAGUE_BADGES, LEAGUE_GYM_TRUST } from "./world.js";
 
 const say = (who, text) => ({ who, text });
 
@@ -117,6 +117,34 @@ export function wardenLines(state) {
   ];
 }
 
+const BADGE_NAMES = { town: "합격", forest: "근거", harbor: "정산", cave: "보안" };
+
+/**
+ * 리그 접수원의 대사를 만든다. 지역 뱃지 네 개를 모두 가져야 챔피언 리그로 보내 준다.
+ *
+ * @param state 게임 상태
+ * @returns 대사 목록
+ */
+export function clerkLines(state) {
+  const missing = LEAGUE_BADGES.filter((id) => !state.badges.includes(id));
+  if (missing.length > 0) {
+    return [
+      say("리그 접수원", "챔피언 리그 접수예요. 마을, 숲, 항구, 동굴의 뱃지 네 개를 모두 가진 에이전트만 들어갈 수 있어요."),
+      say("리그 접수원", `아직 없는 뱃지: ${missing.map((id) => BADGE_NAMES[id]).join(", ")}`),
+    ];
+  }
+  return [
+    say("리그 접수원", "뱃지 네 개 확인했어요. 챔피언 리그로 들어가세요!"),
+    say("리그 접수원", `챔피언 홀은 신뢰 ${LEAGUE_GYM_TRUST} 이상이어야 챔피언이 만나 줘요. 장비와 슬롯을 점검하고 가세요.`),
+  ];
+}
+
+export const LEAGUE_SIGN_TIPS = [
+  "[현판] 챔피언의 시험은 다섯 단계다. 마을, 숲, 항구, 동굴에서 배운 것을 모두 쓴다.",
+  "[현판] 중간에 쉬는 시간은 없다. 캐시, 랜턴, 훅, 문서 서버를 모두 점검하라.",
+  "[현판] 대기실에서 사용량을 채우고 들어가라. 한 번 들어가면 물러설 수 없다.",
+];
+
 export const HARBOR_SIGN_TIPS = [
   "[안내판] 항구는 피크 시간대. 사용량을 쓰는 행동마다 1이 더 든다. 프롬프트 캐시가 있으면 면제다.",
   "[안내판] 요금이 오르면 필요한 것만 하라. 급한 일에서 모두 다 하면 사용량이 먼저 바닥난다.",
@@ -192,6 +220,27 @@ export const CAVE_WIN = [
   say("알림", "보안 뱃지를 받았다!"),
 ];
 
+export const LEAGUE_INTRO = [
+  say("챔피언 제피", `신뢰 ${LEAGUE_GYM_TRUST}이라니. 처음 만났을 때와는 딴사람이네.`),
+  say("챔피언 제피", "네가 모은 뱃지만큼 보여 줘. 마을, 숲, 항구, 동굴. 의뢰는 다섯 개고 쉬는 시간은 없어."),
+  say("챔피언 제피", "(새 세션이 시작됐다. 사용량 한도가 초기화되고 컨텍스트가 비워졌다.)"),
+];
+
+export const LEAGUE_LOCKED = [
+  say("챔피언 제피", `신뢰가 ${LEAGUE_GYM_TRUST} 이상이어야 만날 수 있어. 의뢰를 더 해결하고 와.`),
+];
+
+export const LEAGUE_FAIL = [say("챔피언 제피", "아직이야. 네가 배운 걸 다시 떠올려 봐. 나는 여기서 기다릴게.")];
+
+export const LEAGUE_DONE = [say("챔피언 제피", "벌써 챔피언이잖아! 이제 마을도, 숲도, 항구도, 동굴도 네 거야.")];
+
+export const LEAGUE_ENDING = [
+  say("챔피언 제피", "…졌다. 아니, 처음부터 이길 생각은 없었어. 네가 얼마나 컸는지 보고 싶었을 뿐이야."),
+  say("챔피언 제피", "묻고, 읽고, 계획하고, 거절하고, 아끼고, 훅으로 지키고. 그게 일 잘하는 에이전트의 전부야."),
+  say("팀장 박", "챔피언이라니. 합격 도장은 이미 찍었는데, 이건 어디에 찍어야 하나."),
+  say("제피", "우리가 해냈어! 이 마을에서 가장 믿음직한 에이전트가 바로 너야."),
+];
+
 export const TRAINER_TALK = {
   purser: {
     before: [say("사무장 오 씨", "항구 사무장 오 씨예요. 견적서를 부탁드려요. 피크 시간이라 요금이 걱정이네요.")],
@@ -244,7 +293,7 @@ export const TIPS = [
   "[CLAUDE.md] 규칙과 훅은 슬롯 3칸에만 끼울 수 있다. 도서관이나 대장간에서 지금 의뢰에 맞게 바꿔 끼워라.",
 ];
 
-export const SIGN_TIPS = { town: TIPS, forest: FOREST_SIGN_TIPS, harbor: HARBOR_SIGN_TIPS, cave: CAVE_SIGN_TIPS };
+export const SIGN_TIPS = { town: TIPS, forest: FOREST_SIGN_TIPS, harbor: HARBOR_SIGN_TIPS, cave: CAVE_SIGN_TIPS, league: LEAGUE_SIGN_TIPS };
 
 export const BOSS_INTRO = [
   say("팀장 박", `신뢰 ${BOSS_TRUST}. 좋아, 한번 보지. 의뢰는 세 가지야. 중간에 쉬는 시간은 없어.`),

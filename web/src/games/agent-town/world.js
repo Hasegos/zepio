@@ -6,6 +6,8 @@ export const BOSS_TRUST = 14;
 export const FOREST_GYM_TRUST = 22;
 export const HARBOR_GYM_TRUST = 26;
 export const CAVE_GYM_TRUST = 30;
+export const LEAGUE_GYM_TRUST = 34;
+export const LEAGUE_BADGES = ["town", "forest", "harbor", "cave"];
 
 export const DIRS = {
   up: [0, -1],
@@ -59,6 +61,7 @@ function buildTown(buildings, signs) {
   for (const b of buildings) rows[b.door[1]][b.door[0]] = "=";
   rows[9][W - 1] = "W";
   rows[H - 1][7] = "W";
+  rows[0][20] = "W";
   return rows.map((row) => row.join(""));
 }
 
@@ -153,6 +156,32 @@ function buildCave(buildings, signs) {
   return rows.map((row) => row.join(""));
 }
 
+/**
+ * 챔피언 리그 홀 지형을 만든다. 금빛 카펫 길이 입구에서 챔피언 홀까지 이어지고, 의뢰는 나오지 않는다.
+ *
+ * @param buildings 홀 건물
+ * @param signs 홀 표지판
+ * @returns 지형 문자열 배열
+ */
+function buildLeague(buildings, signs) {
+  const W = 20;
+  const H = 12;
+  const { rows, fill } = grid(W, H, ".");
+  fill(0, 0, W, 1, "T");
+  fill(0, H - 1, W, 1, "T");
+  fill(0, 0, 1, H, "T");
+  fill(W - 1, 0, 1, H, "T");
+  fill(10, 5, 1, 6, "=");
+  fill(3, 5, 1, 2, "=");
+  fill(3, 6, 15, 1, "=");
+  for (const [x, y] of [[5, 8], [5, 9], [15, 8], [15, 9]]) rows[y][x] = "T";
+  for (const b of buildings) fill(b.x, b.y, b.w, b.h, "#");
+  for (const s of signs) rows[s.y][s.x] = "S";
+  for (const b of buildings) rows[b.door[1]][b.door[0]] = "=";
+  rows[H - 1][10] = "W";
+  return rows.map((row) => row.join(""));
+}
+
 const TOWN_BUILDINGS = [
   { id: "library", name: "도서관", facility: "library", x: 2, y: 2, w: 5, h: 3, door: [4, 4], theme: "blue" },
   { id: "compact", name: "정리소", facility: "compact", x: 9, y: 2, w: 4, h: 3, door: [11, 4], theme: "green" },
@@ -175,6 +204,11 @@ const CAVE_BUILDINGS = [
   { id: "cooling", name: "냉각실", facility: "compact", x: 10, y: 2, w: 4, h: 3, door: [12, 4], theme: "blue" },
   { id: "gym", name: "보안실", facility: "gym", x: 22, y: 1, w: 6, h: 4, door: [25, 4], theme: "orange" },
 ];
+const LEAGUE_BUILDINGS = [
+  { id: "lounge", name: "대기실", facility: "rest", x: 1, y: 2, w: 4, h: 3, door: [3, 4], theme: "pink" },
+  { id: "gym", name: "챔피언 홀", facility: "gym", x: 6, y: 1, w: 8, h: 4, door: [10, 4], theme: "orange" },
+];
+const LEAGUE_SIGNS = [{ id: "plaque", name: "리그 현판", x: 12, y: 8 }];
 const TOWN_SIGNS = [{ id: "board", name: "게시판", x: 7, y: 8 }];
 const HARBOR_SIGNS = [{ id: "pier", name: "부두 안내판", x: 6, y: 8 }];
 const CAVE_SIGNS = [{ id: "rackmap", name: "랙 안내판", x: 13, y: 17 }];
@@ -195,6 +229,7 @@ export const MAPS = {
     warps: [
       { x: 29, y: 9, to: "forest", tx: 1, ty: 9, dir: "right" },
       { x: 7, y: 19, to: "harbor", tx: 7, ty: 1, dir: "down" },
+      { x: 20, y: 0, to: "league", tx: 10, ty: 10, dir: "up" },
     ],
     terrain: buildTown(TOWN_BUILDINGS, TOWN_SIGNS),
   },
@@ -228,6 +263,20 @@ export const MAPS = {
     signs: HARBOR_SIGNS,
     warps: [{ x: 7, y: 0, to: "town", tx: 7, ty: 18, dir: "up" }],
     terrain: buildHarbor(HARBOR_BUILDINGS, HARBOR_SIGNS),
+  },
+  league: {
+    id: "league",
+    name: "챔피언 리그",
+    theme: "league",
+    track: "league",
+    width: 20,
+    height: 12,
+    encounter: "x",
+    rest: { x: 3, y: 5, dir: "down" },
+    buildings: LEAGUE_BUILDINGS,
+    signs: LEAGUE_SIGNS,
+    warps: [{ x: 10, y: 11, to: "town", tx: 20, ty: 1, dir: "down" }],
+    terrain: buildLeague(LEAGUE_BUILDINGS, LEAGUE_SIGNS),
   },
   cave: {
     id: "cave",
@@ -291,6 +340,7 @@ export function npcsFor(mapId, progress) {
   if (mapId === "harbor") {
     return [{ id: "purser", name: "사무장 오 씨", x: 16, y: 8, kind: "trainer", look: look("#3f6fa8", "#2a2a2a", "#f1c9a5") }];
   }
+  if (mapId === "league") return [];
   if (mapId === "cave") {
     return [{ id: "operator", name: "관제 요원 서 씨", x: 18, y: 8, kind: "trainer", look: look("#3a3f55", "#1a1a1a", "#d8bfa5") }];
   }
@@ -300,6 +350,7 @@ export function npcsFor(mapId, progress) {
     { id: "guard", name: "경비 로봇", x: open ? 14 : 15, y: open ? 8 : 9, kind: "guard", look: look("#8a93a3", "#4a5160", "#c5ccd6") },
     { id: "keeper", name: "숲지기", x: 28, y: progress.badges.includes("town") ? 8 : 9, kind: "keeper", look: look("#3f7a4a", "#2a3b24", "#a9c9a0") },
     { id: "dockhand", name: "항구 문지기", x: progress.badges.includes("town") ? 8 : 7, y: 18, kind: "keeper", look: look("#3a7a9a", "#2a3b44", "#e8b88f") },
+    { id: "clerk", name: "리그 접수원", x: LEAGUE_BADGES.every((id) => progress.badges.includes(id)) ? 19 : 20, y: 1, kind: "keeper", look: look("#c9a14a", "#2a1f16", "#f1c9a5") },
     { id: "minsu", name: "민수", x: 12, y: 8, kind: "trainer", look: look("#6aa7d9", "#3b2417", "#f1c9a5") },
     { id: "hayun", name: "하은", x: 19, y: 8, kind: "trainer", look: look("#c98ad6", "#1f1612", "#f4d3b4") },
     { id: "daeri", name: "이 대리", x: 6, y: 10, kind: "trainer", look: look("#9bc46a", "#6b4a2b", "#e8b88f") },
