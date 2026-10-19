@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import ShareButton from "../ShareButton.jsx";
-import { formatCoins, formatCompact, formatRate, formatSpan } from "./format.js";
+import { formatCoins, formatCompact, formatSpan } from "./format.js";
 import {
   isUnlocked,
   OFFLINE_CAP_MS,
@@ -13,8 +13,27 @@ import {
 import Icon from "./icons.jsx";
 import meta from "./meta.js";
 import { cafeShareText } from "./share-text.js";
+import { GUEST_LABELS, PHASE_LABELS } from "./simulation.js";
+import { operatingProfile } from "./economy.js";
 
 const buyButton = "cafe-buy";
+
+/** 대기 주문의 우선순위와 실제 작업자의 활동을 보여준다. */
+export function OperationsPanel({ sim, dispatch }) {
+  const orders = sim.guests.filter((g) => ["entering", "waiting", "ordered", "seatWait"].includes(g.status));
+  return (
+    <div className="cafe-operations">
+      <div className="cafe-operations-title"><h4>지금 카페에서는</h4><span>주문 {orders.length}건</span></div>
+      <div className="cafe-service-counts"><span>완료 <b>{sim.served}</b></span><span>팁 <b>{formatCoins(sim.tips)}</b></span><span>빈자리 <b>{sim.seats.filter((s) => s.state === "free").length}/{sim.seats.length}</b></span></div>
+      <ul className="cafe-live-orders">{orders.length ? orders.slice(0, 6).map((g) => <li key={g.id}>
+        <div><strong>#{g.id} {g.menu === "bread" ? "갓 구운 빵" : "따뜻한 커피"}</strong><small>{g.dineIn ? "매장" : "포장"} · {GUEST_LABELS[g.status]} · {Math.floor(g.waited / 1000)}초</small></div>
+        {g.status === "waiting" ? <button type="button" aria-label={`${g.id}번 주문 먼저 처리`} aria-pressed={!!g.priority} onClick={() => dispatch({ type: "priority", id: g.id, now: Date.now() })}>{g.priority ? "우선 주문" : "먼저 처리"}</button> : <span>{g.status === "ordered" ? "제조·전달" : GUEST_LABELS[g.status]}</span>}
+      </li>) : <li className="cafe-no-orders">곧 손님이 찾아와요. 주인이 자동으로 주문을 받아요.</li>}</ul>
+      <div className="cafe-worker-status">{sim.workers.map((w) => <span key={w.id}><i data-working={w.phase !== "idle"} />{w.id === 0 ? "주인" : `직원 ${w.id}`} · {PHASE_LABELS[w.phase]}</span>)}</div>
+      <p className="cafe-operations-note">전달 완료 시 결제 · 빠른 서비스에는 팁<br />좌석이 꽉 차면 최대 8초 기다린 뒤 포장해요.</p>
+    </div>
+  );
+}
 
 /**
  * 한 줄짜리 항목 틀. 아이콘, 이름과 설명, 오른쪽 동작을 늘어놓는다.
@@ -67,6 +86,14 @@ function BuyButton({ cost, coins, label, onBuy }) {
  * @param props.dispatch 구매 동작을 보낸다
  */
 export function EquipmentPanel({ econ, dispatch }) {
+  const profile = operatingProfile(econ);
+  const details = {
+    espresso: `제조 ${(profile.coffeeMs / 1000).toFixed(1)}초 · 동시 ${profile.coffeeSlots}잔`,
+    oven: econ.levels.oven > 0 ? `빵 제조 ${(profile.breadMs / 1000).toFixed(1)}초` : "구매하면 빵 주문이 열려요",
+    terrace: `현재 ${profile.seats}석 · 1레벨 +1석, 3레벨 +1석`,
+    beans: `주문 기본 단가 ${formatCoins(profile.price)} 코인`,
+    marketing: `손님 도착 약 ${(profile.arrivalMs / 1000).toFixed(1)}초 간격`,
+  };
   return (
     <ul className="cafe-shop-list">
       {STATIONS.map((station) => {
@@ -76,7 +103,7 @@ export function EquipmentPanel({ econ, dispatch }) {
             key={station.id}
             icon={station.id}
             title={`${station.name} Lv.${level}`}
-            detail={`레벨당 +${formatRate(station.baseIncome)}/초`}
+            detail={details[station.id]}
           >
             <BuyButton
               cost={stationCost(station.id, level)}
@@ -87,7 +114,7 @@ export function EquipmentPanel({ econ, dispatch }) {
           </Row>
         );
       })}
-      <Row icon="staff" title={`${STAFF.name} ${econ.staff}명`} detail={`1명당 +${formatRate(STAFF.income)}/초`}>
+      <Row icon="staff" title={`${STAFF.name} ${econ.staff}명`} detail={econ.staff < 3 ? "최대 3명 배치 · 주문·서빙·정리 자동화" : "추가 고용은 제조 숙련도와 단가에 반영"}>
         <BuyButton
           cost={staffCost(econ.staff)}
           coins={econ.coins}

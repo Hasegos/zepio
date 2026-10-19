@@ -16,6 +16,8 @@ import {
   tap,
   tapValue,
   UPGRADES,
+  operatingProfile,
+  settleSales,
 } from "./economy.js";
 import { firstAt, simulate } from "./simulate.js";
 
@@ -23,6 +25,25 @@ const T0 = 1_700_000_000_000;
 const MIN = 60_000;
 const HOUR = 3_600_000;
 const withState = (patch) => ({ ...initialState(T0), ...patch });
+
+describe("영업 경제 연결", () => {
+  it("설비와 직원은 제조 속도, 좌석, 고객 도착과 단가에 반영된다", () => {
+    const first = operatingProfile(initialState(T0));
+    const grown = operatingProfile(withState({ levels: { espresso: 10, oven: 5, terrace: 3, beans: 2, marketing: 2 }, staff: 5 }));
+    expect(grown.coffeeMs).toBeLessThan(first.coffeeMs);
+    expect(grown.breadMs).toBeLessThan(first.breadMs);
+    expect(grown.arrivalMs).toBeLessThan(first.arrivalMs);
+    expect(grown.seats).toBe(4);
+    expect(grown.workers).toBe(4);
+    expect(grown.price).toBeGreaterThan(first.price);
+    expect(operatingProfile(withState({ upgrades: ["efficiency"] })).price).toBeGreaterThan(first.price);
+  });
+  it("주문 매출만큼 총액이 오르고 잘못된 매출은 무시한다", () => {
+    const state = initialState(T0);
+    expect(settleSales(state, 8, T0)).toMatchObject({ coins: 8, total: 8 });
+    for (const bad of [NaN, Infinity, -10, 0]) expect(settleSales(state, bad, T0)).toBe(state);
+  });
+});
 
 describe("가격과 수익", () => {
   it("설비 가격은 레벨마다 오르고 정수다", () => {
