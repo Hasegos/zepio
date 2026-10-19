@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import PuzzleCell, { cellLabel } from "./PuzzleCell.jsx";
 import { correctCount, formatDuration } from "./reducer.js";
 
@@ -11,13 +12,20 @@ const FALLBACK_HEADLINE = "아쉬워요, 다시 도전해 보세요!";
  * @param props.onRetry 다시 도전하기를 눌렀을 때 호출
  */
 export default function Result({ state, onRetry }) {
+  const headingRef = useRef(null);
   const total = state.puzzles.length;
   const correct = correctCount(state);
+
+  useEffect(() => {
+    headingRef.current?.focus({ preventScroll: true });
+  }, []);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="text-center">
-        <h2 className="text-2xl font-extrabold">{HEADLINES[correct] ?? FALLBACK_HEADLINE}</h2>
+        <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-extrabold outline-none">
+          {HEADLINES[correct] ?? FALLBACK_HEADLINE}
+        </h2>
         <p className="mt-1 text-slate-600">Pattern Challenge 완료</p>
       </div>
 
