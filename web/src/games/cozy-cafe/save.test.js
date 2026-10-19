@@ -15,10 +15,26 @@ const good = () => ({
 });
 
 describe("parseSave", () => {
-  it("운영 상태를 가진 저장은 제조 중 주문까지 복구한다", () => {
+  it("구형 설비와 직원은 같은 레벨의 건물과 배치된 매니저로 이전한다",()=>{
+    const old=good();
+    delete old.townVersion;
+    delete old.managers;
+    const s=parseSave(old,NOW);
+    expect(s.coins).toBe(old.coins);
+    expect(s.levels).toEqual(old.levels);
+    expect(s.managers).toEqual({espresso:true,oven:true});
+    expect(s.townVersion).toBe(1);
+    const empty=parseSave({...old,levels:{}},NOW);
+    expect(empty.levels.espresso).toBe(1);
+  });
+  it("매니저 저장의 초과 배치와 미건설 건물 배치를 걸러낸다",()=>{
+    const s=parseSave({...good(),staff:1,managers:{espresso:true,oven:true,beans:true}},NOW);
+    expect(s.managers).toEqual({espresso:true});
+  });
+  it("주민 이동은 새로 시작하고 건물 경제는 보존한다", () => {
     const data = good();
     const sim = stepSimulation(initialSimulation(data), data, 6000).sim;
-    expect(parseSave({ ...data, service: sim }, NOW).service.guests).toEqual(sim.guests);
+    expect(parseSave({ ...data, service: sim }, NOW).service.guests).toEqual([]);
   });
   it("운영 상태만 깨져도 코인과 설비는 유지한다", () => {
     const data = good();
@@ -43,7 +59,7 @@ describe("parseSave", () => {
     expect(state.coins).toBe(0);
     expect(state.total).toBe(0);
     expect(state.staff).toBe(0);
-    expect(state.levels).toEqual({ espresso: 0, oven: 0, terrace: 0, beans: 0, marketing: 0 });
+    expect(state.levels).toEqual({ espresso: 1, oven: 0, terrace: 0, beans: 0, marketing: 0 });
   });
 
   it("너무 큰 값은 상한으로 줄이고 소수 레벨은 내림한다", () => {

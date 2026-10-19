@@ -1,62 +1,42 @@
-import { GUEST_LABELS, PHASE_LABELS, TABLES } from "./simulation.js";
+import { useState } from "react";
+import { PLOTS } from "./simulation.js";
+import { Building, Resident, Tree } from "./TownArt.jsx";
+import { buildingIncome, plotUnlocked, STATIONS, stationCost } from "./economy.js";
+import { formatCoins, formatRate } from "./format.js";
 
-/** 독립된 설비 아트 레이어를 배치한다. */
-function Sprite({ kind, className = "", children }) {
-  return <div className={`cafe-sprite cafe-sprite--${kind} ${className}`} aria-hidden="true">{children}</div>;
-}
-
-/** 공용 통로 위의 캐릭터 위치와 방향별 걷기 프레임을 표시한다. */
-function Actor({ actor, worker = false }) {
-  const row = actor.phase === "making" || actor.status === "drinking" ? 4 : ({ front: 0, back: 1, left: 2, right: 3 }[actor.direction] ?? 0);
-  const walking = actor.route.length > 0;
-  const working = worker && ["making", "cleaning"].includes(actor.phase);
-  const label = worker ? `${actor.id === 0 ? "주인" : `직원 ${actor.id}`} · ${PHASE_LABELS[actor.phase]}` : `${actor.id}번 · ${GUEST_LABELS[actor.status]}`;
-  return (
-    <div className="cafe-actor-position" style={{ transform: `translate3d(${actor.x}%, ${actor.y}%, 0)`, zIndex: Math.round(actor.y * 10) }} data-actor={worker ? `worker-${actor.id}` : `guest-${actor.id}`} data-state={worker ? actor.phase : actor.status} aria-hidden="true">
-      <div className={`cafe-actor ${worker ? "cafe-actor--worker" : "cafe-actor--guest"} ${walking ? "is-walking" : ""} ${working ? "is-working" : ""} ${actor.phase === "making" ? "is-making" : ""} ${actor.status === "drinking" ? "is-seated" : ""}`} style={{ "--sprite-row": `${row / 4 * 100}%`, "--sprite-first": worker ? "0%" : "57.142857%", "--sprite-last": worker ? "42.857143%" : "100%" }}>
-        <span className="cafe-actor-label">{label}</span>
-        {!worker && ["waiting", "ordered", "seatWait"].includes(actor.status) && <span className="cafe-order-bubble">{actor.menu === "bread" ? "빵" : "커피"}<i style={{ width: `${Math.max(0, 100 - actor.waited / 700)}%` }} /></span>}
-        {working && <span className="cafe-task-bubble">{actor.phase === "cleaning" ? "정리" : "제조"}<i /></span>}
-        {(worker && actor.phase === "delivery" || !worker && actor.paid && actor.status !== "leaving") && <span className="cafe-held-cup" />}
-      </div>
-    </div>
-  );
-}
-
-/** 좌석은 예약·사용·청소 필요 상태를 실제 운영 데이터에서 읽는다. */
-function Table({ seat }) {
-  const spot = { ...TABLES[seat.id], x: TABLES[seat.id].x + (seat.id === 2 ? -4 : seat.id === 3 ? 6 : 0) };
-  return (
-    <div className={`cafe-table cafe-table--${seat.state} ${seat.id >= 2 ? "cafe-table--outdoor" : ""}`} style={{ left: `${spot.x}%`, top: `${spot.y}%`, zIndex: Math.round(spot.y * 10) }} data-seat={seat.id} aria-hidden="true">
-      {seat.id < 2 && <svg viewBox="0 0 140 125"><ellipse cx="70" cy="109" rx="56" ry="9" fill="#45322030" /><path d="M17 42v40m106-40v40M48 62l-7 45m51-45 7 45" stroke="#765337" strokeWidth="8" strokeLinecap="round" /><rect x="6" y="27" width="25" height="32" rx="9" fill="#b18b5b" stroke="#745036" strokeWidth="3" /><rect x="109" y="27" width="25" height="32" rx="9" fill="#b18b5b" stroke="#745036" strokeWidth="3" /><ellipse cx="70" cy="60" rx="45" ry="25" fill="#704b30" /><ellipse cx="70" cy="54" rx="45" ry="24" fill="#b98451" stroke="#e3b77c" strokeWidth="2" /><path d="M36 47q30-12 64 0M34 56q32-9 70 0M45 66q25-6 48 0" fill="none" stroke="#9d6c40" strokeWidth="2" /><ellipse cx="70" cy="49" rx="10" ry="5" fill="#ede2bf" /><path d="M66 46v-9q8-8 12 0v9" fill="#7b9360" /></svg>}
-      <span className="cafe-seat-marker">{seat.state === "dirty" ? "정리 필요" : seat.state === "occupied" ? "이용 중" : seat.state === "reserved" ? "예약" : "빈자리"}</span>
-      {seat.state === "dirty" && <span className="cafe-dirty-cups">컵 · 접시</span>}
-    </div>
-  );
-}
-
-/** 이동·제조·좌석 이용을 경제와 분리된 실제 운영 상태로 그린다. */
-export default function Scene({ stage, staff, levels, sim, onBrew, purchaseId }) {
-  const making = sim.workers.some((w) => w.phase === "making");
-  return (
-    <div className="cafe-world cafe-world--simulation">
-      <div role="img" aria-label={`카페 장면, 성장 단계 ${stage} / 5, 직원 ${staff}명, 손님 ${sim.guests.length}명, 완료 주문 ${sim.served}건`} className={`cafe-scene ${making ? "is-brewing" : ""}`} data-stage={stage}>
-        <img className="cafe-room" src={`/games/cozy-cafe/${levels.terrace > 0 ? "room-terrace" : "room"}.webp`} width="1536" height="1024" alt="" draggable="false" />
-        <div className="cafe-room-sign" aria-hidden="true">COZY<br /><span>little moments, good coffee</span></div>
-        <Sprite kind="espresso" className={levels.espresso >= 10 ? "cafe-machine is-premium" : "cafe-machine"}><span className="cafe-steam"><i /><i /><i /></span></Sprite>
-        {levels.oven > 0 && <Sprite key={`oven-${levels.oven}`} kind="oven" className="cafe-bakery cafe-arrival" />}
-        {levels.beans > 0 && <Sprite kind="beans" className="cafe-beans cafe-arrival" />}
-        {levels.terrace > 0 && <Sprite kind="terrace" className="cafe-terrace cafe-arrival" />}
-        {sim.seats.map((seat) => <Table key={seat.id} seat={seat} />)}
-        {levels.marketing > 0 && <div className="cafe-bunting" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></div>}
-        {sim.guests.map((guest) => <Actor key={`guest-${guest.id}`} actor={guest} />)}
-        {sim.workers.map((worker) => <Actor key={`worker-${worker.id}`} actor={worker} worker />)}
-        <div className="cafe-scene-caption" aria-hidden="true">{sim.workers.some((w) => w.phase === "cleaning") ? "다음 손님을 위해 테이블 정리 중" : making ? "주문하신 메뉴를 만들고 있어요" : "어서 오세요, 나의 작은 카페"}</div>
-      </div>
-      <button className="cafe-machine-hit" type="button" aria-label="카페 작업 돕기" onClick={onBrew} />
-      {sim.lastSale && <div className="cafe-floats" aria-hidden="true"><span key={sim.lastSale.id} className="cafe-float">+{sim.lastSale.amount}<small> 전달 완료</small></span></div>}
-      {purchaseId > 0 && <div key={purchaseId} className="cafe-purchase-glow" aria-hidden="true" />}
-      <span className="cafe-open"><i /> OPEN · 영업 중</span>
-    </div>
-  );
+/** 성장한 건물과 연결 도로, 전신 주민을 하나의 마을 좌표계에 그린다. */
+export default function Scene({ econ, sim, dispatch }) {
+  const [selected, setSelected] = useState("espresso");
+  const station = STATIONS.find((s) => s.id === selected);
+  const level = econ.levels[selected];
+  const open = plotUnlocked(econ, selected);
+  const road = `M0 400H${econ.levels.terrace ? 1000 : econ.levels.oven || econ.levels.beans || econ.levels.marketing ? 560 : 310}${econ.levels.beans || econ.levels.marketing ? "M500 400V610M210 610H800" : ""}`;
+  const items = PLOTS.filter((p) => econ.levels[p.id] > 0).map((p) => ({ y: p.y, key: p.id, node: <g transform={`translate(${p.x} ${p.y})`}><Building index={PLOTS.indexOf(p)} level={econ.levels[p.id]} manager={econ.managers?.[p.id]}/></g> }));
+  sim.guests.forEach((g) => items.push({ y: g.y, key: `resident-${g.id}`, node: <g data-actor={`resident-${g.id}`} transform={`translate(${g.x.toFixed(2)} ${g.y.toFixed(2)})`}><Resident {...g}/></g> }));
+  PLOTS.filter((p) => econ.managers?.[p.id]).forEach((p,i)=>items.push({y:p.y+25,key:`manager-${p.id}`,node:<g transform={`translate(${p.x+48} ${p.y+25})`}><Resident id={i} manager/></g>}));
+  const trees = [[48,264],[925,252],[930,360],[48,495],[112,576],[885,566],[80,365],[903,660],[62,656]];
+  trees.forEach(([x,y],i)=>items.push({y,key:`tree-${i}`,node:<Tree x={x} y={y} small={i%3===0}/>}));
+  return <div className="town-stage">
+    <div className="town-map-heading"><span>COZY VILLAGE</span><span>주민 {sim.guests.length} · 방문 {sim.visits}회</span></div>
+    <div className="town-map" role="region" aria-label="마을 지도 · 작은 화면에서는 좌우로 이동"><div className="town-map-canvas">
+      <svg viewBox="0 0 1000 700" role="img" aria-label={`카페 마을 지도, 건물 ${PLOTS.filter(p=>econ.levels[p.id]>0).length}개, 주민 ${sim.guests.length}명`}>
+        <defs><linearGradient id="town-ground" x2="0" y2="1"><stop stopColor="#d7e0b9"/><stop offset="1" stopColor="#adc48e"/></linearGradient><pattern id="town-meadow" width="43" height="37" patternUnits="userSpaceOnUse"><path d="m9 22 2-4 2 4m20 9 2-3" stroke="#829f70" opacity=".22" fill="none"/></pattern><pattern id="town-stones" width="31" height="24" patternUnits="userSpaceOnUse"><path d="M0 12H31M15 0V12M4 12V24" stroke="#bea984" strokeWidth="1" opacity=".24"/></pattern></defs>
+        <rect width="1000" height="700" fill="url(#town-ground)"/><rect width="1000" height="700" fill="url(#town-meadow)"/>
+        <path d="M-30 80Q160 130 350 70T740 83 1060 20" fill="none" stroke="#98bfb6" strokeWidth="100"/><path d="M-30 80Q160 130 350 70T740 83 1060 20" fill="none" stroke="#c4dcd0" strokeWidth="72"/><path d="M0 71Q160 121 350 61T740 74 1000 20" fill="none" stroke="#e4eee0" strokeWidth="3" strokeDasharray="40 28"/>
+        {[70,180,300,430,550,700,810,940].map((x,i)=><Tree key={x} x={x} y={130+i%3*17} small/>)}
+        <path d={road} stroke="#9eaa7f" strokeWidth="53" fill="none" strokeLinecap="round"/><path d={road} stroke="#e1cfaa" strokeWidth="44" fill="none" strokeLinecap="round"/>
+        <path d={road} stroke="url(#town-stones)" strokeWidth="40" fill="none"/>
+        {PLOTS.map((p)=><g key={p.id}>
+          <path d={`M${p.x} ${p.road}V${p.y}`} stroke={econ.levels[p.id]?"#e1cfaa":"#c1c99f"} strokeWidth="23" strokeDasharray={econ.levels[p.id]?undefined:"5 7"}/>
+          {!econ.levels[p.id]&&<g opacity={plotUnlocked(econ,p.id)?1:.6}><path d={`M${p.x-89} ${p.y-8}v-85h178v85Z`} fill="#c3cc9f" stroke="#91a277" strokeWidth="2" strokeDasharray="7 7"/><path d={`M${p.x-58} ${p.y-40}v-30h116v30`} fill="#d8c6a2" stroke="#ad9873" strokeWidth="3"/><text x={p.x} y={p.y-50} textAnchor="middle" fill="#667353" fontSize="14">{plotUnlocked(econ,p.id)?"새 부지 OPEN":"다음 이야기"}</text></g>}
+        </g>)}
+        <ellipse cx={PLOTS.find(p=>p.id===selected).x} cy={PLOTS.find(p=>p.id===selected).y+8} rx="103" ry="24" fill="none" stroke="#fff4c9" strokeWidth="3" strokeDasharray="5 5"/>
+        {items.sort((a,b)=>a.y-b.y).map((item)=><g key={item.key}>{item.node}</g>)}
+        <g transform="translate(70 420)"><path d="M0 0V-43M-30-39H32V-16H-30Z" fill="#f0debc" stroke="#947c58" strokeWidth="3"/><text y="-23" textAnchor="middle" fontSize="12" fill="#746346" fontWeight="700">WELCOME</text></g>
+        <g transform="translate(930 444)"><path d="M0 0V-64" stroke="#726c52" strokeWidth="4"/><path d="M-9-64Q0-80 9-64V-51H-9Z" fill="#f5deb0" stroke="#726c52" strokeWidth="2"/></g>
+      </svg>
+      {PLOTS.map((p,i)=><button key={p.id} type="button" className="town-plot-label" data-selected={selected===p.id} style={{left:`${p.x/10}%`,top:`${(p.y-180)/7}%`}} aria-pressed={selected===p.id} onClick={()=>setSelected(p.id)}><span>{econ.levels[p.id]?`${STATIONS[i].name} · Lv.${econ.levels[p.id]}`:plotUnlocked(econ,p.id)?`＋ ${STATIONS[i].name}`:"잠긴 부지"}</span></button>)}
+    </div></div>
+    <div className="town-selection"><div><span className="cafe-eyebrow">{level?"YOUR LITTLE BUSINESS":"A NEW CHAPTER"}</span><h4>{station.name} {level>0&&`Lv.${level}`}</h4><p>{level?`자동 생산 +${formatRate(buildingIncome(econ,selected))}/초 · ${selected === "terrace" ? "5레벨: 꽃이 피는 정원 + 다음 부지 개방" : level<5?(selected === "marketing" ? "5레벨: 2층 상점으로 증축" : "5레벨: 2층 증축 + 다음 부지 개방"):level<10?"10레벨: 별채 증축":"별채와 함께 번창하는 가게"}`:open?"새 가게를 지으면 마을과 도로가 확장돼요.":`${STATIONS[PLOTS.findIndex(p=>p.id===selected)-1]?.name} 5레벨에 개방돼요.`}</p></div><button type="button" className="cafe-buy" disabled={!open} aria-disabled={econ.coins<stationCost(selected,level)} onClick={()=>dispatch({type:"station",id:selected,now:Date.now()})}><span>{level?"증축":"건설"} · {formatCoins(stationCost(selected,level))}</span><small>{!open?"부지 잠김":econ.coins<stationCost(selected,level)?"코인을 더 모아 주세요":"마을 키우기"}</small></button></div>
+  </div>;
 }
