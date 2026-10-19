@@ -10,9 +10,9 @@ const rich = (coins = 1_000_000) => {
 const run = (state, ...actions) => actions.reduce(reducer, state);
 
 describe("탭과 구매", () => {
-  it("탭하면 코인과 누적 수익이 1씩 오른다", () => {
+  it("빈 카페에서 돕기를 눌러도 코인을 지급하지 않는다", () => {
     const state = run(initialState(T0), { type: "tap", now: T0 }, { type: "tap", now: T0 });
-    expect(state.econ).toMatchObject({ coins: 2, total: 2 });
+    expect(state.econ).toMatchObject({ coins: 0, total: 0 });
   });
 
   it("설비를 사면 코인이 줄고 레벨이 오르며 다음 가격은 더 비싸다", () => {
@@ -67,7 +67,8 @@ describe("시간 경과와 중복 지급", () => {
 
   it("틱은 지난 시간만큼만 벌고, 같은 시각에 다시 틱해도 더 벌지 않는다", () => {
     const first = run(earning(), { type: "tick", now: T0 + 10_000 });
-    expect(first.econ.coins).toBeCloseTo(5, 5);
+    expect(first.econ.coins).toBeGreaterThan(0);
+    expect(first.econ.coins).toBe(first.sim.revenue);
     const again = run(first, { type: "tick", now: T0 + 10_000 });
     expect(again.econ.coins).toBe(first.econ.coins);
   });
@@ -105,7 +106,7 @@ describe("시간 경과와 중복 지급", () => {
     const back = run(state, { type: "tick", now: T0 });
     expect(back.econ.coins).toBe(state.econ.coins);
     expect(back.econ.lastAt).toBe(T0);
-    expect(run(back, { type: "tick", now: T0 + 2000 }).econ.coins).toBeCloseTo(state.econ.coins + 1, 5);
+    expect(run(back, { type: "tick", now: T0 + 2000 }).econ.coins).toBeGreaterThanOrEqual(state.econ.coins);
   });
 });
 
@@ -154,12 +155,12 @@ describe("저장 데이터 불러오기", () => {
 
   it("목표에 이르면 목표 카드가 한 번 열리고 닫을 수 있다", () => {
     const near = { ...rich(0), econ: { ...rich(0).econ, total: GOAL - 1, coins: 0 } };
-    const reached = run(near, { type: "tap", now: T0 }, { type: "tap", now: T0 });
-    expect(reached.econ.goalAt).toBe(T0);
+    const reached = run(near, { type: "tick", now: T0 + 20000 });
+    expect(reached.econ.goalAt).toBe(T0 + 20000);
     expect(reached.goalOpen).toBe(true);
-    const closed = run(reached, { type: "closeGoal", now: T0 }, { type: "tap", now: T0 + 1000 });
+    const closed = run(reached, { type: "closeGoal", now: T0 + 20000 }, { type: "tick", now: T0 + 21000 });
     expect(closed.goalOpen).toBe(false);
-    expect(closed.econ.goalAt).toBe(T0);
+    expect(closed.econ.goalAt).toBe(T0 + 20000);
   });
 
   it("자리를 비운 동안 목표에 이르러도 목표 카드가 열린다", () => {

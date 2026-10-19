@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GOAL, initialState } from "./economy.js";
 import { parseSave } from "./save.js";
+import { initialSimulation, stepSimulation } from "./simulation.js";
 
 const NOW = 1_000_000;
 const good = () => ({
@@ -14,6 +15,18 @@ const good = () => ({
 });
 
 describe("parseSave", () => {
+  it("운영 상태를 가진 저장은 제조 중 주문까지 복구한다", () => {
+    const data = good();
+    const sim = stepSimulation(initialSimulation(data), data, 6000).sim;
+    expect(parseSave({ ...data, service: sim }, NOW).service.guests).toEqual(sim.guests);
+  });
+  it("운영 상태만 깨져도 코인과 설비는 유지한다", () => {
+    const data = good();
+    const parsed = parseSave({ ...data, service: { v: 1, guests: "broken" } }, NOW);
+    expect(parsed.coins).toBe(data.coins);
+    expect(parsed.levels).toEqual(data.levels);
+    expect(parsed.service.guests).toEqual([]);
+  });
   it("정상 데이터는 그대로 읽는다", () => {
     expect(parseSave(good(), NOW)).toEqual(good());
   });
