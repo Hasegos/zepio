@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
+import ShareButton from "../ShareButton.jsx";
+import meta from "./meta.js";
 import PuzzleCell, { cellLabel } from "./PuzzleCell.jsx";
 import { correctCount, formatDuration } from "./reducer.js";
+import { patternShareText } from "./share-text.js";
 
 const HEADLINES = { 5: "완벽해요!", 4: "잘했어요!", 3: "좋아요!" };
 const FALLBACK_HEADLINE = "아쉬워요, 다시 도전해 보세요!";
@@ -10,7 +13,7 @@ const FALLBACK_HEADLINE = "아쉬워요, 다시 도전해 보세요!";
  *
  * @param props.state 끝난 판의 상태
  * @param props.record 저장한 최고 기록과 새 기록 여부, 일반 모드가 아니거나 저장 전에는 null
- * @param props.dailyResult 오늘의 도전이면 연속 일수와 저장 성공 여부 { streak, max, saved }, 아니면 null
+ * @param props.dailyResult 오늘의 도전이면 날짜, 연속 일수, 저장 성공 여부 { date, streak, max, saved }, 아니면 null
  * @param props.onRetry 다시 도전하기를 눌렀을 때 호출
  */
 export default function Result({ state, record, dailyResult, onRetry }) {
@@ -64,6 +67,12 @@ export default function Result({ state, record, dailyResult, onRetry }) {
           {record.data.bestCorrect} / {total} 정답 · {formatDuration(record.data.bestMs)}
         </p>
       )}
+
+      <ShareButton
+        title={dailyResult ? "Zepio 오늘의 도전" : "Zepio Pattern Challenge"}
+        text={patternShareText(state, dailyResult?.date)}
+        path={`/games/${meta.slug}/`}
+      />
 
       <button
         type="button"

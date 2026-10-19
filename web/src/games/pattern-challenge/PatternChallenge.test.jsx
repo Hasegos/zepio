@@ -49,6 +49,7 @@ afterEach(async () => {
   el.remove();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  delete navigator.clipboard;
 });
 
 describe("PatternChallenge 오늘의 도전", () => {
@@ -126,6 +127,29 @@ describe("PatternChallenge 오늘의 도전", () => {
     await act(async () => {});
     expect(text()).toContain("2026-10-20 · 모두가 같은 5문제");
     expect(text()).not.toContain("문제 1 / 5");
+  });
+
+  it("결과 공유는 날짜와 정오 표시만 담아 복사하고 정답은 담지 않는다", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await mount(serve());
+    await click(button("오늘의 도전 시작하기"));
+    await playFive();
+
+    await click(button("결과 공유하기"));
+    const [shared] = writeText.mock.calls[0];
+    expect(shared).toMatch(/^Zepio 오늘의 도전 2026-10-19\n(?:🟩|🟥){5} \d\/5 · \d\d:\d\d\n.+\/games\/pattern-challenge\/$/u);
+    expect(text()).toContain("복사했어요");
+  });
+
+  it("공유와 복사가 모두 안 되면 직접 복사할 글을 보여준다", async () => {
+    await mount(vi.fn(async () => ({ ok: false, json: async () => null })));
+    await click(button("일반 모드로 시작하기"));
+    await playFive();
+
+    await click(button("결과 공유하기"));
+    expect(el.querySelector("textarea").value).toMatch(/^Zepio Pattern Challenge\n/);
+    expect(text()).toContain("직접 복사해 주세요");
   });
 
   it("저장소에 쓸 수 없으면 결과 화면에서 알려준다", async () => {

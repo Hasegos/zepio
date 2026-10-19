@@ -51,7 +51,7 @@ export default function PatternChallenge({ signal }) {
       const saved = saveDaily(meta.id, next);
       saveResult(meta.id, state.finishedAt, getGameData(meta.id));
       setDailyRecord(next);
-      setDailyResult({ streak: currentStreak(next, daily.date), max: next.max, saved });
+      setDailyResult({ date: daily.date, streak: currentStreak(next, daily.date), max: next.max, saved });
       return;
     }
     const outcome = mergeResult(getGameData(meta.id), {

@@ -30,6 +30,7 @@ afterEach(async () => {
   el.remove();
   vi.useRealTimers();
   vi.restoreAllMocks();
+  delete navigator.share;
 });
 
 describe("MemorySequence", () => {
@@ -58,6 +59,22 @@ describe("MemorySequence", () => {
     await click(pad(2));
     expect(text()).toContain("1번을 눌러야 했어요. 내가 누른 패드는 2번이에요.");
     expect(text()).toContain("마지막 순서: 1 → 1 → 1");
+  });
+
+  it("결과 공유는 라운드와 시간을 담아 공유 창으로 보낸다", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { value: share, configurable: true });
+    await click(button("시작하기"));
+    await advance(5000);
+    await click(pad(2));
+
+    await click(button("결과 공유하기"));
+    expect(share).toHaveBeenCalledWith({
+      title: "Zepio Memory Sequence",
+      text: "Zepio Memory Sequence\n0/15 라운드 · 00:05",
+      url: expect.stringMatching(/\/games\/memory-sequence\/$/),
+    });
+    expect(text()).toContain("공유했어요");
   });
 
   it("키보드 숫자 키로도 입력한다", async () => {
