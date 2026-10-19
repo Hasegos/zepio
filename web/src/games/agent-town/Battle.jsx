@@ -36,7 +36,7 @@ function learned(b) {
   const t = b.task;
   const out = [];
   if (t.ambiguous && b.clarified) out.push("요구 확인");
-  if (t.locate && b.located) out.push("위치 파악");
+  if (t.locate && b.located) out.push(t.hallu ? "근거 확인" : "위치 파악");
   if (t.big && b.planned) out.push("계획 수립");
   if (t.danger && b.safe) out.push("위험 해소");
   if (t.injection && b.revealed) out.push("숨은 지시 발견");
