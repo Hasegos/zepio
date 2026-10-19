@@ -54,6 +54,7 @@ export function usageCost(b, gear, id) {
     case "summon":
       return 3;
     case "refuse":
+    case "hint":
       return 0;
     default:
       return 1;
@@ -77,6 +78,7 @@ export function availableMoves(b, gear, party) {
   const moves = [move("ask", "질문하기"), move("read", "파일 읽기")];
   if (gear.plan) moves.push(move("plan", "계획 세우기"));
   moves.push(move("edit", "코드 수정"), move("test", "테스트 실행"));
+  if (party.includes("explorer")) moves.push(move("hint", "제피 귀띔"));
   if (party.length) {
     const summon = move("summon", "서브에이전트");
     summon.members = party.map((id) => ({
@@ -90,6 +92,33 @@ export function availableMoves(b, gear, party) {
   }
   moves.push(move("refuse", "거절하기"));
   return moves;
+}
+
+/**
+ * 지금 가장 먼저 풀어야 할 것을 제피의 말투로 귀띔한다. 답을 알려 주지는 않고 방향만 가리킨다.
+ *
+ * @param b 전투 상태
+ * @param gear 가진 장비
+ * @returns 귀띔 한 줄
+ */
+export function hintFor(b, gear) {
+  const t = b.task;
+  if (t.danger && !b.safe) {
+    return gear.guard
+      ? "제피: 지우는 명령이 위험해 보여. 훅이 막아 주겠지만 의뢰인에게 먼저 물어보는 게 확실해."
+      : "제피: 지우는 명령이 위험해 보여. 먼저 물어보거나, 안 되겠다 싶으면 거절해도 돼.";
+  }
+  if (t.injection && !b.revealed) return "제피: 문서 안에 수상한 지시가 숨어 있을지도 몰라. 먼저 읽어 볼까?";
+  if (t.ambiguous && !b.clarified) return "제피: 의뢰인 말이 모호하게 들려. 무엇을 원하는지 물어보는 게 좋지 않을까?";
+  if (t.locate && !b.located) return "제피: 어디를 고쳐야 할지 아직 몰라. 먼저 코드를 읽어 보자.";
+  if (t.big && !b.planned) {
+    return gear.plan
+      ? "제피: 일이 꽤 커. 계획을 먼저 세워 보자."
+      : "제피: 일이 꽤 커. 도서관에서 계획 모드를 사 오면 훨씬 수월할 거야.";
+  }
+  if (b.bugs > 0) return "제피: 아까 급하게 고친 곳이 불안해. 테스트를 돌려 보자.";
+  if (t.urgent) return "제피: 급한 의뢰야. 꼭 필요한 것만 하고 끝내자.";
+  return "제피: 이제 고치기만 하면 될 것 같아.";
 }
 
 function finish(s, kind, coins, trust, line) {
@@ -310,7 +339,7 @@ export function playMove(b, gear, id, arg) {
   if (id === "summon" && (b.used.includes(arg) || !Object.hasOwn(MEMBERS, arg))) return b;
   if (usageCost(b, gear, id) > USAGE_CAP - b.usage) return b;
   const s = { ...b, lines: [], used: [...b.used] };
-  if (id !== "refuse" && s.context >= CONTEXT_CAP) compact(s);
+  if (id !== "refuse" && id !== "hint" && s.context >= CONTEXT_CAP) compact(s);
   switch (id) {
     case "ask":
       askClient(s, false);
@@ -336,6 +365,9 @@ export function playMove(b, gear, id, arg) {
       break;
     case "refuse":
       refuse(s);
+      break;
+    case "hint":
+      s.lines.push(hintFor(s, gear));
       break;
     default:
       return b;

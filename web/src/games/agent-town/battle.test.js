@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   availableMoves,
+  hintFor,
   CONTEXT_CAP,
   DISASTER_FINE,
   playMove,
@@ -264,5 +265,50 @@ describe("전략별 밸런스(모든 의뢰, 장비 있음/없음)", () => {
     for (const make of [() => yolo, () => readEditTest, fullPipeline]) {
       expect(adapt).toBeGreaterThanOrEqual(sweep(NONE, make).wins + 3);
     }
+  });
+});
+describe("제피 귀띔", () => {
+  it("무료이고 인내심과 사용량을 쓰지 않으며 동료가 있어야 보인다", () => {
+    const b = startBattle(task("pretty"));
+    expect(availableMoves(b, NONE, []).some((m) => m.id === "hint")).toBe(false);
+    const move = availableMoves(b, NONE, ["explorer"]).find((m) => m.id === "hint");
+    expect(move).toMatchObject({ cost: 0, enabled: true });
+    const next = playMove(b, NONE, "hint");
+    expect(next.usage).toBe(b.usage);
+    expect(next.patience).toBe(b.patience);
+    expect(next.lines[0]).toContain("모호");
+  });
+
+  it("해결한 것은 건너뛰고 그 다음으로 풀어야 할 것을 가리킨다", () => {
+    let b = startBattle(task("slow"));
+    expect(hintFor(b, NONE)).toContain("모호");
+    b = play(b, NONE, "ask");
+    expect(hintFor(b, NONE)).toContain("코드를 읽어");
+    b = play(b, NONE, "read");
+    expect(hintFor(b, NONE)).toContain("고치기만");
+  });
+
+  it("큰 일은 계획 모드가 없으면 도서관을, 있으면 계획을 권한다", () => {
+    const b = startBattle(task("list"));
+    expect(hintFor(b, NONE)).toContain("도서관");
+    expect(hintFor(b, { plan: true })).toContain("계획을 먼저");
+  });
+
+  it("위험과 숨은 지시는 가장 먼저 알려 준다", () => {
+    expect(hintFor(startBattle(task("tmp")), NONE)).toContain("위험");
+    expect(hintFor(startBattle(task("summary")), NONE)).toContain("수상한");
+  });
+
+  it("귀띔만 따라가도 모든 의뢰를 푼다", () => {
+    const follow = (b, gear) => {
+      const h = hintFor(b, gear);
+      if (h.includes("물어")) return { id: "ask" };
+      if (h.includes("읽어")) return { id: "read" };
+      if (h.includes("계획을 먼저")) return { id: "plan" };
+      if (h.includes("테스트")) return { id: "test" };
+      return { id: "edit" };
+    };
+    const r = sweep(ALL, () => follow);
+    expect(r.fail).toEqual([]);
   });
 });

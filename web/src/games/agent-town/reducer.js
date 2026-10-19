@@ -142,7 +142,11 @@ function interact(s) {
   if (npc.id === "guard") return say(s, guardLines(s));
   const talk = TRAINER_TALK[npc.id];
   if (s.cleared[npc.id]) return say(s, talk.after);
-  return say(s, talk.before, { type: "trainer", id: npc.id });
+  const warn =
+    TRAINER_TASKS[npc.id].big && !s.gear.plan
+      ? [{ who: "제피", text: "이 일은 꽤 커 보여. 도서관에서 계획 모드를 먼저 사 두는 게 좋을 거야." }]
+      : [];
+  return say(s, [...talk.before, ...warn], { type: "trainer", id: npc.id });
 }
 
 function applyPayout(s, b, kind, id) {
