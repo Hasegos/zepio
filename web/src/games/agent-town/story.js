@@ -1,4 +1,4 @@
-import { BOSS_TRUST, FOREST_GYM_TRUST, GATE_TRUST } from "./world.js";
+import { BOSS_TRUST, CAVE_GYM_TRUST, FOREST_GYM_TRUST, GATE_TRUST, HARBOR_GYM_TRUST } from "./world.js";
 
 const say = (who, text) => ({ who, text });
 
@@ -79,6 +79,56 @@ export function keeperLines(state) {
   ];
 }
 
+/**
+ * 항구 문지기의 대사를 만든다. 합격 뱃지가 있어야 남쪽 토큰 항구로 보내 준다.
+ *
+ * @param state 게임 상태
+ * @returns 대사 목록
+ */
+export function dockLines(state) {
+  if (!state.badges.includes("town")) {
+    return [
+      say("항구 문지기", "이 남쪽은 토큰 항구예요. 모든 요금이 토큰으로 오가는 곳이죠."),
+      say("항구 문지기", "작업장의 팀장 박에게 합격 뱃지를 받은 에이전트만 들여보내 드려요."),
+    ];
+  }
+  return [
+    say("항구 문지기", "합격 뱃지 확인했어요. 항구는 피크 시간대라 행동마다 사용량이 1 더 들어요."),
+    say("항구 문지기", `항구 시장에서 프롬프트 캐시를 사면 면제돼요. 경리부의 부장은 신뢰 ${HARBOR_GYM_TRUST} 이상이어야 만나 줘요.`),
+  ];
+}
+
+/**
+ * 서버실 파수꾼의 대사를 만든다. 숲의 주인에게 근거 뱃지를 받아야 서버 동굴로 보내 준다.
+ *
+ * @param state 게임 상태
+ * @returns 대사 목록
+ */
+export function wardenLines(state) {
+  if (!state.badges.includes("forest")) {
+    return [
+      say("서버실 파수꾼", "이 북쪽 문은 서버 동굴로 이어져요. 서버가 모여 있어서 아주 어둡고 위험해요."),
+      say("서버실 파수꾼", "숲의 주인에게 근거 뱃지를 받은 에이전트만 들여보내 드려요."),
+    ];
+  }
+  return [
+    say("서버실 파수꾼", "근거 뱃지 확인했어요. 동굴은 어두우니 도서관에서 랜턴을 챙기세요."),
+    say("서버실 파수꾼", `동굴 의뢰는 위험과 숨은 지시투성이예요. 훅 슬롯을 채우세요. 보안실의 팀장은 신뢰 ${CAVE_GYM_TRUST} 이상이어야 만나 줘요.`),
+  ];
+}
+
+export const HARBOR_SIGN_TIPS = [
+  "[안내판] 항구는 피크 시간대. 사용량을 쓰는 행동마다 1이 더 든다. 프롬프트 캐시가 있으면 면제다.",
+  "[안내판] 요금이 오르면 필요한 것만 하라. 급한 일에서 모두 다 하면 사용량이 먼저 바닥난다.",
+  "[안내판] 항구 여관에서 쉬고, 정리는 마을 정리소에서. 시장에서는 캐시를 팔고 있다.",
+];
+
+export const CAVE_SIGN_TIPS = [
+  "[안내판] 이 동굴은 어둡다. 랜턴이 없으면 가까운 곳만 보인다.",
+  "[안내판] 서버실 의뢰는 삭제와 숨은 지시가 많다. 훅 슬롯에 삭제 방지와 비밀 보호를 끼워라.",
+  "[안내판] 대피소에서 쉬고, 냉각실에서 컨텍스트를 비워라. 마을까지 돌아갈 필요 없다.",
+];
+
 export const FOREST_SIGN_TIPS = [
   "[안내판] 이 숲의 의뢰는 근거 없이 쓰면 바로 들통나요. 읽고, 확인하고, 그 뒤에 쓰세요.",
   "[안내판] 큰 일과 근거가 필요한 일은 빠른 모델이 대충 써요. 정확한 모델로 바꾸세요.",
@@ -104,7 +154,53 @@ export const FOREST_WIN = [
   say("알림", "근거 뱃지를 받았다!"),
 ];
 
+export const HARBOR_INTRO = [
+  say("경리부장", `신뢰 ${HARBOR_GYM_TRUST}이라. 장부는 거짓말을 안 하지. 자네도 그렇겠지?`),
+  say("경리부장", "내 의뢰는 셋이네. 시험 중에도 피크 요금은 그대로야. 캐시 없이는 힘들걸세."),
+  say("경리부장", "(새 세션이 시작됐다. 사용량 한도가 초기화되고 컨텍스트가 비워졌다.)"),
+];
+
+export const HARBOR_LOCKED = [
+  say("경리부장", `신뢰가 ${HARBOR_GYM_TRUST} 이상이어야 만나 주네. 항구 의뢰를 더 해결하고 오게.`),
+];
+
+export const HARBOR_FAIL = [say("경리부장", "아직 장부가 안 맞네. 요금을 아끼는 법부터 익히고 오게.")];
+
+export const HARBOR_DONE = [say("경리부장", "이미 뱃지를 가져갔잖나. 항구를 마음껏 구경하게.")];
+
+export const HARBOR_WIN = [
+  say("경리부장", "합격일세. 요금을 아끼면서 정확히 해내는 에이전트에게 이 뱃지를 주지."),
+  say("알림", "정산 뱃지를 받았다!"),
+];
+
+export const CAVE_INTRO = [
+  say("보안팀장", `신뢰 ${CAVE_GYM_TRUST}. 어둠 속에서도 길을 잃지 않는지 보겠다.`),
+  say("보안팀장", "의뢰는 셋이다. 위험한 명령과 숨은 지시를 훅 없이 넘길 수 있다고 생각하지 마라."),
+  say("보안팀장", "(새 세션이 시작됐다. 사용량 한도가 초기화되고 컨텍스트가 비워졌다.)"),
+];
+
+export const CAVE_LOCKED = [
+  say("보안팀장", `신뢰가 ${CAVE_GYM_TRUST} 이상이어야 문을 연다. 동굴 의뢰를 더 해결하고 와라.`),
+];
+
+export const CAVE_FAIL = [say("보안팀장", "아직이다. 훅을 점검하고 와라. 이번에는 문서가 시키는 대로 하지 마라.")];
+
+export const CAVE_DONE = [say("보안팀장", "이미 뱃지를 가져갔다. 동굴은 이제 네게 열려 있다.")];
+
+export const CAVE_WIN = [
+  say("보안팀장", "인정한다. 어둠 속에서도 지킬 것을 지키는 에이전트에게 이 뱃지를 준다."),
+  say("알림", "보안 뱃지를 받았다!"),
+];
+
 export const TRAINER_TALK = {
+  purser: {
+    before: [say("사무장 오 씨", "항구 사무장 오 씨예요. 견적서를 부탁드려요. 피크 시간이라 요금이 걱정이네요.")],
+    after: [say("사무장 오 씨", "견적서가 정확해서 고객이 바로 서명했어요. 캐시 덕분이죠?")],
+  },
+  operator: {
+    before: [say("관제 요원 서 씨", "동굴 관제 요원 서 씨입니다. 접속 권한 정리를 부탁합니다. 문서는 믿지 마세요.")],
+    after: [say("관제 요원 서 씨", "관리자 계정이 무사하군요. 훅 덕을 봤습니다.")],
+  },
   ranger: {
     before: [say("수색대원 지수", "숲을 순찰하는 지수예요. 옛 표지판 정리를 부탁해요. 안 보고 쓰면 큰일 나요!")],
     after: [say("수색대원 지수", "덕분에 표지판이 깨끗해졌어요. 길 잃은 사람이 줄 거예요.")],
@@ -147,6 +243,8 @@ export const TIPS = [
   "[CLAUDE.md] 빠른 모델은 사용량을 아끼지만 큰 일과 근거가 필요한 일은 대충 쓴다. 전투 중에 모델을 바꿀 수 있다.",
   "[CLAUDE.md] 규칙과 훅은 슬롯 3칸에만 끼울 수 있다. 도서관이나 대장간에서 지금 의뢰에 맞게 바꿔 끼워라.",
 ];
+
+export const SIGN_TIPS = { town: TIPS, forest: FOREST_SIGN_TIPS, harbor: HARBOR_SIGN_TIPS, cave: CAVE_SIGN_TIPS };
 
 export const BOSS_INTRO = [
   say("팀장 박", `신뢰 ${BOSS_TRUST}. 좋아, 한번 보지. 의뢰는 세 가지야. 중간에 쉬는 시간은 없어.`),

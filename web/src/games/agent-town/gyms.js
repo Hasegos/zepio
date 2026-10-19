@@ -1,6 +1,26 @@
-import { BOSS_DONE, BOSS_FAIL, BOSS_INTRO, BOSS_LOCKED, FOREST_DONE, FOREST_FAIL, FOREST_INTRO, FOREST_LOCKED, FOREST_WIN } from "./story.js";
-import { BOSS_PHASES, FOREST_GYM_PHASES } from "./tasks.js";
-import { BOSS_TRUST, FOREST_GYM_TRUST } from "./world.js";
+import {
+  BOSS_DONE,
+  BOSS_FAIL,
+  BOSS_INTRO,
+  BOSS_LOCKED,
+  CAVE_DONE,
+  CAVE_FAIL,
+  CAVE_INTRO,
+  CAVE_LOCKED,
+  CAVE_WIN,
+  FOREST_DONE,
+  FOREST_FAIL,
+  FOREST_INTRO,
+  FOREST_LOCKED,
+  FOREST_WIN,
+  HARBOR_DONE,
+  HARBOR_FAIL,
+  HARBOR_INTRO,
+  HARBOR_LOCKED,
+  HARBOR_WIN,
+} from "./story.js";
+import { BOSS_PHASES, CAVE_GYM_PHASES, FOREST_GYM_PHASES, HARBOR_GYM_PHASES } from "./tasks.js";
+import { BOSS_TRUST, CAVE_GYM_TRUST, FOREST_GYM_TRUST, HARBOR_GYM_TRUST } from "./world.js";
 
 export const GYMS = {
   town: {
@@ -33,6 +53,38 @@ export const GYMS = {
     fail: FOREST_FAIL,
     done: FOREST_DONE,
     win: FOREST_WIN,
+    ending: false,
+  },
+  harbor: {
+    id: "harbor",
+    map: "harbor",
+    leader: "경리부장",
+    badge: "정산 뱃지",
+    trust: HARBOR_GYM_TRUST,
+    phases: HARBOR_GYM_PHASES,
+    spot: { x: 23, y: 5, dir: "down" },
+    refresh: 8,
+    intro: HARBOR_INTRO,
+    locked: HARBOR_LOCKED,
+    fail: HARBOR_FAIL,
+    done: HARBOR_DONE,
+    win: HARBOR_WIN,
+    ending: false,
+  },
+  cave: {
+    id: "cave",
+    map: "cave",
+    leader: "보안팀장",
+    badge: "보안 뱃지",
+    trust: CAVE_GYM_TRUST,
+    phases: CAVE_GYM_PHASES,
+    spot: { x: 25, y: 5, dir: "down" },
+    refresh: 8,
+    intro: CAVE_INTRO,
+    locked: CAVE_LOCKED,
+    fail: CAVE_FAIL,
+    done: CAVE_DONE,
+    win: CAVE_WIN,
     ending: false,
   },
 };

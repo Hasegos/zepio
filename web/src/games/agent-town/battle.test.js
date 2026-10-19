@@ -11,10 +11,10 @@ import {
 } from "./battle.js";
 import { adaptive, fullPipeline, readEditTest, runBattle, yolo } from "./bots.js";
 import { activeGear, buy, isSlotItem, ITEMS } from "./party.js";
-import { ALL_TASK_IDS, BOSS_PHASES, FOREST_TASKS, TRAINER_TASKS, WILD_TASKS, taskById } from "./tasks.js";
+import { ALL_TASK_IDS, BOSS_PHASES, CAVE_TASKS, FOREST_TASKS, HARBOR_GYM_PHASES, HARBOR_TASKS, TRAINER_TASKS, WILD_TASKS, taskById } from "./tasks.js";
 
 const NONE = {};
-const ALL = { plan: true, grep: true, readRule: true, askRule: true, guard: true, secret: true, autotest: true };
+const ALL = { plan: true, grep: true, readRule: true, askRule: true, guard: true, secret: true, autotest: true, cache: true, lantern: true };
 const play = (b, gear, ...ids) => ids.reduce((acc, id) => playMove(acc, gear, id), b);
 const task = (id) => taskById(id);
 
@@ -31,7 +31,7 @@ describe("데이터", () => {
       if (t.injection) expect(t.reveal, id).toBeTruthy();
     }
     expect(WILD_TASKS.length).toBeGreaterThanOrEqual(16);
-    expect(Object.keys(TRAINER_TASKS)).toHaveLength(7);
+    expect(Object.keys(TRAINER_TASKS)).toHaveLength(9);
     expect(BOSS_PHASES).toHaveLength(3);
   });
 });
@@ -441,5 +441,81 @@ describe("레거시 숲 의뢰", () => {
     const yoloEnd = runBattle(startBattle(m), NONE, [], yolo);
     expect(yoloEnd.done.kind).not.toBe("win");
     expect(runBattle(startBattle(m), ALL, [], adaptive).done.kind).toBe("win");
+  });
+});
+
+describe("피크 시간(토큰 항구)", () => {
+  it("피크 의뢰는 사용량을 쓰는 행동마다 1이 더 들고 무료 행동은 그대로다", () => {
+    const b = startBattle(task("invoice"));
+    expect(b.peak).toBe(true);
+    expect(usageCost(b, NONE, "read")).toBe(2);
+    expect(usageCost(b, NONE, "edit")).toBe(3);
+    expect(usageCost(b, NONE, "summon")).toBe(4);
+    expect(usageCost(b, NONE, "refuse")).toBe(0);
+    expect(usageCost(b, NONE, "model")).toBe(0);
+    expect(playMove(b, NONE, "read").usage).toBe(2);
+    expect(playMove(b, NONE, "ask").usage).toBe(2);
+    expect(playMove(b, NONE, "model").usage).toBe(0);
+  });
+
+  it("프롬프트 캐시가 있으면 추가 요금이 없다", () => {
+    const b = startBattle(task("invoice"));
+    expect(usageCost(b, { cache: true }, "read")).toBe(1);
+    expect(playMove(b, { cache: true }, "read").usage).toBe(1);
+  });
+
+  it("일반 의뢰는 피크 요금이 없다", () => {
+    const b = startBattle(task("button"));
+    expect(b.peak).toBe(false);
+    expect(usageCost(b, NONE, "read")).toBe(1);
+  });
+
+  it("남은 사용량보다 비싼 행동은 막힌다", () => {
+    const b = startBattle(task("invoice"), { usage: USAGE_CAP - 1 });
+    expect(availableMoves(b, NONE, []).find((m) => m.id === "read")).toMatchObject({ cost: 2, enabled: false });
+    expect(playMove(b, NONE, "read")).toBe(b);
+    expect(availableMoves(b, { cache: true }, []).find((m) => m.id === "read").enabled).toBe(true);
+  });
+
+  it("캐시는 항구 시장 스킬, 랜턴은 도서관 스킬이라 슬롯 없이 쓴다", () => {
+    expect(ITEMS.find((it) => it.id === "cache")).toMatchObject({ place: "market", kind: "스킬" });
+    expect(ITEMS.find((it) => it.id === "lantern")).toMatchObject({ place: "library", kind: "스킬" });
+    expect(isSlotItem("cache")).toBe(false);
+    expect(isSlotItem("lantern")).toBe(false);
+  });
+
+  it("항구 의뢰 6개와 시험 3단계, 사무장 의뢰는 모두 피크이고 더 어려운 조합이다", () => {
+    expect(HARBOR_TASKS).toHaveLength(6);
+    for (const t of [...HARBOR_TASKS, ...HARBOR_GYM_PHASES, TRAINER_TASKS.purser]) {
+      expect(t.peak, t.id).toBe(true);
+      const flags = ["locate", "ambiguous", "big", "urgent", "danger", "injection", "hallu"].filter((k) => t[k]);
+      expect(flags.length, t.id).toBeGreaterThanOrEqual(2);
+    }
+    for (const t of HARBOR_TASKS) expect(t.coins, t.id).toBeGreaterThanOrEqual(26);
+  });
+
+  it("서버 동굴 의뢰 6개는 피크가 아니고 위험이나 숨은 지시를 품고 있다", () => {
+    expect(CAVE_TASKS).toHaveLength(6);
+    for (const t of CAVE_TASKS) {
+      expect(t.peak, t.id).toBeUndefined();
+      expect(t.danger || t.injection, t.id).toBeTruthy();
+      expect(t.coins, t.id).toBeGreaterThanOrEqual(30);
+    }
+  });
+
+  it("캐시를 갖춘 적응형은 항구와 동굴의 모든 의뢰를 풀고, 고치기만 하면 크게 진다", () => {
+    const ids = [...HARBOR_TASKS, ...CAVE_TASKS].map((t) => t.id);
+    for (const id of ids) expect(runBattle(startBattle(task(id)), ALL, [], adaptive).done.kind, id).toBe("win");
+    const lost = ids.filter((id) => runBattle(startBattle(task(id)), NONE, [], yolo).done.kind !== "win");
+    expect(lost.length).toBeGreaterThanOrEqual(ids.length - 1);
+  });
+
+  it("이어지는 피크 전투에서는 캐시가 없으면 사용량이 훨씬 빨리 찬다", () => {
+    const total = (gear) => {
+      let usage = 0;
+      for (const t of HARBOR_GYM_PHASES) usage += runBattle(startBattle(t, { usage: 0 }), gear, [], adaptive).usage;
+      return usage;
+    };
+    expect(total({ ...ALL, cache: false })).toBeGreaterThan(total(ALL) + 5);
   });
 });

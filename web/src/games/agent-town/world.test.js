@@ -46,13 +46,13 @@ function reachable(mapId, from, progress) {
 const nextTo = (set, target) => DIRS.some((dir) => set.has(step(target.x, target.y, dir).join(",")));
 
 describe("지도", () => {
-  it("크기가 맞고 가장자리는 나무(입구 제외)다", () => {
+  it("크기가 맞고 가장자리는 나무와 입구뿐이다", () => {
     for (const map of Object.values(MAPS)) {
       expect(map.terrain, map.id).toHaveLength(map.height);
       for (const row of map.terrain) expect(row, map.id).toHaveLength(map.width);
       expect(tileAt(map.id, -1, 0)).toBe("T");
       expect(tileAt(map.id, map.width, 3)).toBe("T");
-      expect([...map.terrain[0]].every((ch) => ch === "T"), map.id).toBe(true);
+      expect([...map.terrain[0]].every((ch) => "TW".includes(ch)), map.id).toBe(true);
     }
   });
 
@@ -169,5 +169,54 @@ describe("레거시 숲", () => {
     expect(has(TOWN, ",")).toBe(true);
     expect(MAPS[FOREST].encounter).toBe("f");
     expect(MAPS[TOWN].encounter).toBe(",");
+  });
+});
+
+describe("토큰 항구와 서버 동굴", () => {
+  it("항구 문지기는 합격 뱃지가 있어야 남쪽 길을 비킨다", () => {
+    const closed = reachable(TOWN, START, { trust: 30, badges: [] });
+    expect(closed.has("7,19")).toBe(false);
+    expect(npcsFor(TOWN, none).find((n) => n.id === "dockhand")).toMatchObject({ x: 7, y: 18 });
+    const open = reachable(TOWN, START, { trust: GATE_TRUST, badges: ["town"] });
+    expect(open.has("7,19")).toBe(true);
+    expect(npcsFor(TOWN, { trust: 0, badges: ["town"] }).find((n) => n.id === "dockhand").x).toBe(8);
+  });
+
+  it("서버실 파수꾼은 근거 뱃지가 있어야 숲 북쪽 길을 비킨다", () => {
+    const warpIn = { x: 1, y: 9 };
+    expect(reachable(FOREST, warpIn, { trust: 30, badges: ["town"] }).has("27,0")).toBe(false);
+    expect(reachable(FOREST, warpIn, { trust: 30, badges: ["town", "forest"] }).has("27,0")).toBe(true);
+  });
+
+  it("항구에서 건물 문, NPC, 표지판, 짙은 상자 칸에 모두 닿는다", () => {
+    const seen = reachable("harbor", { x: 7, y: 1 }, none);
+    for (const b of MAPS.harbor.buildings) expect(seen.has(`${b.door[0]},${b.door[1]}`), b.id).toBe(true);
+    for (const target of [...npcsFor("harbor", none), ...MAPS.harbor.signs]) expect(nextTo(seen, target), target.id).toBe(true);
+    const crates = MAPS.harbor.terrain.flatMap((row, y) => [...row].map((ch, x) => (ch === "b" ? `${x},${y}` : null))).filter(Boolean);
+    expect(crates.length).toBeGreaterThan(10);
+    expect(crates.every((key) => seen.has(key))).toBe(true);
+    expect(seen.has("7,0")).toBe(true);
+    expect(MAPS.harbor.encounter).toBe("b");
+  });
+
+  it("동굴은 어둡고 건물 문, NPC, 표지판, 케이블 바닥에 모두 닿는다", () => {
+    expect(MAPS.cave.dark).toBe(true);
+    for (const id of [TOWN, FOREST, "harbor"]) expect(MAPS[id].dark).toBeUndefined();
+    const seen = reachable("cave", { x: 14, y: 18 }, none);
+    for (const b of MAPS.cave.buildings) expect(seen.has(`${b.door[0]},${b.door[1]}`), b.id).toBe(true);
+    for (const target of [...npcsFor("cave", none), ...MAPS.cave.signs]) expect(nextTo(seen, target), target.id).toBe(true);
+    const cables = MAPS.cave.terrain.flatMap((row, y) => [...row].map((ch, x) => (ch === "c" ? `${x},${y}` : null))).filter(Boolean);
+    expect(cables.length).toBeGreaterThan(10);
+    expect(cables.every((key) => seen.has(key))).toBe(true);
+    expect(seen.has("14,19")).toBe(true);
+    expect(MAPS.cave.encounter).toBe("c");
+  });
+
+  it("지도마다 곡이 있고 체육관 문 앞 칸은 길이다", () => {
+    for (const map of Object.values(MAPS)) {
+      expect(map.track, map.id).toBeTruthy();
+      const gym = map.buildings.find((b) => b.facility === "gym");
+      expect(tileAt(map.id, gym.door[0], gym.door[1] + 1), map.id).toBe("=");
+    }
   });
 });

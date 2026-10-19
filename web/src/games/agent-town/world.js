@@ -4,6 +4,8 @@ export const TILE = 16;
 export const GATE_TRUST = 3;
 export const BOSS_TRUST = 14;
 export const FOREST_GYM_TRUST = 22;
+export const HARBOR_GYM_TRUST = 26;
+export const CAVE_GYM_TRUST = 30;
 
 export const DIRS = {
   up: [0, -1],
@@ -50,11 +52,13 @@ function buildTown(buildings, signs) {
   fill(25, 5, 1, 4, "=");
   fill(7, 10, 1, 4, "=");
   fill(1, 14, 14, 1, "=");
+  fill(7, 15, 1, 4, "=");
   for (const b of buildings) fill(b.x, b.y, b.w, b.h, "#");
-  for (const [x, y] of [[8, 6], [13, 6], [14, 3], [7, 16], [14, 16], [27, 12], [27, 10]]) rows[y][x] = "T";
+  for (const [x, y] of [[8, 6], [13, 6], [14, 3], [14, 16], [27, 12], [27, 10]]) rows[y][x] = "T";
   for (const s of signs) rows[s.y][s.x] = "S";
   for (const b of buildings) rows[b.door[1]][b.door[0]] = "=";
   rows[9][W - 1] = "W";
+  rows[H - 1][7] = "W";
   return rows.map((row) => row.join(""));
 }
 
@@ -82,6 +86,8 @@ function buildForest(buildings, signs) {
   fill(13, 12, 3, 4, "f");
   fill(17, 10, 9, 2, "f");
   fill(17, 8, 3, 1, "f");
+  fill(27, 1, 1, 3, ".");
+  rows[3][28] = ".";
   rows[13][14] = "~";
   rows[14][14] = "~";
   for (const b of buildings) fill(b.x, b.y, b.w, b.h, "#");
@@ -90,6 +96,60 @@ function buildForest(buildings, signs) {
   fill(10, 5, 1, 2, "=");
   for (const b of buildings) rows[b.door[1]][b.door[0]] = "=";
   rows[9][0] = "W";
+  rows[0][27] = "W";
+  return rows.map((row) => row.join(""));
+}
+
+/**
+ * 토큰 항구 지형을 만든다. 모래 부두에 길이 가로지르고, 아래쪽은 바다(~)이며, 쌓인 상자(b)에서 항구 의뢰가 나온다.
+ *
+ * @param buildings 항구 건물
+ * @param signs 항구 표지판
+ * @returns 지형 문자열 배열
+ */
+function buildHarbor(buildings, signs) {
+  const W = 30;
+  const H = 20;
+  const { rows, fill } = grid(W, H, ".");
+  fill(0, 0, W, 1, "T");
+  fill(0, H - 1, W, 1, "T");
+  fill(0, 0, 1, H, "T");
+  fill(W - 1, 0, 1, H, "T");
+  fill(1, 15, W - 2, 4, "~");
+  fill(10, 15, 2, 3, "=");
+  fill(2, 11, 7, 3, "b");
+  fill(15, 11, 10, 3, "b");
+  fill(1, 9, W - 2, 1, "=");
+  fill(7, 1, 1, 8, "=");
+  for (const b of buildings) fill(b.x, b.y, b.w, b.h, "#");
+  for (const s of signs) rows[s.y][s.x] = "S";
+  for (const b of buildings) fill(b.door[0], b.door[1], 1, 5, "=");
+  rows[0][7] = "W";
+  return rows.map((row) => row.join(""));
+}
+
+/**
+ * 서버 동굴 지형을 만든다. 바위벽 안쪽 넓은 홀에 길이 나 있고, 케이블이 깔린 바닥(c)에서 동굴 의뢰가 나온다.
+ *
+ * @param buildings 동굴 건물
+ * @param signs 동굴 표지판
+ * @returns 지형 문자열 배열
+ */
+function buildCave(buildings, signs) {
+  const W = 30;
+  const H = 20;
+  const { rows, fill } = grid(W, H, "T");
+  fill(1, 1, W - 2, H - 2, ".");
+  fill(4, 10, 8, 5, "c");
+  fill(17, 10, 9, 5, "c");
+  fill(15, 6, 3, 3, "c");
+  fill(14, 6, 1, 13, "=");
+  fill(5, 5, 21, 1, "=");
+  for (const [x, y] of [[9, 7], [10, 7], [10, 8], [20, 7], [21, 7], [21, 8], [6, 16], [7, 16], [22, 16], [23, 16], [23, 15]]) rows[y][x] = "T";
+  for (const b of buildings) fill(b.x, b.y, b.w, b.h, "#");
+  for (const s of signs) rows[s.y][s.x] = "S";
+  for (const b of buildings) rows[b.door[1]][b.door[0]] = "=";
+  rows[H - 1][14] = "W";
   return rows.map((row) => row.join(""));
 }
 
@@ -105,7 +165,19 @@ const FOREST_BUILDINGS = [
   { id: "archive", name: "옛 서고", facility: "compact", x: 8, y: 2, w: 4, h: 3, door: [10, 4], theme: "gray" },
   { id: "gym", name: "숲의 오두막", facility: "gym", x: 22, y: 1, w: 5, h: 3, door: [24, 3], theme: "green" },
 ];
+const HARBOR_BUILDINGS = [
+  { id: "market", name: "항구 시장", facility: "market", x: 2, y: 2, w: 4, h: 3, door: [4, 4], theme: "blue" },
+  { id: "inn", name: "항구 여관", facility: "rest", x: 10, y: 2, w: 4, h: 3, door: [12, 4], theme: "pink" },
+  { id: "gym", name: "경리부", facility: "gym", x: 20, y: 1, w: 6, h: 4, door: [23, 4], theme: "orange" },
+];
+const CAVE_BUILDINGS = [
+  { id: "shelter", name: "대피소", facility: "rest", x: 3, y: 2, w: 4, h: 3, door: [5, 4], theme: "gray" },
+  { id: "cooling", name: "냉각실", facility: "compact", x: 10, y: 2, w: 4, h: 3, door: [12, 4], theme: "blue" },
+  { id: "gym", name: "보안실", facility: "gym", x: 22, y: 1, w: 6, h: 4, door: [25, 4], theme: "orange" },
+];
 const TOWN_SIGNS = [{ id: "board", name: "게시판", x: 7, y: 8 }];
+const HARBOR_SIGNS = [{ id: "pier", name: "부두 안내판", x: 6, y: 8 }];
+const CAVE_SIGNS = [{ id: "rackmap", name: "랙 안내판", x: 13, y: 17 }];
 const FOREST_SIGNS = [{ id: "trail", name: "안내판", x: 1, y: 8 }];
 
 export const MAPS = {
@@ -120,7 +192,10 @@ export const MAPS = {
     rest: { x: 3, y: 14, dir: "up" },
     buildings: TOWN_BUILDINGS,
     signs: TOWN_SIGNS,
-    warps: [{ x: 29, y: 9, to: "forest", tx: 1, ty: 9, dir: "right" }],
+    warps: [
+      { x: 29, y: 9, to: "forest", tx: 1, ty: 9, dir: "right" },
+      { x: 7, y: 19, to: "harbor", tx: 7, ty: 1, dir: "down" },
+    ],
     terrain: buildTown(TOWN_BUILDINGS, TOWN_SIGNS),
   },
   forest: {
@@ -134,8 +209,40 @@ export const MAPS = {
     rest: { x: 5, y: 5, dir: "down" },
     buildings: FOREST_BUILDINGS,
     signs: FOREST_SIGNS,
-    warps: [{ x: 0, y: 9, to: "town", tx: 28, ty: 9, dir: "left" }],
+    warps: [
+      { x: 0, y: 9, to: "town", tx: 28, ty: 9, dir: "left" },
+      { x: 27, y: 0, to: "cave", tx: 14, ty: 18, dir: "up" },
+    ],
     terrain: buildForest(FOREST_BUILDINGS, FOREST_SIGNS),
+  },
+  harbor: {
+    id: "harbor",
+    name: "토큰 항구",
+    theme: "harbor",
+    track: "harbor",
+    width: 30,
+    height: 20,
+    encounter: "b",
+    rest: { x: 12, y: 5, dir: "down" },
+    buildings: HARBOR_BUILDINGS,
+    signs: HARBOR_SIGNS,
+    warps: [{ x: 7, y: 0, to: "town", tx: 7, ty: 18, dir: "up" }],
+    terrain: buildHarbor(HARBOR_BUILDINGS, HARBOR_SIGNS),
+  },
+  cave: {
+    id: "cave",
+    name: "서버 동굴",
+    theme: "cave",
+    track: "cave",
+    dark: true,
+    width: 30,
+    height: 20,
+    encounter: "c",
+    rest: { x: 5, y: 5, dir: "down" },
+    buildings: CAVE_BUILDINGS,
+    signs: CAVE_SIGNS,
+    warps: [{ x: 14, y: 19, to: "forest", tx: 27, ty: 1, dir: "down" }],
+    terrain: buildCave(CAVE_BUILDINGS, CAVE_SIGNS),
   },
 };
 
@@ -174,16 +281,25 @@ const look = (shirt, hair, skin) => ({ shirt, hair, skin });
  */
 export function npcsFor(mapId, progress) {
   if (mapId === "forest") {
+    const open = progress.badges.includes("forest");
     return [
       { id: "ranger", name: "수색대원 지수", x: 9, y: 8, kind: "trainer", look: look("#4f8a5a", "#2a1f16", "#f1c9a5") },
       { id: "woodcutter", name: "벌목꾼 한 씨", x: 21, y: 8, kind: "trainer", look: look("#b0553a", "#3b2417", "#e8b88f") },
+      { id: "warden", name: "서버실 파수꾼", x: open ? 28 : 27, y: open ? 3 : 2, kind: "keeper", look: look("#5a6a8a", "#1f2230", "#c5ccd6") },
     ];
+  }
+  if (mapId === "harbor") {
+    return [{ id: "purser", name: "사무장 오 씨", x: 16, y: 8, kind: "trainer", look: look("#3f6fa8", "#2a2a2a", "#f1c9a5") }];
+  }
+  if (mapId === "cave") {
+    return [{ id: "operator", name: "관제 요원 서 씨", x: 18, y: 8, kind: "trainer", look: look("#3a3f55", "#1a1a1a", "#d8bfa5") }];
   }
   const open = progress.trust >= GATE_TRUST;
   return [
     { id: "zepi", name: "제피", x: 8, y: 8, kind: "guide", look: look("#5b57d6", "#2a2a6a", "#f1c9a5") },
     { id: "guard", name: "경비 로봇", x: open ? 14 : 15, y: open ? 8 : 9, kind: "guard", look: look("#8a93a3", "#4a5160", "#c5ccd6") },
     { id: "keeper", name: "숲지기", x: 28, y: progress.badges.includes("town") ? 8 : 9, kind: "keeper", look: look("#3f7a4a", "#2a3b24", "#a9c9a0") },
+    { id: "dockhand", name: "항구 문지기", x: progress.badges.includes("town") ? 8 : 7, y: 18, kind: "keeper", look: look("#3a7a9a", "#2a3b44", "#e8b88f") },
     { id: "minsu", name: "민수", x: 12, y: 8, kind: "trainer", look: look("#6aa7d9", "#3b2417", "#f1c9a5") },
     { id: "hayun", name: "하은", x: 19, y: 8, kind: "trainer", look: look("#c98ad6", "#1f1612", "#f4d3b4") },
     { id: "daeri", name: "이 대리", x: 6, y: 10, kind: "trainer", look: look("#9bc46a", "#6b4a2b", "#e8b88f") },

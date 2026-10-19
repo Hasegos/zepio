@@ -48,6 +48,22 @@ export const ITEMS = [
     desc: "문서에 숨은 지시로 키가 새 나가는 것을 막는다.",
   },
   {
+    id: "lantern",
+    place: "library",
+    kind: "스킬",
+    name: "랜턴",
+    cost: 14,
+    desc: "서버 동굴의 어둠 속에서 멀리까지 보인다. 전투에는 쓰지 않는다.",
+  },
+  {
+    id: "cache",
+    place: "market",
+    kind: "스킬",
+    name: "프롬프트 캐시",
+    cost: 18,
+    desc: "피크 시간대의 추가 사용량 요금을 없앤다. 토큰 항구의 의뢰에서 꼭 필요하다.",
+  },
+  {
     id: "mcpDocs",
     place: "forge",
     kind: "MCP",
