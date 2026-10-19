@@ -1,0 +1,10 @@
+# keelkit
+.env
+.keel-backup/
+docs/
+CLAUDE.md
+.claude/
+AGENTS.md
+.agents/
+.codex/
+.serena
