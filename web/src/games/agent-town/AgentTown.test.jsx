@@ -46,6 +46,7 @@ afterEach(async () => {
     el.remove();
   }
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("AgentTown", () => {
@@ -120,5 +121,62 @@ describe("AgentTown", () => {
     expect(button("코드 수정")).toBeUndefined();
     expect(button("파일 읽기")).toBeTruthy();
     expect(el.querySelector('[role="progressbar"][aria-label="사용량"]').getAttribute("aria-valuenow")).toBe("17");
+  });
+
+  it("소리 버튼은 설정을 저장하고 다시 열어도 유지된다", async () => {
+    await mount();
+    const toggle = () => button("소리");
+    expect(toggle().getAttribute("aria-pressed")).toBe("true");
+    await click(toggle());
+    expect(toggle().getAttribute("aria-pressed")).toBe("false");
+    expect(getGameData(ID).muted).toBe(true);
+    await act(async () => instance.unmount());
+    el.remove();
+    await mount();
+    expect(toggle().getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("첫 입력 뒤 소리를 내고, 음소거하면 효과음도 내지 않는다", async () => {
+    let oscillators = 0;
+    class Context {
+      currentTime = 0;
+      state = "running";
+      sampleRate = 8000;
+      destination = {};
+      createGain = () => ({ gain: { value: 1, setValueAtTime() {}, linearRampToValueAtTime() {} }, connect() {} });
+      createOscillator = () => {
+        oscillators += 1;
+        return { frequency: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {}, start() {}, stop() {} };
+      };
+      close() {}
+    }
+    vi.stubGlobal("AudioContext", Context);
+    await mount();
+    expect(oscillators).toBe(0);
+    await press("x");
+    expect(oscillators).toBeGreaterThan(0);
+    await click(button("소리"));
+    const muted = oscillators;
+    await click(button("새 게임"));
+    expect(oscillators).toBe(muted);
+  });
+
+  it("대사는 찍히는 중에 누르면 한 줄을 먼저 채우고, 다 채운 뒤 누르면 넘어간다", async () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    await mount();
+    await click(button("새 게임"));
+    const dialog = () => el.querySelector("[data-dialog]");
+    const first = dialog().textContent;
+    const typed = () =>
+      [...dialog().querySelector('[aria-hidden="true"]:not(:last-child)').childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent)
+        .join("");
+    expect(typed().length).toBeLessThan(first.length);
+    await click(dialog());
+    expect(dialog().textContent).toBe(first);
+    expect(typed().length).toBeGreaterThan(5);
+    await click(dialog());
+    expect(dialog().textContent).not.toBe(first);
   });
 });

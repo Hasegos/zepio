@@ -9,6 +9,9 @@ import meta from "./meta.js";
 import { mergeEnding, readData, restore, snapshot } from "./record.js";
 import { initialState, reducer } from "./reducer.js";
 import Title, { Ending } from "./Title.jsx";
+import { useAudio } from "./useAudio.js";
+
+const TRACK = { title: "title", map: "town", facility: "town", ending: "ending" };
 
 const KEY_DIRS = {
   ArrowUp: "up",
@@ -35,6 +38,28 @@ export default function AgentTown() {
   const lastMove = useRef(0);
   const endedFor = useRef(null);
   const rootRef = useRef(null);
+  const [muted, setMuted] = useState(() => readData(getGameData(meta.id)).muted);
+  const audio = useAudio(muted);
+  const prevView = useRef({ phase: state.phase, x: state.player?.x, y: state.player?.y });
+
+  const track = TRACK[state.phase] ?? (state.battle?.kind === "boss" ? "boss" : "battle");
+  useEffect(() => {
+    audio.music(track);
+  }, [audio, track]);
+
+  useEffect(() => {
+    const prev = prevView.current;
+    const { phase, player } = state;
+    if (phase === "battle" && prev.phase !== "battle") audio.sfx("encounter");
+    else if (phase === "map" && prev.phase === "map" && (player.x !== prev.x || player.y !== prev.y)) audio.sfx("step");
+    prevView.current = { phase, x: player?.x, y: player?.y };
+  }, [audio, state.phase, state.player]);
+
+  const toggleMuted = useCallback(() => {
+    const next = !muted;
+    setMuted(next);
+    saveGameData(meta.id, Date.now(), { ...readData(getGameData(meta.id)), muted: next });
+  }, [muted]);
 
   const move = useCallback((dir) => {
     const now = performance.now();
@@ -73,14 +98,10 @@ export default function AgentTown() {
       if (!inGame) return;
       const onButton = e.target instanceof Element && e.target.closest("button, a, input, textarea");
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      if (s.phase === "map" && s.dialog && ACT_KEYS.includes(key)) {
+      if ((s.phase === "map" || s.phase === "ending") && s.dialog && ACT_KEYS.includes(key)) {
         if (onButton && (key === "Enter" || key === " ")) return;
         e.preventDefault();
-        dispatch({ type: "advance" });
-      } else if (s.phase === "ending" && s.dialog && ACT_KEYS.includes(key)) {
-        if (onButton && (key === "Enter" || key === " ")) return;
-        e.preventDefault();
-        dispatch({ type: "advance" });
+        rootRef.current?.querySelector("[data-dialog]")?.click();
       } else if (s.phase === "map" && !s.dialog) {
         if (KEY_DIRS[key]) {
           e.preventDefault();
@@ -105,15 +126,37 @@ export default function AgentTown() {
 
   const saved = restore(data.save);
   const mapPhase = state.phase === "map";
+  const sfx = audio.sfx;
+  const act = (name, action) => () => {
+    sfx(name);
+    dispatch(action);
+  };
 
   return (
     <section ref={rootRef} tabIndex={-1} className="scroll-mt-2 rounded-2xl outline-none bg-white p-3 shadow-sm sm:p-5">
+      <div className="mb-2 flex justify-end">
+        <button
+          type="button"
+          aria-pressed={!muted}
+          onClick={toggleMuted}
+          className="rounded-md border-2 border-town-ink px-2 py-0.5 text-xs font-bold text-town-ink hover:bg-town-panel"
+        >
+          <span aria-hidden="true">{muted ? "🔇" : "🔊"} </span>소리
+        </button>
+      </div>
       {state.phase === "title" && (
         <Title
           saved={saved}
           best={data.best}
-          onNew={() => dispatch({ type: "new", seed: Math.floor(Math.random() * 2 ** 31) })}
-          onContinue={() => saved && dispatch({ type: "load", state: saved })}
+          onNew={() => {
+            sfx("select");
+            dispatch({ type: "new", seed: Math.floor(Math.random() * 2 ** 31) });
+          }}
+          onContinue={() => {
+            if (!saved) return;
+            sfx("select");
+            dispatch({ type: "load", state: saved });
+          }}
         />
       )}
       {(mapPhase || state.phase === "facility") && <Hud state={state} onTitle={toTitle} />}
@@ -125,7 +168,7 @@ export default function AgentTown() {
             onInteract={() => dispatch({ type: "interact" })}
             disabled={Boolean(state.dialog)}
           >
-            {state.dialog && <DialogBox dialog={state.dialog} onAdvance={() => dispatch({ type: "advance" })} />}
+            {state.dialog && <DialogBox dialog={state.dialog} onAdvance={() => dispatch({ type: "advance" })} sfx={sfx} />}
           </MapView>
           <p role="status" className="min-h-6 text-center text-sm font-bold text-town-accent">
             {state.dialog ? "" : state.notice || "풀숲(진한 초록)을 걸으면 의뢰가 나타나요."}
@@ -136,10 +179,13 @@ export default function AgentTown() {
         <div className="mt-3">
           <Facility
             state={state}
-            onBuy={(id) => dispatch({ type: "buy", id })}
-            onCompact={() => dispatch({ type: "compact" })}
-            onRest={() => dispatch({ type: "rest" })}
-            onLeave={() => dispatch({ type: "leave" })}
+            onBuy={(id) => {
+              sfx("coin");
+              dispatch({ type: "buy", id });
+            }}
+            onCompact={act("heal", { type: "compact" })}
+            onRest={act("heal", { type: "rest" })}
+            onLeave={act("select", { type: "leave" })}
           />
         </div>
       )}
@@ -150,12 +196,13 @@ export default function AgentTown() {
           gear={state.gear}
           party={state.party}
           onMove={(id, arg) => dispatch({ type: "battleMove", id, arg })}
-          onClose={() => dispatch({ type: "battleClose" })}
+          onClose={act("select", { type: "battleClose" })}
+          sfx={sfx}
         />
       )}
       {state.phase === "ending" &&
         (state.dialog ? (
-          <DialogBox dialog={state.dialog} onAdvance={() => dispatch({ type: "advance" })} />
+          <DialogBox dialog={state.dialog} onAdvance={() => dispatch({ type: "advance" })} sfx={sfx} />
         ) : (
           <Ending ending={state.ending} saved={endSaved} onResume={() => dispatch({ type: "resume" })} onTitle={toTitle} />
         ))}
