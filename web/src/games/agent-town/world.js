@@ -1,10 +1,12 @@
-export const WIDTH = 30;
+export const TOWN_W = 30;
+export const WIDTH = 42;
 export const HEIGHT = 20;
 export const VIEW_W = 15;
 export const VIEW_H = 10;
 export const TILE = 16;
 export const GATE_TRUST = 3;
 export const BOSS_TRUST = 14;
+export const FOREST_TRUST = 16;
 
 export const DIRS = {
   up: [0, -1],
@@ -26,7 +28,8 @@ export const SIGNS = [{ id: "board", name: "게시판", x: 7, y: 8 }];
 export const START = { x: 7, y: 9, dir: "down" };
 
 /**
- * 시작 조건과 상관없는 지형 격자를 만든다. . 땅, , 풀숲(의뢰와 마주침), = 길, T 나무, ~ 물, # 건물, S 표지판.
+ * 시작 조건과 상관없는 지형 격자를 만든다. . 땅, , 풀숲(의뢰와 마주침), f 레거시 숲의 짙은 풀숲(숲 의뢰와 마주침), = 길, T 나무, ~ 물, # 건물, S 표지판.
+ * 마을은 가로 TOWN_W칸이고 그 동쪽에 레거시 숲이 이어진다. 숲으로 가는 길목(마을 동쪽 끝)은 숲지기가 막고 있다.
  *
  * @returns 길이 HEIGHT의 문자열 배열
  */
@@ -39,20 +42,25 @@ function buildTerrain() {
   fill(0, HEIGHT - 1, WIDTH, 1, "T");
   fill(0, 0, 1, HEIGHT, "T");
   fill(WIDTH - 1, 0, 1, HEIGHT, "T");
+  fill(TOWN_W - 1, 0, 1, HEIGHT, "T");
   fill(15, 1, 1, 8, "T");
   fill(15, 10, 1, 9, "T");
   fill(16, 2, 6, 6, ",");
   fill(17, 11, 11, 7, ",");
   fill(22, 14, 5, 3, "~");
   fill(2, 16, 3, 2, "~");
-  fill(1, 9, WIDTH - 2, 1, "=");
+  fill(1, 9, TOWN_W - 1, 1, "=");
+  fill(TOWN_W, 9, 11, 1, "=");
+  fill(31, 2, 9, 6, "f");
+  fill(31, 11, 9, 7, "f");
+  fill(34, 14, 3, 2, "~");
   fill(4, 5, 1, 4, "=");
   fill(11, 5, 1, 4, "=");
   fill(25, 5, 1, 4, "=");
   fill(7, 10, 1, 4, "=");
   fill(1, 14, 14, 1, "=");
   for (const b of BUILDINGS) fill(b.x, b.y, b.w, b.h, "#");
-  for (const [x, y] of [[8, 6], [13, 6], [14, 3], [7, 16], [14, 16], [27, 12], [27, 9 + 1]]) grid[y][x] = "T";
+  for (const [x, y] of [[8, 6], [13, 6], [14, 3], [7, 16], [14, 16], [27, 12], [27, 9 + 1], [32, 8], [38, 10]]) grid[y][x] = "T";
   for (const s of SIGNS) grid[s.y][s.x] = "S";
   for (const b of BUILDINGS) grid[b.door[1]][b.door[0]] = "=";
   return grid.map((row) => row.join(""));
@@ -73,15 +81,16 @@ export function tileAt(x, y) {
 }
 
 /**
- * 어떤 조건에서 나타나는 NPC 목록을 구한다. 경비는 신뢰가 쌓이면 길을 비켜 준다.
+ * 어떤 조건에서 나타나는 NPC 목록을 구한다. 경비와 숲지기는 신뢰가 쌓이면 길을 비켜 준다.
  *
  * @param trust 신뢰 점수
- * @returns [{ id, name, x, y, kind, look }] kind는 guide, guard, trainer
+ * @returns [{ id, name, x, y, kind, look }] kind는 guide, guard, keeper, trainer
  */
 export function npcsFor(trust) {
   return [
     { id: "zepi", name: "제피", x: 8, y: 8, kind: "guide", look: { shirt: "#5b57d6", hair: "#2a2a6a", skin: "#f1c9a5" } },
     { id: "guard", name: "경비 로봇", x: trust >= GATE_TRUST ? 14 : 15, y: trust >= GATE_TRUST ? 8 : 9, kind: "guard", look: { shirt: "#8a93a3", hair: "#4a5160", skin: "#c5ccd6" } },
+    { id: "keeper", name: "숲지기", x: 28, y: trust >= FOREST_TRUST ? 8 : 9, kind: "keeper", look: { shirt: "#3f7a4a", hair: "#2a3b24", skin: "#a9c9a0" } },
     { id: "minsu", name: "민수", x: 12, y: 8, kind: "trainer", look: { shirt: "#6aa7d9", hair: "#3b2417", skin: "#f1c9a5" } },
     { id: "hayun", name: "하은", x: 19, y: 8, kind: "trainer", look: { shirt: "#c98ad6", hair: "#1f1612", skin: "#f4d3b4" } },
     { id: "daeri", name: "이 대리", x: 6, y: 10, kind: "trainer", look: { shirt: "#9bc46a", hair: "#6b4a2b", skin: "#e8b88f" } },

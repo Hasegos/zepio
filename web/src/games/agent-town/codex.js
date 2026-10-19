@@ -1,4 +1,4 @@
-import { ALL_TASK_IDS, BOSS_PHASES, taskById, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
+import { ALL_TASK_IDS, BOSS_PHASES, FOREST_TASKS, taskById, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
 
 const FLAGS = [
   ["locate", "위치를 모름"],
@@ -30,6 +30,7 @@ export function codexGroups(seen) {
   };
   return [
     { group: "야생 의뢰", entries: WILD_TASKS.map((t) => entry(t.id)) },
+    { group: "레거시 숲 의뢰", entries: FOREST_TASKS.map((t) => entry(t.id)) },
     { group: "트레이너 의뢰", entries: Object.keys(TRAINER_TASKS).map(entry) },
     { group: "팀장 박의 시험", entries: BOSS_PHASES.map((t) => entry(t.id)) },
   ];
@@ -37,6 +38,7 @@ export function codexGroups(seen) {
 
 const known = (s) => Object.keys(s.seen).length;
 const won = (s) => Object.values(s.seen).filter((v) => v === "win").length;
+const forestWon = (s) => FOREST_TASKS.filter((t) => s.seen[t.id] === "win").length;
 const wonHallu = (s) => Object.entries(s.seen).some(([id, v]) => v === "win" && taskById(id)?.hallu);
 
 export const TITLES = [
@@ -47,6 +49,8 @@ export const TITLES = [
   { id: "checker", name: "팩트체커", desc: "근거가 필요한 의뢰를 해결한다", test: wonHallu },
   { id: "safe", name: "무사고 장인", desc: "사고 없이 의뢰를 8번 끝낸다", test: (s) => s.tasksDone >= 8 && s.disasters === 0 },
   { id: "passed", name: "신뢰받는 에이전트", desc: "팀장 박의 시험에 합격한다", test: (s) => s.finished },
+  { id: "forest", name: "숲 탐험가", desc: "레거시 숲의 의뢰를 하나 해결한다", test: (s) => forestWon(s) >= 1 },
+  { id: "conqueror", name: "레거시 정복자", desc: "레거시 숲의 의뢰를 모두 해결한다", test: (s) => forestWon(s) === FOREST_TASKS.length },
   { id: "master", name: "도감 마스터", desc: "모든 의뢰를 만난다", test: (s) => ALL_TASK_IDS.every((id) => s.seen[id]) },
 ];
 

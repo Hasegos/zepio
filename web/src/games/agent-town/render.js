@@ -57,6 +57,17 @@ function drawTall(ctx, x, y, tx, ty) {
   }
 }
 
+function drawDeep(ctx, x, y, tx, ty) {
+  px(ctx, x, y, TILE, TILE, "#2f6f58");
+  for (let i = 0; i < 6; i += 1) {
+    const a = 1 + Math.floor(noise(tx, ty, i) * 12);
+    const b = 3 + Math.floor(noise(tx, ty, i + 5) * 10);
+    px(ctx, x + a, y + b, 1, 3, "#1c4a3b");
+    px(ctx, x + a + 1, y + b - 1, 1, 2, "#7fd6b4");
+    px(ctx, x + a - 1, y + b - 1, 1, 2, "#7fd6b4");
+  }
+}
+
 function drawPath(ctx, x, y, tx, ty) {
   px(ctx, x, y, TILE, TILE, "#dcc48f");
   for (let i = 0; i < 4; i += 1) {
@@ -138,7 +149,8 @@ export function drawWorld(canvas) {
       const x = tx * TILE;
       const y = ty * TILE;
       const ch = tileAt(tx, ty);
-      if (ch === "," ) drawTall(ctx, x, y, tx, ty);
+      if (ch === ",") drawTall(ctx, x, y, tx, ty);
+      else if (ch === "f") drawDeep(ctx, x, y, tx, ty);
       else if (ch === "=") drawPath(ctx, x, y, tx, ty);
       else if (ch === "~") drawWater(ctx, x, y, tx, ty);
       else if (ch === "T") drawTree(ctx, x, y, tx, ty);

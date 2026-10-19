@@ -68,3 +68,18 @@ describe("장비 슬롯", () => {
     expect(toggleSlot(ALL_GEAR, [], "plan").ok).toBe(false);
   });
 });
+
+describe("레거시 숲 도감과 칭호", () => {
+  it("도감에 숲 의뢰 묶음이 있다", () => {
+    const group = codexGroups({}).find((g) => g.group === "레거시 숲 의뢰");
+    expect(group.entries).toHaveLength(6);
+  });
+
+  it("숲 의뢰를 하나 풀면 숲 탐험가, 모두 풀면 레거시 정복자가 된다", () => {
+    const earned = (s, id) => titlesOf(s).find((t) => t.id === id).earned;
+    expect(earned({ ...base, seen: { cron: "win" } }, "forest")).toBe(true);
+    expect(earned({ ...base, seen: { cron: "win" } }, "conqueror")).toBe(false);
+    const all = Object.fromEntries(["spaghetti", "migrate", "cron", "deps", "license", "monolith"].map((id) => [id, "win"]));
+    expect(currentTitle({ ...base, seen: all })).toBe("레거시 정복자");
+  });
+});

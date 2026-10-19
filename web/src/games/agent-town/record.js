@@ -1,6 +1,6 @@
 import { CONTEXT_CAP, USAGE_CAP } from "./battle.js";
 import { isSlotItem, ITEMS, MAX_SLOTS, MEMBERS, slotsOf } from "./party.js";
-import { ALL_TASK_IDS, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
+import { ALL_TASK_IDS, FOREST_TASKS, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
 import { HEIGHT, START, WIDTH, walkable } from "./world.js";
 
 const GEAR_IDS = ITEMS.map((it) => it.id);
@@ -26,6 +26,7 @@ export function snapshot(state) {
     cleared: state.cleared,
     seen: state.seen,
     pool: state.pool,
+    forestPool: state.forestPool ?? [],
     cooldown: state.cooldown,
     bossPhase: 0,
     finished: state.finished,
@@ -69,6 +70,7 @@ export function restore(raw) {
     new Set(raw.party).size === raw.party.length &&
     plain(raw.gear, GEAR_IDS) &&
     slotsOk(raw.slots, raw.gear) &&
+    forestOk(raw.forestPool) &&
     plain(raw.cleared, Object.keys(TRAINER_TASKS)) &&
     plain(raw.seen, ALL_TASK_IDS);
   if (!ok) return null;
@@ -89,6 +91,7 @@ export function restore(raw) {
     cleared: raw.cleared,
     seen: raw.seen,
     pool: raw.pool,
+    forestPool: raw.forestPool ?? forestLeft(raw.seen),
     cooldown: raw.cooldown,
     bossPhase: 0,
     finished: raw.finished,
@@ -103,6 +106,18 @@ export function restore(raw) {
     ending: null,
     saveTick: 0,
   };
+}
+
+/** 숲 의뢰 대기열 정보가 없으면(예전 저장) 통과, 있으면 숲 의뢰만 중복 없이 담겨야 한다. */
+function forestOk(pool) {
+  if (pool === undefined) return true;
+  const ids = FOREST_TASKS.map((t) => t.id);
+  return Array.isArray(pool) && pool.every((id) => ids.includes(id)) && new Set(pool).size === pool.length;
+}
+
+/** 예전 저장에서는 아직 해결하지 않은 숲 의뢰를 정해진 순서대로 대기열에 올린다. */
+function forestLeft(seen) {
+  return FOREST_TASKS.map((t) => t.id).filter((id) => seen[id] !== "win");
 }
 
 /** 슬롯 정보가 없으면(예전 저장) 통과, 있으면 가진 슬롯 장비만 중복 없이 칸 수 안에서 담겨야 한다. */

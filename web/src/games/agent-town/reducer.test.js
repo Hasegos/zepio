@@ -4,7 +4,7 @@ import { adaptive } from "./bots.js";
 import { ITEMS } from "./party.js";
 import { mergeEnding, readData, restore, snapshot, summarize } from "./record.js";
 import { COOLDOWN, initialState, newGame, reducer } from "./reducer.js";
-import { ALL_TASK_IDS, BOSS_PHASES, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
+import { ALL_TASK_IDS, BOSS_PHASES, FOREST_TASKS, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
 import { BOSS_TRUST, GATE_TRUST } from "./world.js";
 
 const run = (state, ...actions) => actions.reduce(reducer, state);
@@ -368,5 +368,64 @@ describe("장비 슬롯과 도감", () => {
     expect(restore({ ...raw, slots: ["plan"] })).toBeNull();
     expect(restore({ ...raw, slots: ["guard", "guard"] })).toBeNull();
     expect(restore({ ...raw, slots: "x" })).toBeNull();
+  });
+});
+
+describe("레거시 숲", () => {
+  const forest = (extra = {}) => ({
+    ...at(started(), 33, 10, "down"),
+    trust: 16,
+    cooldown: 0,
+    ...extra,
+  });
+
+  it("새 게임은 숲 의뢰 대기열을 따로 섞어 둔다", () => {
+    const g = started(3);
+    expect(g.forestPool).toHaveLength(FOREST_TASKS.length);
+    expect(new Set(g.forestPool).size).toBe(FOREST_TASKS.length);
+    expect(g.pool.some((id) => g.forestPool.includes(id))).toBe(false);
+  });
+
+  it("짙은 풀숲을 걸으면 숲 의뢰가, 마을 풀숲에서는 야생 의뢰가 나온다", () => {
+    const s = forest({ forestPool: ["monolith", "cron"] });
+    const hit = run(s, { type: "move", dir: "down", roll: 0 });
+    expect(hit.phase).toBe("battle");
+    expect(hit.battle.id).toBe("monolith");
+    expect(hit.forestPool).toEqual(["cron"]);
+    expect(hit.pool).toEqual(s.pool);
+    const town = run({ ...at(started(), 17, 8, "up"), trust: 3, cooldown: 0, pool: ["button"] }, { type: "move", dir: "up", roll: 0 });
+    expect(town.battle.id).toBe("button");
+  });
+
+  it("실패한 숲 의뢰는 숲 대기열 뒤로 돌아가고, 해결하면 돌아가지 않는다", () => {
+    const s = forest({ forestPool: ["cron"], gear: FULL, slots: ["readRule", "guard", "secret"] });
+    const lost = fight(run(s, { type: "move", dir: "down", roll: 0 }), () => ({ id: "test" }));
+    expect(lost.forestPool).toContain("cron");
+    expect(lost.pool).toEqual(s.pool);
+    const won = fight(run(s, { type: "move", dir: "down", roll: 0 }));
+    expect(won.forestPool).not.toContain("cron");
+    expect(won.seen.cron).toBe("win");
+  });
+
+  it("숲지기는 신뢰에 맞춰 말하고, 신뢰 16 이상이면 사고가 나도 16 밑으로 떨어지지 않는다", () => {
+    const talk = (trust) => run({ ...at(started(), 27, trust >= 16 ? 8 : 9, "right"), trust }, { type: "interact" }).dialog.lines.map((l) => l.text).join(" ");
+    expect(talk(14)).toContain("신뢰 16");
+    expect(talk(16)).toContain("MCP");
+    const b = { ...started(), trust: 17, battle: { kind: "wild", id: "tmp", b: { done: { kind: "disaster", coins: -10, trust: -3 }, context: 0, usage: 0 } }, phase: "battle" };
+    expect(run(b, { type: "battleClose" }).trust).toBe(16);
+  });
+
+  it("숲 대기열은 저장하고 복원하며, 없는 저장은 안 푼 숲 의뢰로 채우고, 어긋난 저장은 버린다", () => {
+    const s = { ...started(7), forestPool: ["cron", "deps"] };
+    const raw = JSON.parse(JSON.stringify(snapshot(s)));
+    expect(restore(raw).forestPool).toEqual(["cron", "deps"]);
+    const { forestPool, ...old } = raw;
+    expect(forestPool).toEqual(["cron", "deps"]);
+    const back = restore({ ...old, seen: { cron: "win" } });
+    expect(back.forestPool).not.toContain("cron");
+    expect(back.forestPool).toHaveLength(FOREST_TASKS.length - 1);
+    expect(restore({ ...raw, forestPool: ["button"] })).toBeNull();
+    expect(restore({ ...raw, forestPool: ["cron", "cron"] })).toBeNull();
+    expect(restore({ ...raw, forestPool: "x" })).toBeNull();
   });
 });

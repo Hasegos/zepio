@@ -5,7 +5,7 @@ import { BUILDINGS } from "./world.js";
 
 const ABOUT = {
   library: "스킬과 CLAUDE.md 규칙을 파는 곳이다. 한 번 사면 계속 쓴다.",
-  forge: "훅을 만드는 곳이다. 훅은 위험한 동작을 실행 직전에 가로막는다.",
+  forge: "훅과 MCP 서버를 만드는 곳이다. 훅은 위험한 동작을 가로막고, MCP 서버는 자료와 요구사항을 알아서 가져온다.",
   compact: "컨텍스트를 요약해 비우는 곳이다. 꽉 차면 전투 중에 알던 것을 잊는다.",
   rest: "사용량 한도가 풀릴 때까지 쉬는 곳이다. 사용량이 바닥나면 의뢰를 할 수 없다.",
 };
@@ -32,7 +32,7 @@ export default function Facility({ state, onBuy, onEquip, onCompact, onRest, onL
         <div className="rounded-lg border-2 border-dashed border-town-ink bg-white p-2.5">
           <p className="text-sm font-extrabold">
             슬롯 {slots.length}/{MAX_SLOTS}
-            <span className="ml-1.5 text-xs font-semibold text-town-ink/85">규칙과 훅은 슬롯에 끼운 것만 전투에서 효과가 난다. 스킬은 슬롯 없이 항상 쓴다.</span>
+            <span className="ml-1.5 text-xs font-semibold text-town-ink/85">규칙, 훅, MCP는 슬롯에 끼운 것만 전투에서 효과가 난다. 스킬은 슬롯 없이 항상 쓴다.</span>
           </p>
           <ul aria-label="끼운 장비" className="mt-1.5 flex min-h-7 flex-wrap gap-1.5">
             {slots.length === 0 && <li className="text-xs font-semibold text-town-ink/80">비어 있다</li>}

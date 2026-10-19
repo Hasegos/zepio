@@ -1,4 +1,4 @@
-import { BOSS_TRUST, GATE_TRUST } from "./world.js";
+import { BOSS_TRUST, FOREST_TRUST, GATE_TRUST } from "./world.js";
 
 const say = (who, text) => ({ who, text });
 
@@ -40,6 +40,7 @@ function zepiBase(state) {
   return [
     say("제피", "신뢰가 충분해! 작업장에서 팀장 박이 기다려."),
     say("제피", "들어가기 전에 쉼터에서 사용량을 채우고, 정리소에서 컨텍스트를 비워 두는 게 좋아."),
+    say("제피", `신뢰가 ${FOREST_TRUST}이 되면 동쪽 숲지기가 레거시 숲을 열어 준대. 거기 의뢰는 훨씬 어려워.`),
   ];
 }
 
@@ -57,6 +58,25 @@ export function guardLines(state) {
     ];
   }
   return [say("경비 로봇", "삐빅. 신뢰 확인 완료. 통과하십시오.")];
+}
+
+/**
+ * 숲지기의 대사를 만든다.
+ *
+ * @param state 게임 상태
+ * @returns 대사 목록
+ */
+export function keeperLines(state) {
+  if (state.trust < FOREST_TRUST) {
+    return [
+      say("숲지기", `이 동쪽은 레거시 숲이에요. 신뢰 ${FOREST_TRUST} 미만은 길을 잃어요. (현재 ${state.trust})`),
+      say("숲지기", "숲에는 20년 묵은 코드와 주인 없는 크론잡이 살아요. 마을 일부터 잘 해내고 오세요."),
+    ];
+  }
+  return [
+    say("숲지기", "신뢰가 두둑하네요. 숲에서는 문서 서버(MCP)를 챙기고, 큰 일은 정확한 모델로 바꾸세요."),
+    say("숲지기", "짙은 풀숲에서 숲의 의뢰가 나타나요. 숲의 주인은 가장 안쪽에 있다는 소문이에요."),
+  ];
 }
 
 export const TRAINER_TALK = {
@@ -91,6 +111,7 @@ export const TIPS = [
   "[CLAUDE.md] 급한 의뢰는 인내심이 두 배로 닳는다. 필요한 것만 하라.",
   "[CLAUDE.md] 컨텍스트가 가득 차면 자동으로 요약되며 알던 것을 잊는다. 정리소를 이용하라.",
   "[CLAUDE.md] 숫자와 출처는 자료를 읽고 써라. 안 읽고 쓰면 그럴듯한 거짓(환각)이 섞이고, 테스트로는 잡히지 않는다.",
+  "[CLAUDE.md] 빠른 모델은 사용량을 아끼지만 큰 일과 근거가 필요한 일은 대충 쓴다. 전투 중에 모델을 바꿀 수 있다.",
   "[CLAUDE.md] 규칙과 훅은 슬롯 3칸에만 끼울 수 있다. 도서관이나 대장간에서 지금 의뢰에 맞게 바꿔 끼워라.",
 ];
 

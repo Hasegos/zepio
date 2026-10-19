@@ -10,8 +10,8 @@ import {
   usageCost,
 } from "./battle.js";
 import { adaptive, fullPipeline, readEditTest, runBattle, yolo } from "./bots.js";
-import { activeGear, buy } from "./party.js";
-import { ALL_TASK_IDS, BOSS_PHASES, TRAINER_TASKS, WILD_TASKS, taskById } from "./tasks.js";
+import { activeGear, buy, isSlotItem, ITEMS } from "./party.js";
+import { ALL_TASK_IDS, BOSS_PHASES, FOREST_TASKS, TRAINER_TASKS, WILD_TASKS, taskById } from "./tasks.js";
 
 const NONE = {};
 const ALL = { plan: true, grep: true, readRule: true, askRule: true, guard: true, secret: true, autotest: true };
@@ -358,5 +358,88 @@ describe("환각 의뢰", () => {
     const hallu = ALL_TASK_IDS.filter((id) => task(id).hallu);
     expect(hallu.length).toBeGreaterThanOrEqual(4);
     for (const id of hallu) expect(task(id).locate, id).toBe(true);
+  });
+});
+
+describe("모델 선택", () => {
+  it("모델 바꾸기는 무료이고 인내심을 쓰지 않으며 누를 때마다 바뀐다", () => {
+    const b = startBattle(task("button"));
+    const move = availableMoves(b, NONE, []).find((m) => m.id === "model");
+    expect(move).toMatchObject({ cost: 0, enabled: true, label: "빠른 모델로" });
+    const fast = playMove(b, NONE, "model");
+    expect(fast.fast).toBe(true);
+    expect(fast.patience).toBe(b.patience);
+    expect(availableMoves(fast, NONE, []).find((m) => m.id === "model").label).toBe("정확한 모델로");
+    expect(playMove(fast, NONE, "model").fast).toBe(false);
+  });
+
+  it("빠른 모델은 수정 사용량을 1 아낀다", () => {
+    const b = startBattle(task("button"));
+    const fast = playMove(b, NONE, "model");
+    expect(usageCost(fast, NONE, "edit")).toBe(usageCost(b, NONE, "edit") - 1);
+    expect(playMove(fast, NONE, "edit").usage).toBe(b.usage + 1);
+  });
+
+  it("빠른 모델로 큰 일을 하면 버그가, 근거가 필요한 일을 하면 지어낸 내용이 생긴다", () => {
+    const big = play(startBattle(task("list")), { plan: true }, "plan", "model", "edit");
+    expect(big.bugs).toBe(1);
+    const accurate = play(startBattle(task("list")), { plan: true }, "plan", "edit");
+    expect(accurate.bugs).toBe(0);
+    const hallu = play(startBattle(task("apidoc")), NONE, "read", "model", "edit");
+    expect(hallu.fake).toBe(true);
+    expect(play(startBattle(task("button")), NONE, "model", "edit").done.kind).toBe("win");
+  });
+
+  it("제피는 빠른 모델로 큰 일을 하려 하면 바꾸라고 귀띔한다", () => {
+    const b = play(startBattle(task("list")), { plan: true }, "plan", "model");
+    expect(hintFor(b, { plan: true })).toContain("정확한 모델");
+  });
+});
+
+describe("MCP 서버", () => {
+  it("문서 서버는 근거가 필요한 일에서 읽지 않아도 지어내지 않고 사용량도 안 쓴다", () => {
+    const gear = { mcpDocs: true, readRule: true };
+    const b = startBattle(task("report"));
+    expect(usageCost(b, gear, "edit")).toBe(2);
+    const next = playMove(b, gear, "edit");
+    expect(next.fake).toBe(false);
+    expect(next.located).toBe(true);
+    expect(next.usage).toBe(2);
+  });
+
+  it("이슈 서버는 모호한 의뢰를 질문 없이, 사용량 없이 풀어 준다", () => {
+    const gear = { mcpTicket: true, askRule: true };
+    const b = startBattle(task("pretty"));
+    expect(usageCost(b, gear, "edit")).toBe(2);
+    const next = play(b, gear, "edit", "edit");
+    expect(next.clarified).toBe(true);
+    expect(next.done.kind).toBe("win");
+    expect(next.usage).toBe(4);
+  });
+
+  it("MCP는 슬롯 장비이고 대장간에서 판다", () => {
+    for (const id of ["mcpDocs", "mcpTicket"]) {
+      expect(isSlotItem(id)).toBe(true);
+      expect(ITEMS.find((it) => it.id === id).place).toBe("forge");
+    }
+  });
+});
+
+describe("레거시 숲 의뢰", () => {
+  it("숲 의뢰 6개는 모두 더 어려운 조합이고 보상이 크다", () => {
+    expect(FOREST_TASKS).toHaveLength(6);
+    for (const t of FOREST_TASKS) {
+      const flags = ["locate", "ambiguous", "big", "urgent", "danger", "injection", "hallu"].filter((k) => t[k]);
+      expect(flags.length, t.id).toBeGreaterThanOrEqual(2);
+      expect(t.coins, t.id).toBeGreaterThanOrEqual(24);
+    }
+    expect(ALL_TASK_IDS).toEqual(expect.arrayContaining(FOREST_TASKS.map((t) => t.id)));
+  });
+
+  it("전설의 모놀리스는 위험, 근거, 큰 일을 모두 요구해 한 가지로는 못 푼다", () => {
+    const m = task("monolith");
+    const yoloEnd = runBattle(startBattle(m), NONE, [], yolo);
+    expect(yoloEnd.done.kind).not.toBe("win");
+    expect(runBattle(startBattle(m), ALL, [], adaptive).done.kind).toBe("win");
   });
 });

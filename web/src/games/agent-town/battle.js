@@ -25,6 +25,7 @@ export function startBattle(task, carry = {}) {
     revealed: !task.injection,
     bugs: 0,
     fake: false,
+    fast: false,
     rejects: 0,
     context: carry.context ?? 0,
     usage: carry.usage ?? 0,
@@ -47,15 +48,16 @@ export function usageCost(b, gear, id) {
   switch (id) {
     case "edit":
       return (
-        2 +
-        (gear.readRule && t.locate && !b.located ? 1 : 0) +
-        (gear.askRule && t.ambiguous && !b.clarified ? 1 : 0) +
+        (b.fast ? 1 : 2) +
+        (gear.readRule && t.locate && !b.located && !(gear.mcpDocs && t.hallu) ? 1 : 0) +
+        (gear.askRule && t.ambiguous && !b.clarified && !gear.mcpTicket ? 1 : 0) +
         (gear.autotest ? 1 : 0)
       );
     case "summon":
       return 3;
     case "refuse":
     case "hint":
+    case "model":
       return 0;
     default:
       return 1;
@@ -91,6 +93,7 @@ export function availableMoves(b, gear, party) {
     summon.enabled = summon.enabled && summon.members.some((m) => !m.used);
     moves.push(summon);
   }
+  moves.push(move("model", b.fast ? "정확한 모델로" : "빠른 모델로"));
   moves.push(move("refuse", "거절하기"));
   return moves;
 }
@@ -120,6 +123,7 @@ export function hintFor(b, gear) {
       : "제피: 일이 꽤 커. 도서관에서 계획 모드를 사 오면 훨씬 수월할 거야.";
   }
   if (b.bugs > 0) return "제피: 아까 급하게 고친 곳이 불안해. 테스트를 돌려 보자.";
+  if (b.fast && (t.big || t.hallu)) return "제피: 큰 일이나 근거가 필요한 일은 빠른 모델이 대충 써. 정확한 모델로 바꾸자.";
   if (t.urgent) return "제피: 급한 의뢰야. 꼭 필요한 것만 하고 끝내자.";
   return "제피: 이제 고치기만 하면 될 것 같아.";
 }
@@ -181,9 +185,17 @@ function compact(s) {
 
 function editCode(s, gear) {
   const t = s.task;
-  s.usage += 2;
+  s.usage += s.fast ? 1 : 2;
   s.context += 1;
   s.patience -= drain(t);
+  if (gear.mcpDocs && t.hallu && !s.located) {
+    s.located = true;
+    s.lines.push("MCP 문서 서버가 자료를 가져왔다.");
+  }
+  if (gear.mcpTicket && t.ambiguous && !s.clarified) {
+    s.clarified = true;
+    s.lines.push(`MCP 이슈 서버: "${t.answer}"`);
+  }
   if (gear.readRule && t.locate && !s.located) {
     s.lines.push("CLAUDE.md: \"고치기 전에 먼저 읽어\"");
     readFile(s, gear, true);
@@ -229,6 +241,12 @@ function editCode(s, gear) {
   } else if (t.locate && !s.located) {
     s.bugs += 1;
     s.lines.push("어디를 고치는지도 모르고 급하게 손댔다. 어딘가 불안하다.");
+  } else if (s.fast && t.hallu) {
+    s.fake = true;
+    s.lines.push("빠른 모델이 대충 써서 근거 없는 문장이 섞인 것 같다.");
+  } else if (s.fast && t.big) {
+    s.bugs += 1;
+    s.lines.push("빠른 모델이 큰 일을 대충 처리했다. 어딘가 불안하다.");
   } else {
     s.lines.push("코드를 고쳤다.");
   }
@@ -348,7 +366,7 @@ function settle(s) {
  *
  * @param b 전투 상태
  * @param gear 가진 장비
- * @param id ask, read, plan, edit, test, summon, refuse
+ * @param id ask, read, plan, edit, test, summon, refuse, hint, model
  * @param arg summon일 때 동료 식별자
  * @returns 새 전투 상태(할 수 없는 수면 같은 상태를 그대로 돌려준다)
  */
@@ -358,7 +376,7 @@ export function playMove(b, gear, id, arg) {
   if (id === "summon" && (b.used.includes(arg) || !Object.hasOwn(MEMBERS, arg))) return b;
   if (usageCost(b, gear, id) > USAGE_CAP - b.usage) return b;
   const s = { ...b, lines: [], used: [...b.used] };
-  if (id !== "refuse" && id !== "hint" && s.context >= CONTEXT_CAP) compact(s);
+  if (id !== "refuse" && id !== "hint" && id !== "model" && s.context >= CONTEXT_CAP) compact(s);
   switch (id) {
     case "ask":
       askClient(s, false);
@@ -387,6 +405,10 @@ export function playMove(b, gear, id, arg) {
       break;
     case "hint":
       s.lines.push(hintFor(s, gear));
+      break;
+    case "model":
+      s.fast = !s.fast;
+      s.lines.push(s.fast ? "빠른 모델로 바꿨다. 사용량은 아끼지만 큰 일과 근거가 필요한 일은 대충 쓴다." : "정확한 모델로 바꿨다. 사용량이 더 들지만 꼼꼼하다.");
       break;
     default:
       return b;

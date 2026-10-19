@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BOSS_TRUST,
+  FOREST_TRUST,
   buildingAtDoor,
   BUILDINGS,
   facing,
@@ -112,5 +113,24 @@ describe("마주 보기", () => {
   it("경비는 신뢰가 쌓이면 길을 비킨다", () => {
     expect(npcsFor(0).find((n) => n.id === "guard")).toMatchObject({ x: 15, y: 9 });
     expect(npcsFor(GATE_TRUST).find((n) => n.id === "guard").x).toBeLessThan(15);
+  });
+});
+
+describe("레거시 숲", () => {
+  it("숲지기가 길을 막고 있는 동안은 숲에 갈 수 없고, 신뢰 16이면 비켜 준다", () => {
+    const closed = reachable(BOSS_TRUST);
+    expect(closed.has("35,5")).toBe(false);
+    expect(closed.has("29,9")).toBe(false);
+    expect(npcsFor(BOSS_TRUST).find((n) => n.id === "keeper")).toMatchObject({ x: 28, y: 9 });
+    const open = reachable(FOREST_TRUST);
+    expect(open.has("35,5")).toBe(true);
+    expect(open.has("35,13")).toBe(true);
+    expect(npcsFor(FOREST_TRUST).find((n) => n.id === "keeper").y).toBe(8);
+  });
+
+  it("숲에는 짙은 풀숲(f)이 있고 마을에는 없다", () => {
+    const rows = TERRAIN.map((row) => [...row]);
+    expect(rows.flatMap((row, y) => row.map((ch, x) => (ch === "f" ? x : -1)).filter((x) => x >= 0 && y >= 0)).every((x) => x >= 30)).toBe(true);
+    expect(TERRAIN.some((row) => row.includes("f"))).toBe(true);
   });
 });

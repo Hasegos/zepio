@@ -48,6 +48,22 @@ export const ITEMS = [
     desc: "문서에 숨은 지시로 키가 새 나가는 것을 막는다.",
   },
   {
+    id: "mcpDocs",
+    place: "forge",
+    kind: "MCP",
+    name: "문서 서버(MCP)",
+    cost: 16,
+    desc: "근거가 필요한 일에서 자료를 알아서 가져온다. 읽지 않고 써도 지어내지 않는다.",
+  },
+  {
+    id: "mcpTicket",
+    place: "forge",
+    kind: "MCP",
+    name: "이슈 서버(MCP)",
+    cost: 16,
+    desc: "모호한 의뢰의 요구사항을 이슈에서 알아서 찾아온다. 질문하지 않아도 되고 사용량도 들지 않는다.",
+  },
+  {
     id: "autotest",
     place: "forge",
     kind: "훅",
