@@ -10,7 +10,7 @@ import { liveGames } from "../games/registry.js";
   <h1 class="text-3xl font-extrabold">Play Something New</h1>
   <p class="mt-2 text-slate-600">다운로드나 회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임.</p>
 
-  <h2 class="mb-3 mt-8 text-xl font-bold">추천 게임</h2>
+  <h2 id="games" class="mb-3 mt-8 scroll-mt-4 text-xl font-bold">추천 게임</h2>
   <ul class="grid gap-4 sm:grid-cols-2">
     {
       liveGames.map((game) => (
