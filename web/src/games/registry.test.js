@@ -51,7 +51,7 @@ describe("registry", () => {
     }
   });
 
-  it("썸네일 파일이 public에 있고 title용 설명이 중복되지 않는다", () => {
+  it("썸네일 파일이 public에 있고 설명이 중복되지 않는다", () => {
     for (const game of games) {
       expect(existsSync(join(process.cwd(), "public", game.thumbnail)), game.thumbnail).toBe(true);
     }

@@ -3,6 +3,11 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import GameStage from "../../components/GameStage.astro";
 import { liveGames } from "../../games/registry.js";
 
+/**
+ * live 게임마다 정적 페이지 경로를 만든다.
+ *
+ * @returns 슬러그와 게임 항목 목록
+ */
 export function getStaticPaths() {
   return liveGames.map((game) => ({ params: { slug: game.slug }, props: { game } }));
 }
