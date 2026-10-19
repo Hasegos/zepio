@@ -1,6 +1,5 @@
 import { summarize as agentTown } from "./agent-town/record.js";
 import { summarize as colorClash } from "./color-clash/record.js";
-import { summarize as cozyCafe } from "./cozy-cafe/record.js";
 import { summarize as halluDetective } from "./hallu-detective/record.js";
 import { summarize as lightFlip } from "./light-flip/record.js";
 import { summarize as memorySequence } from "./memory-sequence/record.js";
@@ -12,7 +11,6 @@ export const summarizers = {
   "memory-sequence": memorySequence,
   "color-clash": colorClash,
   "light-flip": lightFlip,
-  "cozy-cafe": cozyCafe,
   "tiny-isle": tinyIsle,
   "agent-town": agentTown,
   "hallu-detective": halluDetective,
