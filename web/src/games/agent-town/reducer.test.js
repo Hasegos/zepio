@@ -522,6 +522,129 @@ describe("지역 저장", () => {
 
   it("홈 카드 요약에 뱃지 수가 나온다", () => {
     const play = { v: 1, save: snapshot({ ...started(), badges: ["town"] }), best: {} };
-    expect(summarize(play)).toContain("뱃지 1/2");
+    expect(summarize(play)).toContain("뱃지 1/4");
+  });
+});
+
+describe("토큰 항구와 서버 동굴", () => {
+  const pass = { trust: 40, badges: ["town", "forest"] };
+  const geared = { gear: { ...FULL, cache: true, lantern: true, mcpDocs: true, mcpTicket: true }, slots: ["readRule", "guard", "secret"] };
+  const walk = (state, dir, roll = 1) => run(state, { type: "move", dir, roll });
+
+  it("새 게임은 네 지역의 대기열을 모두 따로 섞는다", () => {
+    const g = started(3);
+    expect(Object.keys(g.pools).sort()).toEqual(["cave", "forest", "harbor", "town"]);
+    expect(g.pools.harbor).toHaveLength(6);
+    expect(g.pools.cave).toHaveLength(6);
+    const all = Object.values(g.pools).flat();
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("마을 남쪽 입구는 항구로, 항구 북쪽 입구는 마을로 이어진다", () => {
+    const s = { ...at(started(), 7, 18, "down"), ...pass };
+    const harbor = walk(s, "down");
+    expect(harbor).toMatchObject({ map: "harbor", player: { x: 7, y: 1, dir: "down" } });
+    expect(harbor.notice).toContain("토큰 항구");
+    const back = walk({ ...harbor, player: { x: 7, y: 1, dir: "up" } }, "up");
+    expect(back).toMatchObject({ map: "town", player: { x: 7, y: 18, dir: "up" } });
+  });
+
+  it("합격 뱃지가 없으면 항구 문지기가 길을 막고 말해 준다", () => {
+    const s = { ...at(started(), 7, 17, "down"), trust: 40 };
+    expect(walk(s, "down").player.y).toBe(17);
+    const lines = (badges) => run({ ...started(), map: "town", trust: 40, badges, player: { x: 7, y: 17, dir: "down" } }, { type: "interact" }).dialog.lines.map((l) => l.text).join(" ");
+    expect(lines([])).toContain("합격 뱃지");
+    const open = run({ ...started(), map: "town", trust: 40, badges: ["town"], player: { x: 8, y: 17, dir: "down" } }, { type: "interact" });
+    expect(open.dialog.lines.map((l) => l.text).join(" ")).toContain("캐시");
+  });
+
+  it("숲 북쪽 입구는 근거 뱃지가 있어야 서버 동굴로 이어지고, 돌아올 수 있다", () => {
+    const s = { ...at(started(), 27, 1, "up"), map: "forest", ...pass };
+    const cave = walk(s, "up");
+    expect(cave).toMatchObject({ map: "cave", player: { x: 14, y: 18, dir: "up" } });
+    const back = walk({ ...cave, player: { x: 14, y: 18, dir: "down" } }, "down");
+    expect(back).toMatchObject({ map: "forest", player: { x: 27, y: 1, dir: "down" } });
+    const blocked = walk({ ...at(started(), 27, 3, "up"), map: "forest", trust: 40, badges: ["town"] }, "up");
+    expect(blocked.player).toMatchObject({ x: 27, y: 3 });
+    const talk = run({ ...blocked, player: { x: 27, y: 3, dir: "up" } }, { type: "interact" });
+    expect(talk.dialog.lines.map((l) => l.text).join(" ")).toContain("근거 뱃지");
+  });
+
+  it("항구 상자 칸에서는 피크 요금 의뢰가 나오고 전투 로그에 알린다", () => {
+    const s = { ...at(started(), 4, 10, "down"), map: "harbor", ...pass, cooldown: 0, pools: { ...started().pools, harbor: ["invoice"] } };
+    const hit = walk(s, "down", 0);
+    expect(hit.phase).toBe("battle");
+    expect(hit.battle.id).toBe("invoice");
+    expect(hit.battle.b.peak).toBe(true);
+    expect(hit.battle.b.lines.join(" ")).toContain("피크");
+    const cached = walk({ ...s, gear: { cache: true } }, "down", 0);
+    expect(cached.battle.b.lines.join(" ")).toContain("캐시가 추가 요금을 막아");
+  });
+
+  it("동굴 케이블 바닥에서는 동굴 의뢰가 나오고, 한도에 닿으면 대피소에서 쉰다", () => {
+    const s = { ...at(started(), 4, 9, "down"), map: "cave", ...pass, cooldown: 0, usage: USAGE_CAP - 1, pools: { ...started().pools, cave: ["certs"] } };
+    const hit = walk(s, "down", 0);
+    expect(hit.battle.id).toBe("certs");
+    const end = fight(hit, () => ({ id: "read" }));
+    expect(end).toMatchObject({ map: "cave", usage: 0, player: { x: 5, y: 5 } });
+  });
+
+  it("항구 체육관은 신뢰 26 이상이어야 열리고 정산 뱃지를 준다", () => {
+    const door = (trust, extra = {}) => walk({ ...at(started(), 23, 5, "up"), map: "harbor", ...pass, trust, ...geared, ...extra }, "up");
+    expect(door(25).dialog.lines[0].who).toBe("경리부장");
+    expect(door(25).phase).toBe("map");
+    const start = talkThrough(door(26));
+    expect(start.battle).toMatchObject({ kind: "gym", gym: "harbor", id: "hg1" });
+    const won = fight(start);
+    expect(won.badges).toEqual(["town", "forest", "harbor"]);
+    expect(won.ending).toBeNull();
+    expect(won.player).toMatchObject({ x: 23, y: 5 });
+    expect(door(26, { badges: ["town", "forest", "harbor"] }).phase).toBe("map");
+  });
+
+  it("체육관 마지막 단계를 사용량 한도에서 이겨도 뱃지를 받고 사용량이 풀린다", () => {
+    const b = { done: { kind: "win", coins: 0, trust: 0 }, context: 0, usage: USAGE_CAP };
+    const s = { ...started(), map: "harbor", ...pass, gymPhase: 2, phase: "battle", battle: { kind: "gym", gym: "harbor", id: "hg3", b } };
+    const end = run(s, { type: "battleClose" });
+    expect(end.badges).toContain("harbor");
+    expect(end.usage).toBe(0);
+    expect(end.dialog.lines.at(-1).text).toContain("사용량");
+  });
+
+  it("캐시가 없으면 항구 시험에서 사용량이 바닥나 쉼터로 돌아간다", () => {
+    const door = { ...at(started(), 23, 5, "up"), map: "harbor", ...pass, trust: 26, gear: { ...geared.gear, cache: false }, slots: geared.slots };
+    const lost = fight(talkThrough(walk(door, "up")), () => ({ id: "read" }));
+    expect(lost.badges).not.toContain("harbor");
+    expect(lost.gymPhase).toBe(0);
+  });
+
+  it("동굴 체육관은 신뢰 30 이상이어야 열리고 보안 뱃지를 준다", () => {
+    const door = (trust, extra = {}) => walk({ ...at(started(), 25, 5, "up"), map: "cave", ...pass, trust, ...geared, ...extra }, "up");
+    expect(door(29).dialog.lines[0].who).toBe("보안팀장");
+    const start = talkThrough(door(30));
+    expect(start.battle).toMatchObject({ kind: "gym", gym: "cave", id: "cg1" });
+    const won = fight(start);
+    expect(won.badges).toContain("cave");
+    expect(won.map).toBe("cave");
+    expect(won.dialog.lines[0].who).toBe("보안팀장");
+  });
+
+  it("예전 저장에 항구와 동굴 대기열이 없으면 안 푼 의뢰로 채워 읽는다", () => {
+    const raw = JSON.parse(JSON.stringify(snapshot({ ...started(7), seen: { invoice: "win" } })));
+    const { harbor, cave, ...rest } = raw.pools;
+    expect(harbor).toHaveLength(6);
+    expect(cave).toHaveLength(6);
+    const back = restore({ ...raw, pools: rest });
+    expect(back.pools.harbor).not.toContain("invoice");
+    expect(back.pools.harbor).toHaveLength(5);
+    expect(back.pools.cave).toHaveLength(6);
+    expect(restore({ ...raw, pools: { ...raw.pools, harbor: ["button"] } })).toBeNull();
+  });
+
+  it("지역 저장: 항구와 동굴 위치와 정산 · 보안 뱃지를 복원한다", () => {
+    const harbor = restore(JSON.parse(JSON.stringify(snapshot({ ...started(7), map: "harbor", player: { x: 7, y: 1, dir: "down" }, badges: ["town", "harbor"] }))));
+    expect(harbor).toMatchObject({ map: "harbor", badges: ["town", "harbor"], player: { x: 7, y: 1 } });
+    const cave = restore({ ...JSON.parse(JSON.stringify(snapshot({ ...started(7), map: "cave", badges: ["cave"] }))), player: { x: 0, y: 0, dir: "up" } });
+    expect(cave).toMatchObject({ map: "cave", player: { x: 5, y: 5 } });
   });
 });

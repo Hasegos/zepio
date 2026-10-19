@@ -80,6 +80,19 @@ describe("레거시 숲 도감과 칭호", () => {
     expect(group.entries).toHaveLength(3);
   });
 
+  it("도감에 항구와 동굴 묶음과 두 곳의 시험이 있다", () => {
+    const names = codexGroups({}).map((g) => g.group);
+    expect(names).toEqual(expect.arrayContaining(["토큰 항구 의뢰", "서버 동굴 의뢰", "경리부장의 시험", "보안팀장의 시험"]));
+  });
+
+  it("정산 뱃지와 보안 뱃지를 받으면 각각 칭호를 얻는다", () => {
+    const earned = (s, id) => titlesOf(s).find((t) => t.id === id).earned;
+    expect(earned({ ...base, badges: ["harbor"] }, "ledger")).toBe(true);
+    expect(earned(base, "ledger")).toBe(false);
+    expect(earned({ ...base, badges: ["cave"] }, "guardian")).toBe(true);
+    expect(earned(base, "guardian")).toBe(false);
+  });
+
   it("숲의 주인에게 근거 뱃지를 받으면 근거의 수호자가 된다", () => {
     const earned = (s, id) => titlesOf(s).find((t) => t.id === id).earned;
     expect(earned(base, "evidence")).toBe(false);

@@ -104,7 +104,7 @@ describe("AgentTown", () => {
     await mount();
     await click(button("이어하기"));
     expect(text()).toContain("프롬프트 마을");
-    expect(text()).toContain("뱃지 1/2");
+    expect(text()).toContain("뱃지 1/4");
     await press("ArrowRight");
     expect(text()).toContain("레거시 숲");
     expect(el.querySelector('[role="img"][aria-label^="레거시 숲"]')).toBeTruthy();
