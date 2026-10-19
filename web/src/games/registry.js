@@ -1,5 +1,4 @@
 import agentTown from "./agent-town/meta.js";
-import cozyCafe from "./cozy-cafe/meta.js";
 import colorClash from "./color-clash/meta.js";
 import halluDetective from "./hallu-detective/meta.js";
 import lightFlip from "./light-flip/meta.js";
@@ -12,7 +11,6 @@ export const games = [
   { ...memorySequence, load: () => import("./memory-sequence/index.jsx") },
   { ...colorClash, load: () => import("./color-clash/index.jsx") },
   { ...lightFlip, load: () => import("./light-flip/index.jsx") },
-  { ...cozyCafe, load: () => import("./cozy-cafe/index.jsx") },
   { ...tinyIsle, load: () => import("./tiny-isle/index.jsx") },
   { ...agentTown, load: () => import("./agent-town/index.jsx") },
   { ...halluDetective, load: () => import("./hallu-detective/index.jsx") },
