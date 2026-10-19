@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getGameData, loadRecords, saveResult } from "./storage.js";
+import { getDaily, getGameData, loadRecords, saveDaily, saveResult } from "./storage.js";
 
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.restoreAllMocks());
 
 describe("storage", () => {
   it("저장된 것이 없으면 빈 기록이다", () => {
-    expect(loadRecords()).toEqual({ v: 1, games: {}, recent: [] });
+    expect(loadRecords()).toEqual({ v: 1, games: {}, recent: [], daily: {} });
     expect(getGameData("a")).toBeNull();
   });
 
@@ -25,7 +25,7 @@ describe("storage", () => {
   it("깨진 JSON이나 다른 버전이나 잘못된 모양이면 빈 기록으로 시작한다", () => {
     for (const raw of ["{broken", JSON.stringify({ v: 2, games: {}, recent: [] }), '{"v":1,"games":null,"recent":[]}']) {
       localStorage.setItem("zepio:v1", raw);
-      expect(loadRecords()).toEqual({ v: 1, games: {}, recent: [] });
+      expect(loadRecords()).toEqual({ v: 1, games: {}, recent: [], daily: {} });
     }
   });
 
@@ -43,5 +43,28 @@ describe("storage", () => {
     });
     expect(loadRecords().games).toEqual({});
     expect(saveResult("a", 1, { best: 1 })).toEqual({ plays: 1, saved: false });
+  });
+
+  it("일일 기록을 게임별로 저장하고, 결과 저장이 일일 기록을 지우지 않는다", () => {
+    expect(getDaily("a")).toBeNull();
+    expect(saveDaily("a", { last: "2026-10-19", streak: 1, max: 1, history: {} })).toBe(true);
+    saveResult("a", 1, { best: 1 });
+    expect(getDaily("a")).toEqual({ last: "2026-10-19", streak: 1, max: 1, history: {} });
+    expect(getDaily("b")).toBeNull();
+  });
+
+  it("daily 없이 저장된 이전 기록도 읽고 daily가 잘못된 모양이면 빈 값으로 본다", () => {
+    localStorage.setItem("zepio:v1", JSON.stringify({ v: 1, games: { a: { plays: 2 } }, recent: [] }));
+    expect(loadRecords().daily).toEqual({});
+    expect(loadRecords().games.a.plays).toBe(2);
+    localStorage.setItem("zepio:v1", JSON.stringify({ v: 1, games: {}, recent: [], daily: [1] }));
+    expect(loadRecords().daily).toEqual({});
+  });
+
+  it("일일 기록 저장도 저장소를 쓸 수 없으면 false를 돌려준다", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota");
+    });
+    expect(saveDaily("a", { last: "x", streak: 1, max: 1, history: {} })).toBe(false);
   });
 });
