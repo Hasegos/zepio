@@ -12,8 +12,9 @@ import { mergeEnding, readData, restore, snapshot } from "./record.js";
 import { initialState, reducer } from "./reducer.js";
 import Title, { Ending } from "./Title.jsx";
 import { useAudio } from "./useAudio.js";
+import { MAPS } from "./world.js";
 
-const TRACK = { title: "title", map: "town", facility: "town", ending: "ending" };
+const TRACK = { title: "title", ending: "ending" };
 
 const KEY_DIRS = {
   ArrowUp: "up",
@@ -42,9 +43,10 @@ export default function AgentTown() {
   const rootRef = useRef(null);
   const [muted, setMuted] = useState(() => readData(getGameData(meta.id)).muted);
   const audio = useAudio(muted);
-  const prevView = useRef({ phase: state.phase, x: state.player?.x, y: state.player?.y });
+  const prevView = useRef({ phase: state.phase, map: state.map, x: state.player?.x, y: state.player?.y });
 
-  const track = TRACK[state.phase] ?? (state.battle?.kind === "boss" ? "boss" : "battle");
+  const onMap = state.phase === "map" || state.phase === "facility";
+  const track = TRACK[state.phase] ?? (onMap ? MAPS[state.map].track : state.battle?.kind === "gym" ? "boss" : "battle");
   useEffect(() => {
     audio.music(track);
   }, [audio, track]);
@@ -53,9 +55,10 @@ export default function AgentTown() {
     const prev = prevView.current;
     const { phase, player } = state;
     if (phase === "battle" && prev.phase !== "battle") audio.sfx("encounter");
+    else if (phase === "map" && prev.phase === "map" && state.map !== prev.map) audio.sfx("warp");
     else if (phase === "map" && prev.phase === "map" && (player.x !== prev.x || player.y !== prev.y)) audio.sfx("step");
-    prevView.current = { phase, x: player?.x, y: player?.y };
-  }, [audio, state.phase, state.player]);
+    prevView.current = { phase, map: state.map, x: player?.x, y: player?.y };
+  }, [audio, state.phase, state.player, state.map]);
 
   const toggleMuted = useCallback(() => {
     const next = !muted;

@@ -83,7 +83,7 @@ describe("AgentTown", () => {
 
   it("풀숲에서 의뢰가 나타나면 전투를 하고, 이기면 코인과 신뢰를 받고 저장된다", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
-    seed({ trust: 3, pool: ["button"], cooldown: 0, player: { x: 16, y: 11, dir: "right" } });
+    seed({ trust: 3, pools: { town: ["button"], forest: [] }, cooldown: 0, player: { x: 16, y: 11, dir: "right" } });
     await mount();
     await click(button("이어하기"));
     await press("ArrowRight");
@@ -96,7 +96,20 @@ describe("AgentTown", () => {
     const saved = getGameData(ID).save;
     expect(saved).toMatchObject({ coins: 8, trust: 5 });
     expect(saved.seen.button).toBe("win");
-    expect(saved.pool).toEqual([]);
+    expect(saved.pools.town).toEqual([]);
+  });
+
+  it("동쪽 입구를 지나면 레거시 숲으로 넘어가 지역 이름과 뱃지를 보여 주고 저장한다", async () => {
+    seed({ trust: 16, badges: ["town"], player: { x: 28, y: 9, dir: "right" } });
+    await mount();
+    await click(button("이어하기"));
+    expect(text()).toContain("프롬프트 마을");
+    expect(text()).toContain("뱃지 1/2");
+    await press("ArrowRight");
+    expect(text()).toContain("레거시 숲");
+    expect(el.querySelector('[role="img"][aria-label^="레거시 숲"]')).toBeTruthy();
+    expect(text()).toContain("신뢰 16/22");
+    expect(getGameData(ID).save).toMatchObject({ map: "forest", player: { x: 1, y: 9 } });
   });
 
   it("건물에 들어가 코인으로 장비를 사면 바로 저장된다", async () => {
@@ -114,7 +127,7 @@ describe("AgentTown", () => {
 
   it("전투 중 기술 버튼은 사용량이 모자라면 눌리지 않는다", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
-    seed({ usage: 17, pool: ["login"], cooldown: 0, trust: 3, player: { x: 16, y: 11, dir: "right" } });
+    seed({ usage: 17, pools: { town: ["login"], forest: [] }, cooldown: 0, trust: 3, player: { x: 16, y: 11, dir: "right" } });
     await mount();
     await click(button("이어하기"));
     await press("ArrowRight");

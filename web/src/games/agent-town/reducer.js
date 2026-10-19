@@ -1,28 +1,32 @@
 import { CONTEXT_CAP, playMove, startBattle, USAGE_CAP } from "./battle.js";
 import { currentTitle } from "./codex.js";
-import { activeGear, buy, isSlotItem, ITEMS, MEMBERS, slotsOf, toggleSlot, MAX_SLOTS } from "./party.js";
+import { GYMS } from "./gyms.js";
+import { activeGear, buy, isSlotItem, ITEMS, MAX_SLOTS, MEMBERS, slotsOf, toggleSlot } from "./party.js";
 import { makeRng, shuffle } from "./rng.js";
-import {
-  BOSS_DONE,
-  BOSS_FAIL,
-  BOSS_INTRO,
-  BOSS_LOCKED,
-  ENDING,
-  guardLines,
-  INTRO,
-  keeperLines,
-  TIPS,
-  TRAINER_TALK,
-  zepiLines,
-} from "./story.js";
-import { BOSS_PHASES, FOREST_TASKS, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
-import { BOSS_TRUST, buildingAtDoor, facing, FOREST_TRUST, GATE_TRUST, START, step, tileAt, walkable } from "./world.js";
+import { ENDING, FOREST_SIGN_TIPS, guardLines, INTRO, keeperLines, TIPS, TRAINER_TALK, zepiLines } from "./story.js";
+import { REGION_TASKS, TRAINER_TASKS } from "./tasks.js";
+import { buildingAtDoor, facing, GATE_TRUST, MAPS, progressOf, START, START_MAP, step, tileAt, walkable, warpAt } from "./world.js";
 
 export const ENCOUNTER_RATE = 0.14;
 export const COOLDOWN = 4;
-const REST_SPOT = { x: 3, y: 14, dir: "up" };
-const BOSS_SPOT = { x: 25, y: 5, dir: "down" };
-const BOSS_USAGE_REFRESH = 8;
+
+/**
+ * 지역별 의뢰 대기열을 만든다. 지역마다 시드에 1씩 더해 따로 섞는다.
+ *
+ * @param seed 정수 시드
+ * @returns { town: [id], forest: [id] }
+ */
+export function newPools(seed) {
+  return Object.fromEntries(
+    Object.entries(REGION_TASKS).map(([region, tasks], i) => [
+      region,
+      shuffle(
+        tasks.map((t) => t.id),
+        makeRng(seed + i),
+      ),
+    ]),
+  );
+}
 
 /**
  * 첫 화면 상태를 만든다.
@@ -43,6 +47,7 @@ export function newGame(seed) {
   return {
     phase: "map",
     seed,
+    map: START_MAP,
     player: { ...START },
     trust: 0,
     coins: 0,
@@ -51,19 +56,12 @@ export function newGame(seed) {
     gear: {},
     slots: [],
     party: [],
+    badges: [],
     cleared: {},
     seen: {},
-    pool: shuffle(
-      WILD_TASKS.map((t) => t.id),
-      makeRng(seed),
-    ),
-    forestPool: shuffle(
-      FOREST_TASKS.map((t) => t.id),
-      makeRng(seed + 1),
-    ),
+    pools: newPools(seed),
     cooldown: 2,
-    bossPhase: 0,
-    finished: false,
+    gymPhase: 0,
     tip: 0,
     steps: 0,
     disasters: 0,
@@ -81,27 +79,27 @@ function say(s, lines, then = null) {
   return { ...s, phase: "map", facility: null, dialog: { lines, i: 0, then } };
 }
 
-function openBattle(s, task, kind, carry = {}) {
+function openBattle(s, task, kind, carry = {}, gymId = null) {
   const b = startBattle(task, { context: carry.context ?? s.context, usage: carry.usage ?? s.usage });
   const intro =
     kind === "wild"
       ? `야생의 「${task.name}」 의뢰가 나타났다!`
       : kind === "trainer"
         ? `${task.client}가 승부를 걸어왔다!`
-        : `팀장 박의 시험 ${s.bossPhase + 1}단계!`;
+        : `${GYMS[gymId].leader}의 시험 ${s.gymPhase + 1}단계!`;
   b.lines = [intro, ...b.lines];
   return {
     ...s,
     phase: "battle",
     dialog: null,
     facility: null,
-    battle: { b, kind, id: task.id },
+    battle: { b, kind, id: task.id, gym: gymId },
     seen: { ...s.seen, [task.id]: true },
   };
 }
 
-function startBoss(s) {
-  return openBattle({ ...s, bossPhase: 0 }, BOSS_PHASES[0], "boss", { context: 2, usage: 0 });
+function startGym(s, gymId) {
+  return openBattle({ ...s, gymPhase: 0 }, GYMS[gymId].phases[0], "gym", { context: 2, usage: 0 }, gymId);
 }
 
 function gainMember(s, id) {
@@ -114,39 +112,53 @@ function afterDialog(s, then) {
   const clear = { ...s, dialog: null };
   if (then.type === "join") return gainMember({ ...clear, notice: `${MEMBERS[then.id].name}가 동료가 되었다!` }, then.id);
   if (then.type === "trainer") return openBattle(clear, TRAINER_TASKS[then.id], "trainer");
-  if (then.type === "boss") return startBoss(clear);
+  if (then.type === "gym") return startGym(clear, then.id);
   return clear;
 }
 
 function walk(s, dir, roll) {
   const [nx, ny] = step(s.player.x, s.player.y, dir);
   const turned = { ...s, notice: "", player: { ...s.player, dir } };
-  if (!walkable(nx, ny, s.trust)) return turned;
+  const progress = progressOf(s);
+  if (!walkable(s.map, nx, ny, progress)) return turned;
   const moved = { ...turned, player: { x: nx, y: ny, dir }, steps: s.steps + 1 };
-  const place = buildingAtDoor(nx, ny);
-  if (place) {
-    if (place.id !== "gym") return { ...moved, phase: "facility", facility: place.id };
-    if (s.finished) return say(moved, BOSS_DONE);
-    if (s.trust < BOSS_TRUST) return say(moved, BOSS_LOCKED);
-    return say(moved, BOSS_INTRO, { type: "boss" });
+  const warp = warpAt(s.map, nx, ny);
+  if (warp) {
+    return {
+      ...moved,
+      map: warp.to,
+      player: { x: warp.tx, y: warp.ty, dir: warp.dir },
+      cooldown: Math.max(moved.cooldown, 2),
+      notice: `${MAPS[warp.to].name}에 들어섰다.`,
+      saveTick: s.saveTick + 1,
+    };
   }
-  const grass = tileAt(nx, ny);
-  if (grass !== "," && grass !== "f") return moved;
+  const place = buildingAtDoor(s.map, nx, ny);
+  if (place) {
+    if (place.facility !== "gym") return { ...moved, phase: "facility", facility: place.facility };
+    const gym = GYMS[s.map];
+    if (s.badges.includes(gym.id)) return say(moved, gym.done);
+    if (s.trust < gym.trust) return say(moved, gym.locked);
+    return say(moved, gym.intro, { type: "gym", id: gym.id });
+  }
+  if (tileAt(s.map, nx, ny) !== MAPS[s.map].encounter) return moved;
   if (moved.cooldown > 0) return { ...moved, cooldown: moved.cooldown - 1 };
-  const forest = grass === "f";
-  const list = (forest ? moved.forestPool : moved.pool) ?? [];
+  const list = s.pools[s.map] ?? [];
   if (roll < ENCOUNTER_RATE && list.length) {
     const [id, ...rest] = list;
-    const task = (forest ? FOREST_TASKS : WILD_TASKS).find((t) => t.id === id);
-    return openBattle({ ...moved, [forest ? "forestPool" : "pool"]: rest, cooldown: COOLDOWN }, task, "wild");
+    const task = REGION_TASKS[s.map].find((t) => t.id === id);
+    return openBattle({ ...moved, pools: { ...moved.pools, [s.map]: rest }, cooldown: COOLDOWN }, task, "wild");
   }
   return moved;
 }
 
 function interact(s) {
-  const front = facing(s.player.x, s.player.y, s.player.dir, s.trust);
+  const front = facing(s.map, s.player.x, s.player.y, s.player.dir, progressOf(s));
   if (!front) return s;
-  if (front.type === "sign") return say({ ...s, tip: s.tip + 1 }, [{ who: "게시판", text: TIPS[s.tip % TIPS.length] }]);
+  if (front.type === "sign") {
+    const tips = s.map === "forest" ? FOREST_SIGN_TIPS : TIPS;
+    return say({ ...s, tip: s.tip + 1 }, [{ who: front.target.name, text: tips[s.tip % tips.length] }]);
+  }
   const npc = front.target;
   if (npc.id === "zepi") return say(s, zepiLines(s));
   if (npc.id === "guard") return say(s, guardLines(s));
@@ -160,7 +172,8 @@ function interact(s) {
   return say(s, [...talk.before, ...warn], { type: "trainer", id: npc.id });
 }
 
-function applyPayout(s, b, kind, id) {
+function applyPayout(s, battle) {
+  const { b, kind, id } = battle;
   const d = b.done;
   const solved = d.kind === "win" || d.kind === "refuse";
   const base = {
@@ -171,9 +184,9 @@ function applyPayout(s, b, kind, id) {
     seen: solved ? { ...s.seen, [id]: "win" } : s.seen,
   };
   const settled = { ...base, phase: "map", saveTick: s.saveTick + 1 };
-  if (kind === "boss") return afterBossPhase(settled, d);
+  if (kind === "gym") return afterGymPhase(settled, battle.gym, d);
   let next = settled;
-  if (d.kind === "win" || d.kind === "refuse") {
+  if (solved) {
     next = {
       ...next,
       coins: next.coins + d.coins,
@@ -189,46 +202,51 @@ function applyPayout(s, b, kind, id) {
     next = {
       ...next,
       coins: Math.max(0, next.coins + d.coins),
-      trust: Math.max(Math.min(next.trust, next.trust >= FOREST_TRUST ? FOREST_TRUST : GATE_TRUST), next.trust + d.trust),
+      trust: Math.max(Math.min(next.trust, GATE_TRUST), next.trust + d.trust),
       disasters: next.disasters + 1,
     };
   }
   if (kind === "wild" && !solved) {
-    const key = FOREST_TASKS.some((t) => t.id === id) ? "forestPool" : "pool";
-    next = { ...next, [key]: [...(next[key] ?? []), id] };
+    const region = Object.keys(REGION_TASKS).find((key) => REGION_TASKS[key].some((t) => t.id === id));
+    next = { ...next, pools: { ...next.pools, [region]: [...(next.pools[region] ?? []), id] } };
   }
   if (next.usage >= USAGE_CAP) {
     const lines = [...(next.dialog?.lines ?? []), { who: "알림", text: "사용량 한도! 쉼터에서 한도가 풀릴 때까지 푹 쉬었다. (사용량 회복)" }];
-    next = say({ ...next, player: { ...REST_SPOT }, usage: 0 }, lines);
+    next = say({ ...next, player: { ...MAPS[next.map].rest }, usage: 0 }, lines);
   }
   return next;
 }
 
-function afterBossPhase(s, d) {
+function afterGymPhase(s, gymId, d) {
+  const gym = GYMS[gymId];
   if (d.kind !== "win" && d.kind !== "refuse") {
-    return say({ ...s, bossPhase: 0, player: { ...BOSS_SPOT }, steps: s.steps }, BOSS_FAIL);
+    const lost = { ...s, gymPhase: 0, player: { ...gym.spot } };
+    if (s.usage < USAGE_CAP) return say(lost, gym.fail);
+    const tired = { who: "알림", text: "사용량 한도! 쉼터에서 한도가 풀릴 때까지 푹 쉬었다. (사용량 회복)" };
+    return say({ ...lost, player: { ...MAPS[s.map].rest }, usage: 0 }, [...gym.fail, tired]);
   }
-  const bossPhase = s.bossPhase + 1;
-  if (bossPhase >= BOSS_PHASES.length) {
-    return {
-      ...s,
-      bossPhase,
-      finished: true,
-      phase: "ending",
-      dialog: { lines: ENDING, i: 0, then: null },
-      ending: {
-        trust: s.trust,
-        coins: s.coins,
-        tasksDone: s.tasksDone,
-        disasters: s.disasters,
-        steps: s.steps,
-        codex: Object.keys(s.seen).length,
-        title: currentTitle({ ...s, finished: true }),
-      },
-    };
+  const gymPhase = s.gymPhase + 1;
+  if (gymPhase < gym.phases.length) {
+    const refreshed = { ...s, gymPhase, usage: Math.max(0, s.usage - gym.refresh) };
+    return openBattle(refreshed, gym.phases[gymPhase], "gym", {}, gymId);
   }
-  const refreshed = { ...s, bossPhase, usage: Math.max(0, s.usage - BOSS_USAGE_REFRESH) };
-  return openBattle(refreshed, BOSS_PHASES[bossPhase], "boss");
+  const badges = [...s.badges, gymId];
+  const won = { ...s, gymPhase: 0, badges, player: { ...gym.spot } };
+  if (!gym.ending) return say(won, gym.win);
+  return {
+    ...won,
+    phase: "ending",
+    dialog: { lines: ENDING, i: 0, then: null },
+    ending: {
+      trust: s.trust,
+      coins: s.coins,
+      tasksDone: s.tasksDone,
+      disasters: s.disasters,
+      steps: s.steps,
+      codex: Object.keys(s.seen).length,
+      title: currentTitle(won),
+    },
+  };
 }
 
 /**
@@ -267,7 +285,7 @@ export function reducer(state, action) {
     }
     case "battleClose": {
       if (state.phase !== "battle" || !state.battle.b.done) return state;
-      return applyPayout(state, state.battle.b, state.battle.kind, state.battle.id);
+      return applyPayout(state, state.battle);
     }
     case "buy": {
       if (state.phase !== "facility") return state;

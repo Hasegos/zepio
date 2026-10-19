@@ -31,7 +31,7 @@ describe("데이터", () => {
       if (t.injection) expect(t.reveal, id).toBeTruthy();
     }
     expect(WILD_TASKS.length).toBeGreaterThanOrEqual(16);
-    expect(Object.keys(TRAINER_TASKS)).toHaveLength(5);
+    expect(Object.keys(TRAINER_TASKS)).toHaveLength(7);
     expect(BOSS_PHASES).toHaveLength(3);
   });
 });

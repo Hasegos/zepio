@@ -3,7 +3,7 @@ import { availableMoves, CONTEXT_CAP, USAGE_CAP } from "./battle.js";
 import { Bar } from "./Hud.jsx";
 import { shake } from "./motion.js";
 import Sprite from "./Sprite.jsx";
-import { npcsFor } from "./world.js";
+import { MAPS, npcsFor } from "./world.js";
 
 const HINT = {
   ask: "모호한 점을 묻는다",
@@ -71,10 +71,10 @@ export default function Battle({ battle, gear, party, onMove, onClose, sfx = () 
   }, [b.lines]);
   const task = b.task;
   const moves = availableMoves(b, gear, party);
-  const npc = kind === "trainer" ? npcsFor(0).find((n) => n.id === id) : null;
+  const npc = kind === "trainer" ? Object.keys(MAPS).flatMap((m) => npcsFor(m, { trust: 0, badges: [] })).find((n) => n.id === id) : null;
   const chips = learned(b);
   const done = b.done && ENDINGS[b.done.kind];
-  const tag = kind === "boss" ? "보스 의뢰" : kind === "trainer" ? "트레이너 의뢰" : "야생 의뢰";
+  const tag = kind === "gym" ? "관장 의뢰" : kind === "trainer" ? "트레이너 의뢰" : "야생 의뢰";
 
   function pick(move) {
     if (move.id === "summon") {

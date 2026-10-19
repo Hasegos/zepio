@@ -5,7 +5,7 @@ import { ITEMS } from "./party.js";
 import { mergeEnding, readData, restore, snapshot, summarize } from "./record.js";
 import { COOLDOWN, initialState, newGame, reducer } from "./reducer.js";
 import { ALL_TASK_IDS, BOSS_PHASES, FOREST_TASKS, TRAINER_TASKS, WILD_TASKS } from "./tasks.js";
-import { BOSS_TRUST, GATE_TRUST } from "./world.js";
+import { BOSS_TRUST, FOREST_GYM_TRUST, GATE_TRUST } from "./world.js";
 
 const run = (state, ...actions) => actions.reduce(reducer, state);
 const talkThrough = (state) => {
@@ -16,6 +16,7 @@ const talkThrough = (state) => {
 const started = (seed = 1) => talkThrough(newGame(seed));
 const at = (state, x, y, dir) => ({ ...state, player: { x, y, dir } });
 const FULL = { plan: true, grep: true, readRule: true, askRule: true, guard: true, secret: true, autotest: true };
+const pool = (...ids) => ({ pools: { town: ids, forest: [] } });
 
 /** 전투를 전략대로 끝내고 닫는다(보스 전투는 이어지는 단계까지 모두 진행한다). */
 function fight(state, strategy = adaptive) {
@@ -41,7 +42,9 @@ describe("시작", () => {
     const after = talkThrough(game);
     expect(after.party).toEqual(["explorer"]);
     expect(after.dialog).toBeNull();
-    expect(after.pool).toHaveLength(WILD_TASKS.length);
+    expect(after.pools.town).toHaveLength(WILD_TASKS.length);
+    expect(after.map).toBe("town");
+    expect(after.badges).toEqual([]);
   });
 
   it("대화 중에는 움직일 수 없다", () => {
@@ -68,7 +71,7 @@ describe("걷기와 풀숲", () => {
     expect(hit.phase).toBe("battle");
     expect(hit.battle.kind).toBe("wild");
     expect(hit.cooldown).toBe(COOLDOWN);
-    expect(hit.pool).toHaveLength(WILD_TASKS.length - 1);
+    expect(hit.pools.town).toHaveLength(WILD_TASKS.length - 1);
     expect(hit.seen[hit.battle.id]).toBe(true);
     const cooled = run({ ...grass, cooldown: 2 }, { type: "move", dir: "up", roll: 0 });
     expect(cooled.phase).toBe("map");
@@ -142,7 +145,7 @@ describe("전투 결과", () => {
   });
 
   it("사고가 나면 코인과 신뢰를 잃는다", () => {
-    const grass = { ...at(started(), 17, 8, "up"), trust: 6, coins: 30, cooldown: 0, pool: ["tmp", "button"] };
+    const grass = { ...at(started(), 17, 8, "up"), trust: 6, coins: 30, cooldown: 0, ...pool("tmp", "button") };
     const battle = run(grass, { type: "move", dir: "up", roll: 0 });
     const lost = fight(battle, () => ({ id: "edit" }));
     expect(lost.coins).toBe(20);
@@ -151,23 +154,23 @@ describe("전투 결과", () => {
   });
 
   it("한 번 경비를 지나갈 신뢰를 얻으면 사고가 나도 그 아래로 떨어지지 않는다", () => {
-    const grass = { ...at(started(), 17, 8, "up"), trust: GATE_TRUST, coins: 0, cooldown: 0, pool: ["tmp"] };
+    const grass = { ...at(started(), 17, 8, "up"), trust: GATE_TRUST, coins: 0, cooldown: 0, ...pool("tmp") };
     const lost = fight(run(grass, { type: "move", dir: "up", roll: 0 }), () => ({ id: "edit" }));
     expect(lost.disasters).toBe(1);
     expect(lost.trust).toBe(GATE_TRUST);
   });
 
   it("의뢰인이 떠나거나 사고가 난 야생 의뢰는 풀 뒤로 돌아와 다시 만날 수 있다", () => {
-    const grass = { ...at(started(), 17, 8, "up"), trust: 6, cooldown: 0, pool: ["tmp", "button"] };
+    const grass = { ...at(started(), 17, 8, "up"), trust: 6, cooldown: 0, ...pool("tmp", "button") };
     const lost = fight(run(grass, { type: "move", dir: "up", roll: 0 }), () => ({ id: "edit" }));
-    expect(lost.pool).toEqual(["button", "tmp"]);
-    const legit = { ...grass, pool: ["button", "tmp"] };
+    expect(lost.pools.town).toEqual(["button", "tmp"]);
+    const legit = { ...grass, ...pool("button", "tmp") };
     const left = fight(run(legit, { type: "move", dir: "up", roll: 0 }), () => ({ id: "refuse" }));
-    expect(left.pool).toEqual(["tmp", "button"]);
+    expect(left.pools.town).toEqual(["tmp", "button"]);
   });
 
   it("한도에서 이겨도 쉼터에서 쉬고 사용량이 돌아온다", () => {
-    const grass = { ...at(started(), 17, 8, "up"), usage: USAGE_CAP - 2, cooldown: 0, pool: ["button"] };
+    const grass = { ...at(started(), 17, 8, "up"), usage: USAGE_CAP - 2, cooldown: 0, ...pool("button") };
     const won = fight(run(grass, { type: "move", dir: "up", roll: 0 }), () => ({ id: "edit" }));
     expect(won.coins).toBeGreaterThan(0);
     expect(won.usage).toBe(0);
@@ -175,7 +178,7 @@ describe("전투 결과", () => {
   });
 
   it("사용량 한도에 닿으면 쉼터에서 쉬고 사용량이 돌아온다", () => {
-    const grass = { ...at(started(), 17, 8, "up"), usage: USAGE_CAP - 1, cooldown: 0, pool: ["login"] };
+    const grass = { ...at(started(), 17, 8, "up"), usage: USAGE_CAP - 1, cooldown: 0, ...pool("login") };
     const battle = run(grass, { type: "move", dir: "up", roll: 0 });
     const s = reducer(battle, { type: "battleMove", id: "read" });
     expect(s.battle.b.done.kind).toBe("limit");
@@ -220,7 +223,7 @@ describe("시설", () => {
   });
 });
 
-describe("팀장 박", () => {
+describe("마을 체육관(팀장 박)", () => {
   const door = (trust, extra = {}) => run({ ...at(started(), 25, 5, "up"), trust, gear: FULL, slots: ["readRule", "guard", "secret"], ...extra }, { type: "move", dir: "up", roll: 1 });
 
   it("신뢰가 모자라면 들어갈 수 없다", () => {
@@ -228,30 +231,32 @@ describe("팀장 박", () => {
     expect(s.dialog.lines[0].who).toBe("비서");
   });
 
-  it("신뢰가 충분하면 세 단계를 거쳐 엔딩에 닿는다", () => {
+  it("신뢰가 충분하면 세 단계를 거쳐 합격 뱃지를 받고 엔딩에 닿는다", () => {
     let s = talkThrough(door(BOSS_TRUST));
     expect(s.phase).toBe("battle");
-    expect(s.battle.kind).toBe("boss");
+    expect(s.battle.kind).toBe("gym");
+    expect(s.battle.gym).toBe("town");
     expect(s.battle.b.usage).toBe(0);
     s = fight(s);
     expect(s.phase).toBe("ending");
-    expect(s.finished).toBe(true);
+    expect(s.badges).toEqual(["town"]);
     expect(s.ending.trust).toBeGreaterThanOrEqual(BOSS_TRUST);
     s = talkThrough(s);
     expect(run(s, { type: "resume" }).phase).toBe("map");
   });
 
-  it("장비가 없으면 보스에게 지고 문 앞으로 돌아온다", () => {
+  it("장비가 없으면 지고 문 앞으로 돌아오며 뱃지는 없다", () => {
     let s = talkThrough(door(BOSS_TRUST, { gear: {} }));
     s = fight(s, () => ({ id: "edit" }));
     expect(s.phase).toBe("map");
-    expect(s.finished).toBe(false);
+    expect(s.badges).toEqual([]);
+    expect(s.gymPhase).toBe(0);
     expect(s.player).toMatchObject({ x: 25, y: 5 });
     expect(s.dialog.lines[0].who).toBe("팀장 박");
   });
 
-  it("엔딩을 본 뒤 다시 들어가면 전투 없이 인사만 한다", () => {
-    const s = door(BOSS_TRUST, { finished: true });
+  it("뱃지를 받은 뒤 다시 들어가면 전투 없이 인사만 한다", () => {
+    const s = door(BOSS_TRUST, { badges: ["town"] });
     expect(s.phase).toBe("map");
     expect(s.dialog.lines[0].who).toBe("팀장 박");
     expect(talkThrough(s).phase).toBe("map");
@@ -263,15 +268,21 @@ describe("저장", () => {
     const s = { ...started(7), trust: 5, coins: 33, gear: { plan: true }, cleared: { minsu: "win" }, party: ["explorer", "runner"] };
     const back = restore(JSON.parse(JSON.stringify(snapshot(s))));
     expect(back).toMatchObject({ trust: 5, coins: 33, gear: { plan: true }, party: ["explorer", "runner"], phase: "map", dialog: null });
-    expect(back.pool).toEqual(s.pool);
+    expect(back.pools).toEqual(s.pools);
+    expect(back).toMatchObject({ map: "town", badges: [] });
   });
 
   it("깨진 저장은 버린다", () => {
     const good = snapshot(started());
     expect(restore(null)).toBeNull();
     expect(restore({ ...good, trust: -1 })).toBeNull();
-    expect(restore({ ...good, pool: ["nope"] })).toBeNull();
-    expect(restore({ ...good, pool: ["button", "button"] })).toBeNull();
+    expect(restore({ ...good, ...pool("nope") })).toBeNull();
+    expect(restore({ ...good, ...pool("button", "button") })).toBeNull();
+    expect(restore({ ...good, pools: { ...good.pools, forest: ["button"] } })).toBeNull();
+    expect(restore({ ...good, pools: { ...good.pools, mars: [] } })).toBeNull();
+    expect(restore({ ...good, badges: ["mars"] })).toBeNull();
+    expect(restore({ ...good, badges: ["town", "town"] })).toBeNull();
+    expect(restore({ ...good, map: "mars" })).toBeNull();
     expect(restore({ ...good, party: ["ghost"] })).toBeNull();
     expect(restore({ ...good, gear: { hack: true } })).toBeNull();
     expect(restore({ ...good, cleared: { minsu: 5 } })).toBeNull();
@@ -334,7 +345,7 @@ describe("장비 슬롯과 도감", () => {
   });
 
   it("의뢰를 해결하면 도감에 해결로 남는다", () => {
-    let s = { ...started(), pool: ["button"], cooldown: 0, trust: 3, player: { x: 16, y: 11, dir: "right" } };
+    let s = { ...started(), ...pool("button"), cooldown: 0, trust: 3, player: { x: 16, y: 11, dir: "right" } };
     s = run(s, { type: "move", dir: "right", roll: 0 });
     expect(s.seen.button).toBe(true);
     s = fight(s);
@@ -371,61 +382,146 @@ describe("장비 슬롯과 도감", () => {
   });
 });
 
+describe("지역 이동", () => {
+  const pass = { trust: 16, badges: ["town"] };
+
+  it("마을 동쪽 입구로 나가면 레거시 숲 입구에 서고, 돌아오면 마을 동쪽 길이다", () => {
+    const s = { ...at(started(), 28, 9, "right"), ...pass };
+    const in1 = run(s, { type: "move", dir: "right", roll: 1 });
+    expect(in1).toMatchObject({ map: "forest", phase: "map", player: { x: 1, y: 9, dir: "right" }, saveTick: s.saveTick + 1 });
+    expect(in1.notice).toContain("레거시 숲");
+    expect(in1.cooldown).toBeGreaterThanOrEqual(2);
+    const out = run({ ...in1, player: { x: 1, y: 9, dir: "left" } }, { type: "move", dir: "left", roll: 1 });
+    expect(out).toMatchObject({ map: "town", player: { x: 28, y: 9, dir: "left" } });
+  });
+
+  it("합격 뱃지가 없으면 숲지기가 길을 막는다", () => {
+    const s = { ...at(started(), 27, 9, "right"), trust: 16 };
+    expect(run(s, { type: "move", dir: "right", roll: 1 }).player.x).toBe(27);
+    const line = (badges) => run({ ...at(started(), 28, badges.length ? 8 : 9, "right"), ...pass, badges, player: { x: 27, y: badges.length ? 8 : 9, dir: "right" } }, { type: "interact" }).dialog.lines.map((l) => l.text).join(" ");
+    expect(line([])).toContain("뱃지");
+    expect(line(["town"])).toContain(String(FOREST_GYM_TRUST));
+  });
+});
+
 describe("레거시 숲", () => {
   const forest = (extra = {}) => ({
-    ...at(started(), 33, 10, "down"),
+    ...at(started(), 4, 6, "down"),
+    map: "forest",
     trust: 16,
+    badges: ["town"],
     cooldown: 0,
     ...extra,
   });
+  const gearUp = { gear: { ...FULL, mcpDocs: true, mcpTicket: true }, slots: ["readRule", "guard", "mcpDocs"] };
 
-  it("새 게임은 숲 의뢰 대기열을 따로 섞어 둔다", () => {
+  it("새 게임은 지역별 의뢰 대기열을 따로 섞어 두고 서로 겹치지 않는다", () => {
     const g = started(3);
-    expect(g.forestPool).toHaveLength(FOREST_TASKS.length);
-    expect(new Set(g.forestPool).size).toBe(FOREST_TASKS.length);
-    expect(g.pool.some((id) => g.forestPool.includes(id))).toBe(false);
+    expect(g.pools.forest).toHaveLength(FOREST_TASKS.length);
+    expect(new Set(g.pools.forest).size).toBe(FOREST_TASKS.length);
+    expect(g.pools.town.some((id) => g.pools.forest.includes(id))).toBe(false);
   });
 
   it("짙은 풀숲을 걸으면 숲 의뢰가, 마을 풀숲에서는 야생 의뢰가 나온다", () => {
-    const s = forest({ forestPool: ["monolith", "cron"] });
+    const s = forest({ pools: { town: ["button"], forest: ["monolith", "cron"] } });
     const hit = run(s, { type: "move", dir: "down", roll: 0 });
     expect(hit.phase).toBe("battle");
     expect(hit.battle.id).toBe("monolith");
-    expect(hit.forestPool).toEqual(["cron"]);
-    expect(hit.pool).toEqual(s.pool);
-    const town = run({ ...at(started(), 17, 8, "up"), trust: 3, cooldown: 0, pool: ["button"] }, { type: "move", dir: "up", roll: 0 });
+    expect(hit.pools).toEqual({ town: ["button"], forest: ["cron"] });
+    const town = run({ ...at(started(), 17, 8, "up"), trust: 3, cooldown: 0, ...pool("button") }, { type: "move", dir: "up", roll: 0 });
     expect(town.battle.id).toBe("button");
   });
 
   it("실패한 숲 의뢰는 숲 대기열 뒤로 돌아가고, 해결하면 돌아가지 않는다", () => {
-    const s = forest({ forestPool: ["cron"], gear: FULL, slots: ["readRule", "guard", "secret"] });
+    const s = forest({ pools: { town: [], forest: ["cron"] }, ...gearUp });
     const lost = fight(run(s, { type: "move", dir: "down", roll: 0 }), () => ({ id: "test" }));
-    expect(lost.forestPool).toContain("cron");
-    expect(lost.pool).toEqual(s.pool);
+    expect(lost.pools.forest).toContain("cron");
+    expect(lost.pools.town).toEqual([]);
     const won = fight(run(s, { type: "move", dir: "down", roll: 0 }));
-    expect(won.forestPool).not.toContain("cron");
+    expect(won.pools.forest).not.toContain("cron");
     expect(won.seen.cron).toBe("win");
   });
 
-  it("숲지기는 신뢰에 맞춰 말하고, 신뢰 16 이상이면 사고가 나도 16 밑으로 떨어지지 않는다", () => {
-    const talk = (trust) => run({ ...at(started(), 27, trust >= 16 ? 8 : 9, "right"), trust }, { type: "interact" }).dialog.lines.map((l) => l.text).join(" ");
-    expect(talk(14)).toContain("신뢰 16");
-    expect(talk(16)).toContain("MCP");
-    const b = { ...started(), trust: 17, battle: { kind: "wild", id: "tmp", b: { done: { kind: "disaster", coins: -10, trust: -3 }, context: 0, usage: 0 } }, phase: "battle" };
-    expect(run(b, { type: "battleClose" }).trust).toBe(16);
+  it("사용량 한도에 닿으면 마을이 아니라 숲의 야영지에서 쉰다", () => {
+    const s = forest({ pools: { town: [], forest: ["cron"] }, usage: USAGE_CAP - 1 });
+    const battle = run(s, { type: "move", dir: "down", roll: 0 });
+    const end = fight(battle, () => ({ id: "read" }));
+    expect(end.map).toBe("forest");
+    expect(end.usage).toBe(0);
+    expect(end.player).toMatchObject({ x: 5, y: 5 });
   });
 
-  it("숲 대기열은 저장하고 복원하며, 없는 저장은 안 푼 숲 의뢰로 채우고, 어긋난 저장은 버린다", () => {
-    const s = { ...started(7), forestPool: ["cron", "deps"] };
-    const raw = JSON.parse(JSON.stringify(snapshot(s)));
-    expect(restore(raw).forestPool).toEqual(["cron", "deps"]);
-    const { forestPool, ...old } = raw;
-    expect(forestPool).toEqual(["cron", "deps"]);
-    const back = restore({ ...old, seen: { cron: "win" } });
-    expect(back.forestPool).not.toContain("cron");
-    expect(back.forestPool).toHaveLength(FOREST_TASKS.length - 1);
-    expect(restore({ ...raw, forestPool: ["button"] })).toBeNull();
-    expect(restore({ ...raw, forestPool: ["cron", "cron"] })).toBeNull();
-    expect(restore({ ...raw, forestPool: "x" })).toBeNull();
+  it("체육관 시험 중 사용량 한도로 지면 그 지역 쉼터에서 쉬고 사용량이 돌아온다", () => {
+    const s = { ...forest({ trust: FOREST_GYM_TRUST, ...gearUp }), player: { x: 24, y: 4, dir: "up" } };
+    const battle = talkThrough(run(s, { type: "move", dir: "up", roll: 1 }));
+    const limit = { ...battle, battle: { ...battle.battle, b: { ...battle.battle.b, usage: USAGE_CAP, done: { kind: "limit" } } } };
+    const end = run(limit, { type: "battleClose" });
+    expect(end).toMatchObject({ map: "forest", usage: 0, gymPhase: 0, player: { x: 5, y: 5 } });
+    expect(end.dialog.lines.at(-1).text).toContain("사용량");
+  });
+
+  it("사고가 나도 신뢰는 경비 신뢰 밑으로만 보호하고 그 위는 그대로 깎인다", () => {
+    const b = { ...started(), trust: 25, battle: { kind: "wild", id: "tmp", b: { done: { kind: "disaster", coins: -10, trust: -10 }, context: 0, usage: 0 } }, phase: "battle" };
+    expect(run(b, { type: "battleClose" }).trust).toBe(15);
+  });
+
+  it("숲의 오두막은 신뢰가 모자라면 들어갈 수 없고, 충분하면 숲의 주인과 시험을 본다", () => {
+    const door = (trust, extra = {}) => run({ ...forest({ trust, ...gearUp, ...extra }), player: { x: 24, y: 4, dir: "up" } }, { type: "move", dir: "up", roll: 1 });
+    expect(door(FOREST_GYM_TRUST - 1).dialog.lines[0].who).toBe("숲의 주인");
+    expect(door(FOREST_GYM_TRUST - 1).phase).toBe("map");
+    const start = talkThrough(door(FOREST_GYM_TRUST));
+    expect(start.phase).toBe("battle");
+    expect(start.battle).toMatchObject({ kind: "gym", gym: "forest", id: "fg1" });
+    expect(start.battle.b.usage).toBe(0);
+    expect(door(FOREST_GYM_TRUST, { badges: ["town", "forest"] }).phase).toBe("map");
+  });
+
+  it("시험에 지면 문 앞으로 돌아오고, 이기면 근거 뱃지만 받을 뿐 엔딩은 없다", () => {
+    const door = (extra = {}) => talkThrough(run({ ...forest({ trust: FOREST_GYM_TRUST, ...extra }), player: { x: 24, y: 4, dir: "up" } }, { type: "move", dir: "up", roll: 1 }));
+    const lost = fight(door({ gear: {} }), () => ({ id: "edit" }));
+    expect(lost.badges).toEqual(["town"]);
+    expect(lost.gymPhase).toBe(0);
+    expect(lost.player).toMatchObject({ x: 24, y: 4 });
+    expect(lost.map).toBe("forest");
+    const won = fight(door(gearUp));
+    expect(won.phase).toBe("map");
+    expect(won.badges).toEqual(["town", "forest"]);
+    expect(won.dialog.lines[0].who).toBe("숲의 주인");
+    expect(won.ending).toBeNull();
+  });
+});
+
+describe("지역 저장", () => {
+  const snap = (extra = {}) => JSON.parse(JSON.stringify(snapshot({ ...started(7), map: "forest", player: { x: 4, y: 6, dir: "down" }, badges: ["town"], ...extra })));
+
+  it("지도와 뱃지와 지역별 대기열을 저장하고 복원한다", () => {
+    const raw = snap({ pools: { town: ["button"], forest: ["cron", "deps"] } });
+    expect(restore(raw)).toMatchObject({ map: "forest", badges: ["town"], player: { x: 4, y: 6 }, pools: { town: ["button"], forest: ["cron", "deps"] } });
+  });
+
+  it("예전 저장(pool, forestPool, finished)은 마을 뱃지와 지역 대기열로 옮긴다", () => {
+    const raw = snap();
+    const rest = Object.fromEntries(Object.entries(raw).filter(([key]) => !["pools", "badges", "map"].includes(key)));
+    const old = { ...rest, pool: ["button"], forestPool: ["cron"], finished: true };
+    expect(restore(old)).toMatchObject({ map: "town", badges: ["town"], pools: { town: ["button"], forest: ["cron"] } });
+    expect(restore({ ...old, finished: false }).badges).toEqual([]);
+  });
+
+  it("예전 저장에 숲 대기열이 없으면 안 푼 숲 의뢰로 채운다", () => {
+    const raw = snap();
+    const rest = Object.fromEntries(Object.entries(raw).filter(([key]) => !["pools", "badges", "map"].includes(key)));
+    const back = restore({ ...rest, pool: ["button"], finished: false, seen: { cron: "win" } });
+    expect(back.pools.forest).not.toContain("cron");
+    expect(back.pools.forest).toHaveLength(FOREST_TASKS.length - 1);
+  });
+
+  it("막힌 칸에 서 있는 숲 저장은 그 지역 쉼터로 옮긴다", () => {
+    const back = restore({ ...snap(), player: { x: 0, y: 0, dir: "up" } });
+    expect(back).toMatchObject({ map: "forest", player: { x: 5, y: 5 } });
+  });
+
+  it("홈 카드 요약에 뱃지 수가 나온다", () => {
+    const play = { v: 1, save: snapshot({ ...started(), badges: ["town"] }), best: {} };
+    expect(summarize(play)).toContain("뱃지 1/2");
   });
 });

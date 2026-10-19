@@ -1,4 +1,4 @@
-import { BOSS_TRUST, FOREST_TRUST, GATE_TRUST } from "./world.js";
+import { BOSS_TRUST, FOREST_GYM_TRUST, GATE_TRUST } from "./world.js";
 
 const say = (who, text) => ({ who, text });
 
@@ -40,7 +40,7 @@ function zepiBase(state) {
   return [
     say("제피", "신뢰가 충분해! 작업장에서 팀장 박이 기다려."),
     say("제피", "들어가기 전에 쉼터에서 사용량을 채우고, 정리소에서 컨텍스트를 비워 두는 게 좋아."),
-    say("제피", `신뢰가 ${FOREST_TRUST}이 되면 동쪽 숲지기가 레거시 숲을 열어 준대. 거기 의뢰는 훨씬 어려워.`),
+    say("제피", "팀장 박의 뱃지를 받으면 동쪽 숲지기가 레거시 숲을 열어 준대. 숲에도 관장이 있대!"),
   ];
 }
 
@@ -61,25 +61,58 @@ export function guardLines(state) {
 }
 
 /**
- * 숲지기의 대사를 만든다.
+ * 숲지기의 대사를 만든다. 팀장 박의 시험에 합격한 뱃지가 있어야 레거시 숲으로 보내 준다.
  *
  * @param state 게임 상태
  * @returns 대사 목록
  */
 export function keeperLines(state) {
-  if (state.trust < FOREST_TRUST) {
+  if (!state.badges.includes("town")) {
     return [
-      say("숲지기", `이 동쪽은 레거시 숲이에요. 신뢰 ${FOREST_TRUST} 미만은 길을 잃어요. (현재 ${state.trust})`),
-      say("숲지기", "숲에는 20년 묵은 코드와 주인 없는 크론잡이 살아요. 마을 일부터 잘 해내고 오세요."),
+      say("숲지기", "이 동쪽은 레거시 숲이에요. 20년 묵은 코드와 주인 없는 크론잡이 사는 곳이죠."),
+      say("숲지기", "작업장의 팀장 박에게 합격 뱃지를 받은 에이전트만 들여보내 드려요."),
     ];
   }
   return [
-    say("숲지기", "신뢰가 두둑하네요. 숲에서는 문서 서버(MCP)를 챙기고, 큰 일은 정확한 모델로 바꾸세요."),
-    say("숲지기", "짙은 풀숲에서 숲의 의뢰가 나타나요. 숲의 주인은 가장 안쪽에 있다는 소문이에요."),
+    say("숲지기", "합격 뱃지 확인했어요. 숲에서는 문서 서버(MCP)를 챙기고, 큰 일은 정확한 모델로 바꾸세요."),
+    say("숲지기", `짙은 풀숲에서 숲 의뢰가 나타나요. 숲의 오두막 주인은 신뢰 ${FOREST_GYM_TRUST} 이상이어야 만나 줘요.`),
   ];
 }
 
+export const FOREST_SIGN_TIPS = [
+  "[안내판] 이 숲의 의뢰는 근거 없이 쓰면 바로 들통나요. 읽고, 확인하고, 그 뒤에 쓰세요.",
+  "[안내판] 큰 일과 근거가 필요한 일은 빠른 모델이 대충 써요. 정확한 모델로 바꾸세요.",
+  "[안내판] 야영지에서 쉬고, 옛 서고에서 컨텍스트를 비우세요. 마을까지 돌아갈 필요 없어요.",
+];
+
+export const FOREST_INTRO = [
+  say("숲의 주인", `오, 신뢰 ${FOREST_GYM_TRUST}이라. 숲에 어울리는 에이전트로군.`),
+  say("숲의 주인", "내 의뢰는 셋이네. 이 숲에서는 지어낸 말이 제일 큰 죄야. 근거부터 챙기게."),
+  say("숲의 주인", "(새 세션이 시작됐다. 사용량 한도가 초기화되고 컨텍스트가 비워졌다.)"),
+];
+
+export const FOREST_LOCKED = [
+  say("숲의 주인", `신뢰가 ${FOREST_GYM_TRUST} 이상이어야 내가 만나 주네. 숲의 의뢰를 더 해결하고 오게.`),
+];
+
+export const FOREST_FAIL = [say("숲의 주인", "아직이야. 자료를 더 읽고 오게. 이번에는 지어내지 말게.")];
+
+export const FOREST_DONE = [say("숲의 주인", "이미 뱃지를 가져갔잖나. 숲을 마음껏 거닐게.")];
+
+export const FOREST_WIN = [
+  say("숲의 주인", "훌륭하네. 근거를 읽고 쓰는 에이전트에게 이 뱃지를 주지."),
+  say("알림", "근거 뱃지를 받았다!"),
+];
+
 export const TRAINER_TALK = {
+  ranger: {
+    before: [say("수색대원 지수", "숲을 순찰하는 지수예요. 옛 표지판 정리를 부탁해요. 안 보고 쓰면 큰일 나요!")],
+    after: [say("수색대원 지수", "덕분에 표지판이 깨끗해졌어요. 길 잃은 사람이 줄 거예요.")],
+  },
+  woodcutter: {
+    before: [say("벌목꾼 한 씨", "어이, 숲속 서버실 스크립트 좀 치워 주게. 위험한 건 알아서 피하게.")],
+    after: [say("벌목꾼 한 씨", "자네 덕에 서버실 불이 안 꺼졌네. 허허.")],
+  },
   minsu: {
     before: [say("민수", "어, 에이전트다! 나 엑셀 매크로 좀 부탁해도 돼? 오늘 퇴근 전까지 필요해!")],
     after: [say("민수", "덕분에 칼퇴했어! 나도 도울 일 있으면 불러.")],
