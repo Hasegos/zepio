@@ -1,5 +1,13 @@
+import { makeRng } from "../_shared/rng.js";
+import { DISASTERS, effectsOf } from "./disaster.js";
 import { advance, analyze, OFFLINE_CAP_SECONDS, starterCells } from "./engine.js";
 import { MAX_SITES, SITE_TYPES, traitOf } from "./sites.js";
+
+export const LINK_COST = 100000;
+const LINK_GROWTH = 2.5;
+const AID = 0.15;
+const SHARE = 0.5;
+const SPREAD = 0.35;
 
 /**
  * 건물 하나를 게임 상태처럼 읽을 수 있게 꺼낸다. 보고 있는 건물이면 상태 그대로이고, 아니면 그 건물의 type, land, cells를 얹는다.
@@ -117,12 +125,109 @@ export function buySite(state, type) {
 }
 
 /**
+ * 건물 번호의 종류를 구한다.
+ *
+ * @param state 게임 상태
+ * @param index 건물 번호
+ * @returns 건물 종류
+ */
+function typeAt(state, index) {
+  return index === state.active ? state.type : state.sites[index].type;
+}
+
+/**
+ * 한 건물과 이어진 건물 번호를 모은다.
+ *
+ * @param state 게임 상태
+ * @param index 건물 번호
+ * @returns 이어진 건물 번호 목록
+ */
+function peersOf(state, index) {
+  const type = typeAt(state, index);
+  const out = [];
+  for (const [a, b] of state.links) {
+    const other = a === type ? b : b === type ? a : null;
+    if (other === null) continue;
+    const at = state.sites.findIndex((_, j) => typeAt(state, j) === other);
+    if (at !== -1) out.push(at);
+  }
+  return out;
+}
+
+/**
+ * 건물 두 개를 잇는 값을 구한다. 이을수록 비싸진다.
+ *
+ * @param state 게임 상태
+ * @returns 코인
+ */
+export function linkCost(state) {
+  return Math.ceil(LINK_COST * LINK_GROWTH ** state.links.length);
+}
+
+/**
+ * 건물 두 개를 네트워크로 잇는다. 이어진 건물이 많을수록 수익이 늘지만 재난도 번질 수 있다.
+ *
+ * @param state 게임 상태
+ * @param a 건물 종류
+ * @param b 건물 종류
+ * @returns { state, error }
+ */
+export function linkSites(state, a, b) {
+  const owned = (type) => state.sites.some((_, i) => typeAt(state, i) === type);
+  if (a === b || !owned(a) || !owned(b)) return { state, error: "가진 건물 두 개를 골라 주세요." };
+  if (state.links.some((pair) => pair.includes(a) && pair.includes(b))) return { state, error: "이미 이어진 건물이에요." };
+  const cost = linkCost(state);
+  if (state.coins < cost) return { state, error: "코인이 부족해요." };
+  return { state: { ...state, coins: state.coins - cost, links: [...state.links, [a, b]] } };
+}
+
+/**
+ * 건물마다 지금 받는 재난 효과를 구한다. 이어진 건물이 있으면 정전 때 전력을 나눠 받고 트래픽 폭주 때 부하를 나눠 진다.
+ *
+ * @param state 게임 상태
+ * @param evs 건물별 재난 진행 상태
+ * @returns 건물 순서대로 analyze에 넘길 효과 목록
+ */
+export function campusFx(state, evs) {
+  const live = (j, kind) => evs[j].event?.kind === kind && evs[j].event.phase === "live";
+  return state.sites.map((_, i) => {
+    const fx = effectsOf(viewOf(state, i), evs[i]);
+    if (!live(i, "blackout") && !live(i, "surge")) return fx;
+    const peers = peersOf(state, i);
+    if (live(i, "blackout")) return { ...fx, capMul: Math.min(1, fx.capMul + AID * peers.filter((j) => !live(j, "blackout")).length) };
+    return { ...fx, demandMul: 1 + (fx.demandMul - 1) / (1 + SHARE * peers.filter((j) => !live(j, "surge")).length) };
+  });
+}
+
+/**
+ * 새로 시작한 정전이나 트래픽 폭주가 이어진 건물로 번지게 한다. 화재는 번지지 않는다.
+ *
+ * @param state 게임 상태
+ * @param before 시간을 흘리기 전 건물별 재난 상태
+ * @param after 시간을 흘린 뒤 건물별 재난 상태
+ * @returns 번짐을 반영한 건물별 재난 상태
+ */
+export function spreadEvents(state, before, after) {
+  let next = after;
+  after.forEach((ev, i) => {
+    const e = ev.event;
+    if (!e || before[i].event || e.kind === "fire") return;
+    for (const j of peersOf(state, i)) {
+      if (next[j].event || makeRng(ev.seed + ev.n * 31 + j)() >= SPREAD) continue;
+      const event = { kind: e.kind, phase: "warn", left: DISASTERS[e.kind].warn, burning: {}, damage: 0 };
+      next = next.map((other, k) => (k === j ? { ...other, event } : other));
+    }
+  });
+  return next;
+}
+
+/**
  * 저장할 모양으로 정리한다. 보고 있는 건물의 내용을 sites에 맞춘다.
  *
  * @param state 게임 상태
- * @returns { coins, lifetime, time, difficulty, stats, active, sites }
+ * @returns { coins, lifetime, time, difficulty, stats, active, links, sites }
  */
 export function snapshot(state) {
-  const { coins, lifetime, time, difficulty, stats, active } = state;
-  return { coins, lifetime, time, difficulty, stats, active, sites: siteList(state) };
+  const { coins, lifetime, time, difficulty, stats, active, links } = state;
+  return { coins, lifetime, time, difficulty, stats, active, links, sites: siteList(state) };
 }

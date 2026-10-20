@@ -67,3 +67,16 @@ export const MAX_SITES = SITE_IDS.length;
 export function traitOf(type) {
   return Object.hasOwn(SITE_TYPES, type) ? SITE_TYPES[type] : SITE_TYPES.basement;
 }
+export const NET_BONUS = 0.08;
+export const NET_MAX = 4;
+
+/**
+ * 한 건물에 이어진 건물이 몇 개인지 센다.
+ *
+ * @param links 건물 종류 쌍의 목록
+ * @param type 건물 종류
+ * @returns 연결 수
+ */
+export function connectionsOf(links, type) {
+  return links.filter((pair) => pair.includes(type)).length;
+}

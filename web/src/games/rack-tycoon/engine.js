@@ -1,6 +1,6 @@
 import { AREA, GRID_HEIGHT, GRID_WIDTH, inLand, LANDS, START, TERMINAL_TILE, tileOf } from "./layout.js";
 import { reachable } from "./pathfind.js";
-import { traitOf } from "./sites.js";
+import { connectionsOf, NET_BONUS, NET_MAX, traitOf } from "./sites.js";
 
 export const TIERS = [
   null,
@@ -126,6 +126,7 @@ export function newState() {
     land: 0,
     cells,
     active: 0,
+    links: [],
     sites: [{ type: "basement", land: 0, cells }],
   };
 }
@@ -266,7 +267,7 @@ export function synergyNeighbors(state, tile) {
  * 온도 비율, 네트워크 효율, 이웃한 같은 단계 서버 시너지(+6%씩)를 곱하고, 전력이 모자라면 전체가 같은 비율로 준다.
  *
  * 재난 효과(fx)가 있으면 수익과 열, 대역폭 수요, 전력 상한에 곱해지고 불에 탄 서버는 꺼진 것으로 본다.
- * 난이도에 따른 수익 배율도 여기서 곱한다.
+ * 난이도에 따른 수익 배율과 다른 건물과 이어진 수만큼의 네트워크 보너스(건물 하나당 +8%, 최대 +32%)도 여기서 곱한다.
  *
  * @param state 게임 상태
  * @param fx 재난 효과 { outputMul, heatMul, demandMul, capMul, burning }, 기본은 효과 없음
@@ -306,6 +307,7 @@ export function analyze(state, fx = NO_FX) {
   });
   const cap = supply * fx.capMul + (fx.capMul < 1 ? backup : 0);
   const bonus = DIFFICULTIES[state.difficulty ?? "calm"].bonus;
+  const network = 1 + NET_BONUS * Math.min(NET_MAX, connectionsOf(state.links ?? [], state.type));
   for (let i = 0; i < AREA; i += 1) heat[i] = Math.max(0, heat[i]);
   const { net, links, used } = connect(servers, hubs);
   const efficiency = usage > cap ? cap / usage : 1;
@@ -317,7 +319,7 @@ export function analyze(state, fx = NO_FX) {
     const temp = heat[server.tile];
     maxTemp = Math.max(maxTemp, temp);
     outputs[server.tile] =
-      server.spec.output * thermal(temp) * net.get(server.tile) * (1 + SYNERGY * neighbors) * efficiency * fx.outputMul * bonus * trait.incomeMul;
+      server.spec.output * thermal(temp) * net.get(server.tile) * (1 + SYNERGY * neighbors) * efficiency * fx.outputMul * bonus * trait.incomeMul * network;
     income += outputs[server.tile];
   }
   return {
