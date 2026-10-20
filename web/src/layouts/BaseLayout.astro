@@ -60,5 +60,8 @@ const imageUrl = indexable ? new URL(image, Astro.site).href : null;
       <slot />
     </main>
     <Footer />
+    <script>
+      import "../scripts/global-errors.js";
+    </script>
   </body>
 </html>
