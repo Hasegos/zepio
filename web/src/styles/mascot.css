@@ -1,0 +1,82 @@
+.mascot-full .mascot-bob {
+  animation: mascot-bob 3.2s ease-in-out infinite;
+}
+
+.mascot-full .mascot-pupils {
+  animation: mascot-look 7s ease-in-out infinite;
+}
+
+.mascot-full .mascot-eyes,
+.mascot-calm .mascot-eyes {
+  transform-box: view-box;
+  transform-origin: 50px 50px;
+  animation: mascot-blink 4.5s ease-in-out infinite;
+}
+
+.mascot-full .mascot-antenna,
+.mascot-calm .mascot-antenna {
+  transform-box: view-box;
+  transform-origin: 50px 16px;
+  animation: mascot-wiggle 3.6s ease-in-out infinite;
+}
+
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2.5px);
+  }
+}
+
+@keyframes mascot-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes mascot-look {
+  0%,
+  55%,
+  100% {
+    transform: translate(0, 0);
+  }
+  65%,
+  75% {
+    transform: translate(-3px, 0);
+  }
+  85%,
+  92% {
+    transform: translate(3px, -1px);
+  }
+}
+
+@keyframes mascot-wiggle {
+  0%,
+  70%,
+  100% {
+    transform: rotate(0);
+  }
+  78% {
+    transform: rotate(10deg);
+  }
+  86% {
+    transform: rotate(-8deg);
+  }
+  94% {
+    transform: rotate(4deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-full *,
+  .mascot-calm * {
+    animation: none;
+  }
+}
