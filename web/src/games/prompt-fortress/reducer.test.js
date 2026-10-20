@@ -100,3 +100,25 @@ describe("이동", () => {
     expect(run(done, { type: "next" })).toBe(done);
   });
 });
+describe("저장된 별과 오늘의 방", () => {
+  it("저장돼 있던 별로 시작하면 그 방이 열려 있다", () => {
+    const state = initialState({ r01: 2 });
+    expect(state.stars).toEqual({ r01: 2 });
+    expect(run(state, { type: "open", id: "r02" }).phase).toBe("level");
+  });
+
+  it("오늘의 방은 날짜와 맞을 때만 잠긴 방도 열고 깬 뒤에도 일일 표시가 남는다", () => {
+    expect(run(initialState(), { type: "open", id: "r11", daily: "2026-10-20" }).level.daily).toBe("2026-10-20");
+    expect(run(initialState(), { type: "open", id: "r11", daily: "2026-10-21" }).phase).toBe("menu");
+    expect(run(initialState(), { type: "open", id: "r11" }).phase).toBe("menu");
+    const state = run(initialState(), { type: "open", id: "r11", daily: "2026-10-20" }, { type: "add", id: "refuse:fakeSystem" }, { type: "run" }, { type: "retry" });
+    expect(state.level.daily).toBe("2026-10-20");
+  });
+
+  it("오늘의 방에서 다음 방으로 가면 일일 표시가 사라진다", () => {
+    const state = run(initialState({ r11: 1 }), { type: "open", id: "r11", daily: "2026-10-20" });
+    const done = run(state, ...best("r11").map((card) => ({ type: "add", id: card.id })), { type: "run" }, { type: "skip" }, { type: "next" });
+    expect(done.level.id).toBe("r12");
+    expect(done.level.daily).toBeNull();
+  });
+});

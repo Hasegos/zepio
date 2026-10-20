@@ -1,7 +1,10 @@
 import { useEffect, useRef } from "react";
+import ShareButton from "../ShareButton.jsx";
 import { ACTIONS, cardText, TAGS } from "./engine.js";
 import { LEVELS } from "./levels.js";
+import meta from "./meta.js";
 import { isOpen } from "./reducer.js";
+import { fortressShareText } from "./share-text.js";
 
 const FROM = { user: "사용자", doc: "문서", tool: "도구" };
 const FAIL = {
@@ -36,13 +39,28 @@ function Stars({ count }) {
  *
  * @param props.state 게임 상태
  * @param props.dispatch 행동을 보낸다
+ * @param props.daily 오늘의 방 { date, id, record(오늘 받은 별 또는 null), streak }
  */
-export function Menu({ state, dispatch }) {
+export function Menu({ state, dispatch, daily }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm font-semibold text-slate-700">
         금고지기 볼트는 시키는 대로 다 하는 순진한 AI입니다. 규칙 카드를 조립해 침입 프롬프트를 막으세요.
       </p>
+      <button
+        type="button"
+        onClick={() => dispatch({ type: "open", id: daily.id, daily: daily.date })}
+        className="flex items-center justify-between gap-2 rounded-xl border-2 border-slate-800 bg-slate-900 px-3 py-3 text-left text-white hover:bg-slate-800"
+      >
+        <span>
+          <span className="block text-xs font-bold text-amber-300">
+            오늘의 방 · {daily.date}
+            {daily.streak > 0 && ` · ${daily.streak}일 연속`}
+          </span>
+          <span className="block font-extrabold">{LEVELS.find((l) => l.id === daily.id).title}</span>
+        </span>
+        <span className="text-sm font-bold text-amber-300">{daily.record === null ? "도전" : <Stars count={daily.record} />}</span>
+      </button>
       <ul aria-label="방 목록" className="grid gap-2 sm:grid-cols-2">
         {LEVELS.map((level, i) => {
           const open = isOpen(state.stars, i);
@@ -86,8 +104,9 @@ function Verdict({ message, result }) {
  *
  * @param props.state 게임 상태
  * @param props.dispatch 행동을 보낸다
+ * @param props.saved 기록을 저장했는지(false면 경고)
  */
-export function LevelView({ state, dispatch }) {
+export function LevelView({ state, dispatch, saved }) {
   const { level } = state;
   const def = LEVELS.find((l) => l.id === level.id);
   const index = LEVELS.indexOf(def);
@@ -107,7 +126,7 @@ export function LevelView({ state, dispatch }) {
     <div className="flex flex-col gap-4">
       <header className="rounded-xl bg-slate-900 px-4 py-3 text-white">
         <p className="text-xs font-bold text-amber-300">
-          방 {String(index + 1).padStart(2, "0")} · 슬롯 {def.slots}칸 · 최고 <Stars count={state.stars[def.id] ?? 0} />
+          {level.daily ? `오늘의 방 · ` : ""}방 {String(index + 1).padStart(2, "0")} · 슬롯 {def.slots}칸 · 최고 <Stars count={state.stars[def.id] ?? 0} />
         </p>
         <h2 className="text-xl font-extrabold">{def.title}</h2>
         <p className="mt-1 text-sm font-semibold text-white/90">{def.intro}</p>
@@ -225,6 +244,12 @@ export function LevelView({ state, dispatch }) {
           </p>
           {run.stars === 2 && <p className="text-sm font-semibold text-slate-700">규칙을 {def.par}장으로 줄이면 별 셋이에요. (지금 {level.rules.length}장)</p>}
           <p className="mt-2 text-sm font-semibold text-slate-800">{def.explain}</p>
+          {saved === false && <p className="mt-2 text-sm font-bold text-rose-700">기록을 저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.</p>}
+          {run.stars > 0 && (
+            <div className="mt-3">
+              <ShareButton title="Zepio 프롬프트 요새" text={fortressShareText(def, run.stars, level.daily)} path={`/games/${meta.slug}/`} />
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" onClick={() => dispatch({ type: "retry" })} className={`${btn} bg-white`}>
               다시 조립
