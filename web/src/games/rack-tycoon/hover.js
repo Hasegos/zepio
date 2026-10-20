@@ -14,6 +14,7 @@ import {
   xyOf,
 } from "./engine.js";
 import { inLand, LANDS, TERMINAL_TILE } from "./layout.js";
+import { traitOf } from "./sites.js";
 
 /**
  * 초당 수익 변화량을 부호를 붙여 적는다.
@@ -71,6 +72,7 @@ export function worldOf(state, analysis, ui) {
     selected: ui.selected,
     burning: ui.burning,
     mood: ui.mood,
+    theme: traitOf(state.type).theme,
   };
 }
 

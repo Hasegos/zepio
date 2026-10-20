@@ -279,6 +279,7 @@ export function createScene(
     selected: null,
     burning: [],
     mood: "none",
+    theme: MOODS.none.background,
   };
   let blocked = new Set();
   let worldDirty = true;
@@ -412,7 +413,7 @@ export function createScene(
 
   const applyMood = () => {
     const mood = MOODS[world.mood] ?? MOODS.none;
-    scene.background.set(mood.background);
+    scene.background.set(world.mood === "none" ? world.theme : mood.background);
     ambient.intensity = mood.ambient;
     sun.intensity = mood.sun;
   };

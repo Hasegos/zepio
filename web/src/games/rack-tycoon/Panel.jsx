@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  BASE_POWER,
   DIFFICULTIES,
   expandCost,
   expandLand,
@@ -19,6 +18,7 @@ import {
   xyOf,
 } from "./engine.js";
 import { LANDS } from "./layout.js";
+import { traitOf } from "./sites.js";
 
 /**
  * 코인이 드는 행동 버튼. 코인이 모자라면 눌러도 동작하지 않고 모자란다는 문구를 보여 준다.
@@ -232,7 +232,7 @@ function TerminalBody({ state, analysis, issues, onAct, onReset, onDifficulty })
           서버 {analysis.counts.server} · 냉각 {analysis.counts.cooler} · 허브 {analysis.counts.hub} · 발전 {analysis.counts.gen} · 배터리 {analysis.counts.battery} · 소화기 {analysis.counts.ext}
         </Stat>
         <Stat label={`전력 ${analysis.usage}/${analysis.cap}`} wide>
-          {analysis.efficiency < 1 ? `부족해서 수익이 ${Math.floor(analysis.efficiency * 100)}%예요` : `충분해요 (기본 ${BASE_POWER} + 발전기)`}
+          {analysis.efficiency < 1 ? `부족해서 수익이 ${Math.floor(analysis.efficiency * 100)}%예요` : `충분해요 (기본 ${traitOf(state.type).baseCap} + 발전기)`}
         </Stat>
       </dl>
       {grade.next !== null && <p className="text-xs text-slate-700">다음 등급까지 누적 수익 {formatNumber(grade.next - state.lifetime)} 남았어요.</p>}
