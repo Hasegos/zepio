@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
-import ShareButton from "../ShareButton.jsx";
+import ShareButton from "../_shared/ShareButton.jsx";
 import meta from "./meta.js";
-import { formatDuration, totals } from "./reducer.js";
+import { totals } from "./reducer.js";
+import { formatDuration } from "../_shared/time.js";
 import { lightFlipShareText } from "./share-text.js";
 
 /**

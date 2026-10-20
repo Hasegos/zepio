@@ -1,6 +1,6 @@
 import { LEVELS } from "./levels.js";
+import { isObject } from "../_shared/validate.js";
 
-const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
 /**
  * 저장소 값을 안전한 모양으로 다듬는다. 모르는 방과 범위를 벗어난 별은 버린다.

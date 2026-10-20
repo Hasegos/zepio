@@ -10,7 +10,7 @@ import { pickPuzzles, RUN_SLOTS } from "./pick-puzzles.js";
 import { PatternDefs } from "./PuzzleCell.jsx";
 import { mergeResult } from "./record.js";
 import { correctCount, initialState, reducer } from "./reducer.js";
-import { useGameBack } from "../useGameBack.js";
+import { useGameBack } from "../_shared/useGameBack.js";
 
 /**
  * Pattern Challenge 한 판을 진행한다. 시작 화면, 5문제 풀이, 결과 화면을 오간다.

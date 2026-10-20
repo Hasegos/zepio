@@ -1,4 +1,4 @@
-import { mountReact } from "../mount-react.jsx";
+import { mountReact } from "../_shared/mount-react.jsx";
 import PatternChallenge from "./PatternChallenge.jsx";
 
 export default mountReact(PatternChallenge);

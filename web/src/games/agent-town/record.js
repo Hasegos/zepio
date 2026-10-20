@@ -4,9 +4,10 @@ import { GYM_IDS } from "./gyms.js";
 import { newPools } from "./reducer.js";
 import { ALL_TASK_IDS, REGION_TASKS, TRAINER_TASKS } from "./tasks.js";
 import { MAPS, START, START_MAP, walkable } from "./world.js";
+import { isInt } from "../_shared/validate.js";
 
 const GEAR_IDS = ITEMS.map((it) => it.id);
-const int = (n, max) => Number.isInteger(n) && n >= 0 && n <= max;
+const int = (n, max) => isInt(n, 0, max);
 
 /**
  * 진행 중인 게임 상태에서 저장할 부분만 뽑는다. 전투와 대화는 저장하지 않는다.

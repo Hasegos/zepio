@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import PuzzleCell, { cellLabel } from "./PuzzleCell.jsx";
-import { formatDuration } from "./reducer.js";
+import { formatDuration } from "../_shared/time.js";
 
 /**
  * 문제 한 개를 보여주고 선택, 제출, 다음 문제 이동을 받는다.

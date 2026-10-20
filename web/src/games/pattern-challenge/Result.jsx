@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
-import ShareButton from "../ShareButton.jsx";
+import ShareButton from "../_shared/ShareButton.jsx";
 import meta from "./meta.js";
 import PuzzleCell, { cellLabel } from "./PuzzleCell.jsx";
-import { correctCount, formatDuration } from "./reducer.js";
+import { correctCount } from "./reducer.js";
+import { formatDuration } from "../_shared/time.js";
 import { patternShareText } from "./share-text.js";
 
 const HEADLINES = { 5: "완벽해요!", 4: "잘했어요!", 3: "좋아요!" };

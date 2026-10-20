@@ -2,7 +2,7 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import day from "../../../public/data/daily/2026-10-19.json";
 import nextDay from "../../../public/data/daily/2026-10-20.json";
-import { mountReact } from "../mount-react.jsx";
+import { mountReact } from "../_shared/mount-react.jsx";
 import PatternChallenge from "./PatternChallenge.jsx";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
