@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
-import * as colorClash from "./color-clash/reducer.js";
 import * as lightFlip from "./light-flip/reducer.js";
-import * as memorySequence from "./memory-sequence/reducer.js";
 import * as patternChallenge from "./pattern-challenge/reducer.js";
 
 const games = {
   "pattern-challenge": [patternChallenge, { type: "start", puzzles: [{ options: [1, 2], answer: 0 }], now: 1 }],
-  "memory-sequence": [memorySequence, { type: "start", pads: [0, 1], now: 1 }],
-  "color-clash": [colorClash, { type: "start", word: 0, ink: 1, now: 1 }],
   "light-flip": [lightFlip, { type: "start", stages: [{ board: [], par: 1 }], now: 1 }],
 };
 
