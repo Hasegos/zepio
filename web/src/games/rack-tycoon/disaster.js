@@ -162,8 +162,12 @@ function burn(state, e, level, seconds, roll) {
     }
   });
   for (const key of Object.keys(e.burning)) {
-    if (e.burning[key] < level.breakAfter) continue;
     const cell = state.cells[Number(key)];
+    if (!cell) {
+      delete e.burning[key];
+      continue;
+    }
+    if (e.burning[key] < level.breakAfter) continue;
     if (cell.kind === "server" && !cell.broken) {
       cells ??= [...state.cells];
       cells[Number(key)] = { ...cell, broken: true, stress: 0 };
