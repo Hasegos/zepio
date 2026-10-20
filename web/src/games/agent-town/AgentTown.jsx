@@ -6,8 +6,9 @@ import Battle from "./Battle.jsx";
 import Codex from "./Codex.jsx";
 import DialogBox from "./DialogBox.jsx";
 import Facility from "./Facility.jsx";
+import { clearHeld, holdDir, releaseDir } from "./held.js";
 import Hud from "./Hud.jsx";
-import MapView, { WALK_MS } from "./MapView.jsx";
+import MapView from "./MapView.jsx";
 import meta from "./meta.js";
 import { activeGear } from "./party.js";
 import { mergeEnding, readData, restore, snapshot } from "./record.js";
@@ -48,7 +49,7 @@ export default function AgentTown() {
   const [endSaved, setEndSaved] = useState(null);
   const latest = useRef(state);
   latest.current = state;
-  const lastMove = useRef(0);
+  const heldRef = useRef([]);
   const endedFor = useRef(null);
   const rootRef = useRef(null);
   const [muted, setMuted] = useState(() => readData(getGameData(meta.id)).muted);
@@ -76,12 +77,8 @@ export default function AgentTown() {
     saveGameData(meta.id, Date.now(), { ...readData(getGameData(meta.id)), muted: next });
   }, [muted]);
 
-  const move = useCallback((dir) => {
-    const now = performance.now();
-    if (now - lastMove.current < WALK_MS) return;
-    lastMove.current = now;
-    dispatch({ type: "move", dir, roll: Math.random() });
-  }, []);
+  const move = useCallback((dir) => dispatch({ type: "move", dir, roll: Math.random() }), []);
+  const turn = useCallback((dir) => dispatch({ type: "turn", dir }), []);
 
   const talking = Boolean(state.dialog);
   useEffect(() => {
@@ -120,7 +117,7 @@ export default function AgentTown() {
       } else if (s.phase === "map" && !s.dialog && !s.codex) {
         if (KEY_DIRS[key]) {
           e.preventDefault();
-          move(KEY_DIRS[key]);
+          holdDir(heldRef, KEY_DIRS[key]);
         } else if (ACT_KEYS.includes(key) && !onButton) {
           e.preventDefault();
           dispatch({ type: "interact" });
@@ -131,9 +128,20 @@ export default function AgentTown() {
         dispatch({ type: "leave" });
       }
     }
+    function onKeyUp(e) {
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (KEY_DIRS[key]) releaseDir(heldRef, KEY_DIRS[key]);
+    }
+    const onBlur = () => clearHeld(heldRef);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [move]);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
 
   const toTitle = useCallback(() => {
     setData(readData(getGameData(meta.id)));
@@ -188,7 +196,9 @@ export default function AgentTown() {
         <div className="mt-3 flex flex-col gap-3">
           <MapView
             state={state}
+            held={heldRef}
             onMove={move}
+            onTurn={turn}
             onInteract={() => dispatch({ type: "interact" })}
             disabled={Boolean(state.dialog)}
           >

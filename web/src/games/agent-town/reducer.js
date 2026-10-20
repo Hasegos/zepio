@@ -275,6 +275,10 @@ export function reducer(state, action) {
       return initialState();
     case "move":
       return state.phase === "map" && !state.dialog && !state.codex ? walk(state, action.dir, action.roll ?? 1) : state;
+    case "turn":
+      return state.phase === "map" && !state.dialog && !state.codex && state.player.dir !== action.dir
+        ? { ...state, player: { ...state.player, dir: action.dir } }
+        : state;
     case "interact":
       return state.phase === "map" && !state.dialog && !state.codex ? interact(state) : state;
     case "codex":
