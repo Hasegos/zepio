@@ -98,7 +98,7 @@ export default function TinyIsle() {
   const again = useCallback(() => begin(state.run.island.id), [begin, state.run]);
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
+    <section className="panel">
       {state.phase === "menu" && (
         <Menu
           data={data}

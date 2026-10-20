@@ -55,7 +55,7 @@ export default function LightFlip() {
   const press = useCallback((cell) => dispatch({ type: "press", cell }), []);
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
+    <section className="panel">
       {state.phase === "intro" && (
         <div className="flex flex-col items-center gap-5 py-8 text-center">
           <h2 className="text-2xl font-extrabold">모든 불을 꺼 보세요</h2>
@@ -94,7 +94,7 @@ export default function LightFlip() {
               ref={nextRef}
               type="button"
               onClick={() => dispatch({ type: "next", now: Date.now() })}
-              className="rounded-xl bg-primary px-5 py-3.5 text-lg font-bold text-white"
+              className="btn-primary"
             >
               {isLast ? "결과 보기" : "다음 판"}
             </button>

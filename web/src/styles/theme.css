@@ -1,0 +1,12 @@
+@theme {
+  --color-primary: #4f46e5;
+  --color-secondary: #06b6d4;
+  --color-accent: #f59e0b;
+  --color-success: #10b981;
+  --color-success-strong: #047857;
+  --color-danger: #ef4444;
+  --color-danger-strong: #b91c1c;
+  --color-ink: #0f172a;
+  --font-sans:
+      "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
