@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   BASE_POWER,
+  DIFFICULTIES,
   expandCost,
   expandLand,
   formatNumber,
@@ -127,6 +128,16 @@ function ItemBody({ tile, state, analysis, access, onAct, onRepair, onMove, onCl
             </Stat>
           </>
         )}
+        {cell.kind === "battery" && (
+          <Stat label="정전 지원" wide>
+            정전 때만 전력 +{spec.cap}
+          </Stat>
+        )}
+        {cell.kind === "ext" && (
+          <Stat label="소화" wide>
+            반경 {spec.reach}칸 · 불난 지 2초 뒤 자동으로 꺼요
+          </Stat>
+        )}
         {cell.kind === "gen" && (
           <>
             <Stat label="발전">+{spec.cap}</Stat>
@@ -157,6 +168,8 @@ function ItemBody({ tile, state, analysis, access, onAct, onRepair, onMove, onCl
             {cell.kind === "cooler" && `: 반경 ${next.reach}칸, 온도 -${next.cool}, 전력 ${next.power}`}
             {cell.kind === "hub" && `: 대역폭 ${next.cap}, 닿는 거리 ${next.reach}칸, 전력 ${next.power}`}
             {cell.kind === "gen" && `: 발전 +${next.cap}, 발열 ${next.heat}`}
+            {cell.kind === "battery" && `: 정전 지원 +${next.cap}`}
+            {cell.kind === "ext" && `: 반경 ${next.reach}칸`}
           </p>
           <Action label={`${next.name}로 올리기`} cost={upgradeCost(state, tile)} coins={state.coins} onClick={() => onAct(upgradeItem, tile)} />
         </>
@@ -200,8 +213,9 @@ function ItemBody({ tile, state, analysis, access, onAct, onRepair, onMove, onCl
  * @param props.issues diagnose 결과
  * @param props.onAct 행동 함수와 인자를 받아 실행한다
  * @param props.onReset 센터 초기화를 확정했을 때 호출
+ * @param props.onDifficulty 난이도 id를 받아 바꾼다
  */
-function TerminalBody({ state, analysis, issues, onAct, onReset }) {
+function TerminalBody({ state, analysis, issues, onAct, onReset, onDifficulty }) {
   const [confirming, setConfirming] = useState(false);
   const grade = gradeOf(state.lifetime);
   const cost = expandCost(state);
@@ -232,6 +246,26 @@ function TerminalBody({ state, analysis, issues, onAct, onReset }) {
       ) : (
         <p className="text-sm font-bold text-success-strong">가장 넓은 부지예요.</p>
       )}
+      <div className="flex flex-col gap-1.5">
+        <p className="text-xs font-semibold text-slate-700">재난 난이도</p>
+        <div className="flex gap-1.5">
+          {Object.entries(DIFFICULTIES).map(([id, info]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={state.difficulty === id}
+              onClick={() => onDifficulty(id)}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white"
+            >
+              {info.name}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-600">{DIFFICULTIES[state.difficulty ?? "calm"].text}</p>
+        <p className="text-xs text-slate-600">
+          재난 기록: 폭주 {state.stats.surge} · 정전 {state.stats.blackout} · 화재 {state.stats.fire} (피해 없이 막음 {state.stats.saved})
+        </p>
+      </div>
       {issues.length > 0 && (
         <ul className="flex flex-col gap-1.5">
           {issues.map((issue) => (
@@ -277,8 +311,9 @@ function TerminalBody({ state, analysis, issues, onAct, onReset }) {
  * @param props.onMove 옮기기를 시작한다
  * @param props.onClose 닫기를 눌렀을 때 호출
  * @param props.onReset 센터 초기화를 확정했을 때 호출
+ * @param props.onDifficulty 난이도 id를 받아 바꾼다
  */
-export default function Panel({ target, state, analysis, access, issues, onAct, onRepair, onMove, onClose, onReset }) {
+export default function Panel({ target, state, analysis, access, issues, onAct, onRepair, onMove, onClose, onReset, onDifficulty }) {
   const dialogRef = useRef(null);
   useEffect(() => {
     dialogRef.current?.focus({ preventScroll: true });
@@ -316,7 +351,7 @@ export default function Panel({ target, state, analysis, access, issues, onAct, 
           onClose={onClose}
         />
       ) : (
-        <TerminalBody state={state} analysis={analysis} issues={issues} onAct={onAct} onReset={onReset} />
+        <TerminalBody state={state} analysis={analysis} issues={issues} onAct={onAct} onReset={onReset} onDifficulty={onDifficulty} />
       )}
     </div>
   );

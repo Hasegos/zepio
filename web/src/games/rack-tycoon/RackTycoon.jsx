@@ -21,9 +21,12 @@ import {
   removeItem,
   repairItem,
   SAFE_TEMP,
+  setDifficulty,
   upgradeItem,
   xyOf,
 } from "./engine.js";
+import { EventBanner, DifficultyChooser } from "./Banner.jsx";
+import { burningTiles, describeEvent, effectsOf, newDisasters, putOut, stepDisasters } from "./disaster.js";
 import { describeHover, nextGoal, worldOf } from "./hover.js";
 import { GRID_HEIGHT, GRID_WIDTH, inLand, START, TERMINAL, TERMINAL_TILE } from "./layout.js";
 import Lists from "./Lists.jsx";
@@ -40,8 +43,9 @@ const CONFIRM_MS = 3000;
 const CONFIRM_REFUND = 500;
 const WELCOME_MIN_SECONDS = 60;
 const OFFLINE_THRESHOLD = 600;
-const PLACE_TOOLS = ["server", "cooler", "hub", "gen"];
-const KEY_TOOLS = { Digit1: "server", Digit2: "cooler", Digit3: "hub", Digit4: "gen", KeyM: "move", KeyX: "remove" };
+const PLACE_TOOLS = ["server", "cooler", "hub", "gen", "battery", "ext"];
+const LIVE_GAP = 5;
+const KEY_TOOLS = { Digit1: "server", Digit2: "cooler", Digit3: "hub", Digit4: "gen", Digit5: "battery", Digit6: "ext", KeyM: "move", KeyX: "remove" };
 const KEY_OVERLAYS = { KeyH: "heat", KeyN: "net" };
 const TONES = { ok: "text-slate-700", poor: "text-slate-500", bad: "text-red-700" };
 
@@ -76,15 +80,17 @@ export default function RackTycoon() {
   const confirmRef = useRef({ tile: -1, at: 0 });
   const [boot] = useState(loadBoot);
   const stateRef = useRef(boot.state);
+  const evRef = useRef(null);
+  evRef.current ??= newDisasters();
   const lastRef = useRef(boot.now);
   const uiRef = useRef({ tool: "select", overlay: "none", hoverTile: null, panel: null, carried: null });
   const [ui, setUi] = useState(uiRef.current);
   const [snap, setSnap] = useState(() => {
     const analysis = analyze(boot.state);
     const access = accessibleTiles(boot.state, START);
-    return { state: boot.state, analysis, access, issues: diagnose(boot.state, analysis, access), hover: { ghost: null, text: "", tone: "ok" } };
+    return { state: boot.state, analysis, access, issues: diagnose(boot.state, analysis, access), hover: { ghost: null, text: "", tone: "ok" }, event: null };
   });
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState({ text: "", tone: "bad" });
   const [welcome, setWelcome] = useState(boot.welcome);
   const [noWebgl, setNoWebgl] = useState(false);
   const [coarse] = useState(() => window.matchMedia?.("(pointer: coarse)").matches ?? false);
@@ -93,12 +99,15 @@ export default function RackTycoon() {
     const state = stateRef.current;
     const u = uiRef.current;
     const robot = sceneRef.current?.robotTile() ?? START;
-    const analysis = analyze(state);
+    const fx = effectsOf(state, evRef.current);
+    const analysis = analyze(state, fx);
     const access = accessibleTiles(state, robot);
     const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried });
-    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover });
+    const event = describeEvent(state, evRef.current);
+    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event });
     const selected = u.carried ?? (u.panel?.kind === "item" ? u.panel.tile : null);
-    sceneRef.current?.setWorld(worldOf(state, analysis, { overlay: u.overlay, ghost: hover.ghost, selected }));
+    const mood = event && event.phase === "live" && event.kind !== "fire" ? event.kind : "none";
+    sceneRef.current?.setWorld(worldOf(state, analysis, { overlay: u.overlay, ghost: hover.ghost, selected, burning: burningTiles(evRef.current), mood }));
   }, []);
 
   const update = useCallback(
@@ -114,10 +123,10 @@ export default function RackTycoon() {
     if (stateRef.current) saveGameData(meta.id, Date.now(), makeData(stateRef.current, lastRef.current));
   }, []);
 
-  const say = useCallback((text) => {
-    setNotice(text);
+  const say = useCallback((text, tone = "bad") => {
+    setNotice({ text, tone });
     clearTimeout(noticeTimer.current);
-    noticeTimer.current = setTimeout(() => setNotice(""), NOTICE_MS);
+    noticeTimer.current = setTimeout(() => setNotice({ text: "", tone }), NOTICE_MS);
   }, []);
 
   const act = useCallback(
@@ -137,6 +146,7 @@ export default function RackTycoon() {
 
   const reset = useCallback(() => {
     stateRef.current = newState();
+    evRef.current = newDisasters();
     lastRef.current = Date.now();
     setWelcome(null);
     update({ panel: null, carried: null, tool: "select" });
@@ -180,6 +190,38 @@ export default function RackTycoon() {
     [act, say],
   );
 
+  const extinguish = useCallback(
+    (tile) => {
+      const scene = sceneRef.current;
+      const done = () => {
+        evRef.current = putOut(evRef.current, tile);
+        say("불을 껐어요!", "good");
+        refresh();
+      };
+      if (!scene) done();
+      else if (scene.walkBeside(tile, done)) say("로봇이 불을 끄러 가요.", "good");
+      else say("로봇이 닿을 수 없어요. 주변 통로를 열어 주세요.");
+    },
+    [refresh, say],
+  );
+
+  const extinguishNearest = useCallback(() => {
+    const lit = burningTiles(evRef.current);
+    if (!lit.length) return;
+    const [rx, ry] = sceneRef.current?.robotTile() ?? START;
+    const dist = (tile) => Math.max(Math.abs((tile % GRID_WIDTH) - rx), Math.abs(Math.floor(tile / GRID_WIDTH) - ry));
+    extinguish(lit.reduce((best, tile) => (dist(tile) < dist(best) ? tile : best), lit[0]));
+  }, [extinguish]);
+
+  const pickDifficulty = useCallback(
+    (id) => {
+      if (!act(setDifficulty, id)) return;
+      evRef.current = newDisasters();
+      refresh();
+    },
+    [act, refresh],
+  );
+
   const startMove = useCallback(
     (tile) => update({ tool: "move", carried: tile, panel: null }),
     [update],
@@ -203,7 +245,8 @@ export default function RackTycoon() {
       }
       if (u.tool === "select") {
         if (drag) return;
-        if (cell) update({ panel: { kind: "item", tile } });
+        if (burningTiles(evRef.current).includes(tile)) extinguish(tile);
+        else if (cell) update({ panel: { kind: "item", tile } });
         else if (inLand(state.land, x, y)) {
           if (sceneRef.current && !sceneRef.current.walkTo(tile)) say("로봇이 그 칸에 닿을 수 없어요.");
         }
@@ -234,7 +277,7 @@ export default function RackTycoon() {
         }
       }
     },
-    [act, say, update],
+    [act, extinguish, say, update],
   );
 
   useEffect(() => {
@@ -265,11 +308,18 @@ export default function RackTycoon() {
         if (settled.gain > 0) setWelcome({ gain: settled.gain, seconds: settled.seconds });
       } else {
         const broken = [];
+        const live = !document.hidden && dt <= LIVE_GAP;
         while (dt > 1e-6) {
           const step = Math.min(MAX_STEP, dt);
-          const out = advance(current, step);
+          const out = advance(current, step, effectsOf(current, evRef.current));
           current = out.state;
           broken.push(...out.breaks);
+          if (live) {
+            const next = stepDisasters(current, evRef.current, step);
+            current = next.state;
+            evRef.current = next.ev;
+            for (const note of next.notes) say(note.text, note.tone);
+          }
           dt -= step;
         }
         if (broken.length) say(`서버 ${broken.length}대가 과열로 고장났어요. 로봇을 보내 고쳐 주세요.`);
@@ -307,7 +357,8 @@ export default function RackTycoon() {
     };
   }, [refresh, save, say, update, cancel, pickTool, handleTile]);
 
-  const { state, analysis, access, issues, hover } = snap;
+
+  const { state, analysis, access, issues, hover, event } = snap;
   const grade = gradeOf(state.lifetime);
   const floor = GRADES[grade.index].min;
   const progress = grade.next === null ? 1 : (state.lifetime - floor) / (grade.next - floor);
@@ -367,12 +418,14 @@ export default function RackTycoon() {
         </div>
       </div>
 
+      {event && <EventBanner event={event} onExtinguish={extinguishNearest} />}
+
       {!noWebgl && <Toolbar tool={ui.tool} onTool={pickTool} overlay={ui.overlay} onOverlay={(overlay) => update({ overlay })} state={state} onExpand={() => act(expandLand)} />}
 
       <p className={`min-h-5 text-sm font-semibold ${TONES[hover.text ? hover.tone : "ok"]}`}>{carriedName || hint}</p>
       <div className="min-h-6" role="status">
-        {notice ? (
-          <p className="text-sm font-semibold text-red-700">{notice}</p>
+        {notice.text ? (
+          <p className={`text-sm font-semibold ${notice.tone === "good" ? "text-emerald-700" : "text-red-700"}`}>{notice.text}</p>
         ) : (
           alerts.map((issue) => (
             <p key={issue.text} className={`text-sm font-semibold ${issue.level === "bad" ? "text-red-700" : "text-amber-800"}`}>
@@ -389,6 +442,7 @@ export default function RackTycoon() {
             이 브라우저에서는 3D 화면을 쓸 수 없어요. 아래 목록에서 좌표로 시설을 설치하고 관리할 수 있어요.
           </p>
         )}
+        {state.difficulty === null && <DifficultyChooser onPick={pickDifficulty} />}
         {ui.panel && (
           <Panel
             target={ui.panel}
@@ -401,11 +455,12 @@ export default function RackTycoon() {
             onMove={startMove}
             onClose={closePanel}
             onReset={reset}
+            onDifficulty={pickDifficulty}
           />
         )}
       </div>
       <p className="text-xs text-slate-600">
-        바닥을 누르면 로봇이 걸어가요. 도구(1~4)를 고르면 빈 칸에 설치하고, 끌면서 여러 칸에 놓을 수 있어요. H는 열지도, N은 네트워크, M은 옮기기, X는 철거, Esc나 오른쪽 클릭은 취소예요. WASD로 직접 움직이고 Q/E로 돌리고 휠로 확대해요.
+        바닥을 누르면 로봇이 걸어가요. 도구(1~6)를 고르면 빈 칸에 설치하고, 끌면서 여러 칸에 놓을 수 있어요. H는 열지도, N은 네트워크, M은 옮기기, X는 철거, Esc나 오른쪽 클릭은 취소예요. WASD로 직접 움직이고 Q/E로 돌리고 휠로 확대해요.
       </p>
 
       <Lists
