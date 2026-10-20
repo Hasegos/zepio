@@ -22,3 +22,14 @@ export function canonicalUrl(site, pathname) {
   const path = pathname.endsWith("/") ? pathname : `${pathname}/`;
   return new URL(path, site).href;
 }
+
+/**
+ * 애드센스 게시자 ID이면(ca-pub-숫자) 그대로 돌려주고, 비었거나 모양이 다르면 null이다.
+ *
+ * @param value 환경변수 값
+ * @returns 게시자 ID 또는 null
+ */
+export function adsenseClient(value) {
+  const id = String(value ?? "").trim();
+  return /^ca-pub-\d{10,20}$/.test(id) ? id : null;
+}
