@@ -1,0 +1,87 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Mascot from "../components/Mascot.astro";
+import { liveGames } from "../games/registry.js";
+
+const CATEGORY_LABELS = { puzzle: "퍼즐", arcade: "아케이드", casual: "캐주얼", simulation: "시뮬레이션" };
+const dailyGame = liveGames.find((game) => game.hasDaily);
+---
+
+<BaseLayout
+  title="Zepio | 무료 웹게임"
+  description="회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임 플랫폼 Zepio입니다."
+>
+  <section class="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-primary to-violet-700 p-5 text-white sm:p-8">
+    <div class="flex-1">
+      <h1 class="text-3xl font-extrabold sm:text-4xl">Play Something New</h1>
+      <p class="mt-2 text-indigo-100">다운로드나 회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임.</p>
+      <a href="#games" class="mt-4 inline-block rounded-xl bg-white px-5 py-2.5 font-bold text-primary">
+        게임 둘러보기
+      </a>
+    </div>
+    <Mascot size={96} class="size-20 shrink-0 sm:size-28" />
+  </section>
+
+  {
+    dailyGame && (
+      <section
+        data-daily
+        data-game-id={dailyGame.id}
+        class="mt-8 rounded-2xl border border-primary/30 bg-indigo-50 p-4"
+      >
+        <h2 class="text-lg font-bold">오늘의 도전</h2>
+        <p data-daily-text class="mt-1 text-sm text-slate-700">
+          매일 새로 열리는 5문제. 모두 같은 문제로 도전해요.
+        </p>
+        <a
+          href={`/games/${dailyGame.slug}`}
+          class="mt-3 inline-block rounded-xl bg-primary px-5 py-2.5 font-bold text-white"
+        >
+          도전하러 가기
+        </a>
+      </section>
+    )
+  }
+
+  <section data-recent hidden class="mt-8">
+    <h2 class="mb-3 text-xl font-bold">이어서 하기</h2>
+    <ul data-recent-list class="flex flex-wrap gap-2"></ul>
+  </section>
+
+  <h2 id="games" class="mb-3 mt-8 scroll-mt-4 text-xl font-bold">추천 게임</h2>
+  <ul class="grid gap-4 sm:grid-cols-2">
+    {
+      liveGames.map((game) => (
+        <li
+          data-game-card={game.id}
+          data-slug={game.slug}
+          data-name={game.name}
+          class="overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+        >
+          <img src={game.thumbnail} alt="" width="320" height="180" class="aspect-video w-full object-cover" />
+          <div class="p-4">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-lg font-bold">{game.name}</h3>
+              <span class="shrink-0 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-primary">
+                {CATEGORY_LABELS[game.category] ?? game.category}
+              </span>
+            </div>
+            <p class="mt-1 text-sm text-slate-600">{game.description}</p>
+            <p class="mt-1 text-xs text-slate-600">{game.estimatedPlayTime}</p>
+            <p data-record hidden class="mt-1 text-sm font-bold text-primary" />
+            <a
+              href={`/games/${game.slug}`}
+              class="mt-3 inline-block rounded-xl bg-primary px-5 py-2.5 font-bold text-white"
+            >
+              플레이하기
+            </a>
+          </div>
+        </li>
+      ))
+    }
+  </ul>
+</BaseLayout>
+
+<script>
+  import "../scripts/home-records.js";
+</script>

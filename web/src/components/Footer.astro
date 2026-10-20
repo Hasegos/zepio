@@ -1,0 +1,59 @@
+---
+import { liveGames } from "../games/registry.js";
+
+const year = new Date().getFullYear();
+const infoLinks = [
+  { href: "/about/", label: "소개" },
+  { href: "/contact/", label: "문의" },
+  { href: "/privacy/", label: "개인정보처리방침" },
+  { href: "/terms/", label: "이용약관" },
+];
+const linkClass = "text-slate-700 hover:text-primary hover:underline";
+---
+
+<footer class="border-t border-slate-200 bg-white">
+  <div class="mx-auto max-w-3xl px-4 py-8">
+    <div class="grid gap-6 sm:grid-cols-3">
+      <div>
+        <p class="text-lg font-extrabold text-primary">Zepio</p>
+        <p class="mt-1 text-sm text-slate-600">
+          로그인도 설치도 없이, 신박한 웹게임을 브라우저에서 바로 즐기세요.
+        </p>
+      </div>
+      <nav aria-label="게임 목록">
+        <p class="text-sm font-extrabold">게임</p>
+        <ul class="mt-2 space-y-1 text-sm font-semibold">
+          {
+            liveGames.map((game) => (
+              <li>
+                <a href={`/games/${game.slug}/`} class={linkClass}>
+                  {game.name}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+      <nav aria-label="사이트 정보">
+        <p class="text-sm font-extrabold">사이트 정보</p>
+        <ul class="mt-2 space-y-1 text-sm font-semibold">
+          {
+            infoLinks.map((link) => (
+              <li>
+                <a href={link.href} class={linkClass}>
+                  {link.label}
+                </a>
+              </li>
+            ))
+          }
+          <li>
+            <a href="https://github.com/Hasegos/zepio" target="_blank" rel="noopener noreferrer" class={linkClass}>
+              GitHub
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+    <p class="mt-6 border-t border-slate-200 pt-4 text-xs text-slate-600">© {year} Zepio. All rights reserved.</p>
+  </div>
+</footer>

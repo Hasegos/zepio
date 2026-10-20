@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@import "./theme.css";
+@import "./games/town.css";
+@import "./games/isle.css";
+@import "./games/det.css";
+@import "./base.css";
+@import "./components.css";
+@import "./mascot.css";

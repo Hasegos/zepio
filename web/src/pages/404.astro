@@ -1,0 +1,16 @@
+---
+import Mascot from "../components/Mascot.astro";
+import TextLayout from "../layouts/TextLayout.astro";
+---
+
+<TextLayout
+  title="페이지를 찾을 수 없어요"
+  description="찾는 페이지가 없습니다. 홈에서 게임을 골라 보세요."
+  noindex
+>
+  <Mascot expression="think" size={96} class="mx-auto my-6" />
+  <p>주소가 바뀌었거나 없는 페이지예요. 홈에서 게임을 골라 보세요.</p>
+  <p>
+    <a href="/">홈으로 가기</a>
+  </p>
+</TextLayout>

@@ -1,0 +1,58 @@
+name: Check and Deploy
+
+on:
+  pull_request:
+    branches: [dev, master]
+  push:
+    branches: [master]
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: 의존성 설치
+        working-directory: web
+        run: npm ci
+
+      - name: 린트
+        working-directory: web
+        run: npm run lint
+
+      - name: 빌드
+        working-directory: web
+        run: npm run build
+
+      - name: 빌드 결과에 인라인 스크립트·스타일이 없는지 검사 (CSP)
+        working-directory: web
+        run: |
+          node - <<'JS'
+          const fs = require("fs");
+          const path = require("path");
+          const bad = [];
+          (function walk(dir) {
+            for (const name of fs.readdirSync(dir)) {
+              const file = path.join(dir, name);
+              if (fs.statSync(file).isDirectory()) walk(file);
+              else if (file.endsWith(".html")) {
+                const html = fs.readFileSync(file, "utf8");
+                if (/<script(?![^>]*\ssrc=)[^>]*>/.test(html) || /<style/.test(html) || /\sstyle="/.test(html)) bad.push(file);
+              }
+            }
+          })("dist");
+          if (bad.length) {
+            console.error("인라인 스크립트·스타일이 있다:", bad);
+            process.exit(1);
+          }
+          JS

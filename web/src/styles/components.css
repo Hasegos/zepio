@@ -1,0 +1,11 @@
+@utility panel {
+  @apply rounded-2xl bg-white p-4 shadow-sm sm:p-6;
+}
+
+@utility btn-primary {
+  @apply rounded-xl bg-primary px-5 py-3.5 text-lg font-bold text-white;
+}
+
+@utility stat-tile {
+  @apply flex flex-col-reverse rounded-xl bg-slate-50 p-4;
+}

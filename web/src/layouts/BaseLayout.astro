@@ -1,0 +1,81 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { adsenseClient, canonicalUrl } from "../lib/site.js";
+
+const { title, description, image = "/og-default.png", type = "website", noindex = false } = Astro.props;
+const indexable = import.meta.env.PUBLIC_SITE_ENV === "production";
+const canonical = indexable && !noindex ? canonicalUrl(Astro.site, Astro.url.pathname) : null;
+const adsense = indexable ? adsenseClient(import.meta.env.PUBLIC_ADSENSE_CLIENT) : null;
+const imageUrl = indexable ? new URL(image, Astro.site).href : null;
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {(!indexable || noindex) && <meta name="robots" content="noindex" />}
+    {canonical && <link rel="canonical" href={canonical} />}
+    <meta property="og:site_name" content="Zepio" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {canonical && <meta property="og:url" content={canonical} />}
+    {
+      imageUrl && (
+        <>
+          <meta property="og:image" content={imageUrl} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="Zepio 무료 웹게임" />
+        </>
+      )
+    }
+    <meta name="twitter:card" content={imageUrl ? "summary_large_image" : "summary"} />
+    {
+      adsense && (
+        <>
+          <meta name="google-adsense-account" content={adsense} />
+          <script
+            is:inline
+            async
+            crossorigin="anonymous"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsense}`}
+          />
+        </>
+      )
+    }
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/fonts/pretendard/pretendardvariable-dynamic-subset.css" />
+    {
+      import.meta.env.DEV && (
+        <script is:inline type="module">
+          import RefreshRuntime from "/@react-refresh"; RefreshRuntime.injectIntoGlobalHook(window);
+          window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => (type) => type;
+          window.__vite_plugin_react_preamble_installed__ = true;
+        </script>
+      )
+    }
+  </head>
+  <body class="flex min-h-screen flex-col font-sans antialiased">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-10 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:font-bold focus:text-primary"
+    >
+      본문으로 건너뛰기
+    </a>
+    <Header />
+    <main id="main" class="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
+      <slot />
+    </main>
+    <Footer />
+    <script>
+      import "../scripts/global-errors.js";
+    </script>
+  </body>
+</html>
