@@ -1,7 +1,6 @@
 export const SIZE = 5;
 export const CELLS = SIZE * SIZE;
 
-/** 판마다 최소 이동 횟수가 들어갈 범위. 뒤로 갈수록 어렵다. */
 export const STAGE_RANGES = [
   [2, 3],
   [4, 5],
