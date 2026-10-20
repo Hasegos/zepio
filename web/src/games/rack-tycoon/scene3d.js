@@ -548,6 +548,7 @@ export function createScene(
   const pick = () => {
     const rect = canvas.getBoundingClientRect();
     ndc.set(((pointer.x - rect.left) / rect.width) * 2 - 1, -((pointer.y - rect.top) / rect.height) * 2 + 1);
+    if (Math.abs(ndc.x) > 1 || Math.abs(ndc.y) > 1) return null;
     raycaster.setFromCamera(ndc, camera);
     const hits = [];
     for (const mesh of itemMeshes) {

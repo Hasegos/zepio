@@ -218,7 +218,7 @@ function TerminalBody({ state, analysis, issues, onAct, onReset }) {
           서버 {analysis.counts.server} · 냉각 {analysis.counts.cooler} · 허브 {analysis.counts.hub} · 발전 {analysis.counts.gen}
         </Stat>
         <Stat label={`전력 ${analysis.usage}/${analysis.cap}`} wide>
-          {analysis.efficiency < 1 ? `부족해서 수익이 ${Math.round(analysis.efficiency * 100)}%예요` : `충분해요 (기본 ${BASE_POWER} + 발전기)`}
+          {analysis.efficiency < 1 ? `부족해서 수익이 ${Math.floor(analysis.efficiency * 100)}%예요` : `충분해요 (기본 ${BASE_POWER} + 발전기)`}
         </Stat>
       </dl>
       {grade.next !== null && <p className="text-xs text-slate-700">다음 등급까지 누적 수익 {formatNumber(grade.next - state.lifetime)} 남았어요.</p>}
@@ -279,9 +279,9 @@ function TerminalBody({ state, analysis, issues, onAct, onReset }) {
  * @param props.onReset 센터 초기화를 확정했을 때 호출
  */
 export default function Panel({ target, state, analysis, access, issues, onAct, onRepair, onMove, onClose, onReset }) {
-  const closeRef = useRef(null);
+  const dialogRef = useRef(null);
   useEffect(() => {
-    closeRef.current?.focus({ preventScroll: true });
+    dialogRef.current?.focus({ preventScroll: true });
   }, [target.kind, target.tile]);
   let title = "사무실 단말기";
   if (target.kind === "item") {
@@ -291,13 +291,15 @@ export default function Panel({ target, state, analysis, access, issues, onAct, 
   }
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       role="dialog"
       aria-label={title}
-      className="absolute right-3 top-3 z-10 max-h-[calc(100%-1.5rem)] w-[min(20rem,calc(100%-1.5rem))] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-lg"
+      className="absolute right-3 top-3 z-10 max-h-[calc(100%-1.5rem)] w-[min(20rem,calc(100%-1.5rem))] overflow-y-auto outline-none rounded-2xl border border-slate-200 bg-white p-4 shadow-lg"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-base font-extrabold">{title}</h3>
-        <button ref={closeRef} type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-700">
+        <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-700">
           닫기 (Esc)
         </button>
       </div>

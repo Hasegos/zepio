@@ -204,7 +204,9 @@ export default function RackTycoon() {
       if (u.tool === "select") {
         if (drag) return;
         if (cell) update({ panel: { kind: "item", tile } });
-        else if (inLand(state.land, x, y)) sceneRef.current?.walkTo(tile);
+        else if (inLand(state.land, x, y)) {
+          if (sceneRef.current && !sceneRef.current.walkTo(tile)) say("로봇이 그 칸에 닿을 수 없어요.");
+        }
         else say("아직 넓히지 않은 땅이에요. 단말기에서 부지를 넓히세요.");
       } else if (PLACE_TOOLS.includes(u.tool)) {
         if (!cell) act(placeItem, tile, u.tool);

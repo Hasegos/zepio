@@ -23,7 +23,7 @@ const money = (n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n 
  */
 function readCell(cell, tile, land) {
   if (cell === null) return null;
-  if (!isObject(cell) || !(cell.kind in KINDS)) return undefined;
+  if (!isObject(cell) || !Object.hasOwn(KINDS, cell.kind)) return undefined;
   const [x, y] = xyOf(tile);
   if (tile === TERMINAL_TILE || !inLand(land, x, y)) return undefined;
   if (!isInt(cell.level, 1, KINDS[cell.kind].levels.length - 1) || typeof cell.broken !== "boolean") return undefined;

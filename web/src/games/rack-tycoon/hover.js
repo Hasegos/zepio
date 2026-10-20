@@ -132,6 +132,7 @@ export function describeHover({ state, analysis, tool, tile, carried }) {
   }
   const label = KINDS[tool].levels[1].name;
   if (cell) {
+    if (cell.broken) return { ghost: null, text: "고장난 서버예요. 눌러서 로봇을 보내 고치세요.", tone: "bad" };
     const cost = cell.kind === tool ? upgradeCost(state, tile) : null;
     if (cost === null) return { ghost: null, text: "이미 시설이 있어요.", tone: "bad" };
     const next = KINDS[tool].levels[cell.level + 1];

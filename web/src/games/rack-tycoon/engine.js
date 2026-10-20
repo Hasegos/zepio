@@ -427,7 +427,9 @@ export function accessibleTiles(state, from = START) {
     if (!cell) return;
     const [x, y] = xyOf(tile);
     for (const [dx, dy] of STRAIGHT) {
-      if (reach.has(tileOf(x + dx, y + dy))) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < GRID_WIDTH && ny < GRID_HEIGHT && reach.has(tileOf(nx, ny))) {
         out.add(tile);
         break;
       }
@@ -465,7 +467,7 @@ export function diagnose(state, analysis, access) {
   if (trapped) out.push({ level: "bad", text: `고장난 서버 ${trapped}대가 막혀서 로봇이 닿지 못해요. 주변 통로를 열어 주세요.` });
   if (broken - trapped > 0) out.push({ level: "bad", text: `고장난 서버 ${broken - trapped}대가 있어요. 로봇을 보내 고쳐 주세요.` });
   if (critical) out.push({ level: "bad", text: `서버 ${critical}대가 한계 온도예요. 곧 고장나요. 냉각기를 가까이 놓으세요.` });
-  if (analysis.efficiency < 1) out.push({ level: "bad", text: `전력이 모자라 수익이 ${Math.round(analysis.efficiency * 100)}%예요. 발전기를 놓으세요.` });
+  if (analysis.efficiency < 1) out.push({ level: "bad", text: `전력이 모자라 수익이 ${Math.floor(analysis.efficiency * 100)}%예요. 발전기를 놓으세요.` });
   if (warm) out.push({ level: "warn", text: `서버 ${warm}대가 열 때문에 수익이 깎이고 있어요.` });
   if (starved) out.push({ level: "warn", text: `서버 ${starved}대가 허브에 제대로 연결되지 않았어요. 허브를 가까이 놓거나 더 좋은 허브로 올리세요.` });
   return out;
@@ -495,6 +497,7 @@ export function previewPlace(state, tile, kind, level = 1) {
  * @returns { state, error }
  */
 export function placeItem(state, tile, kind) {
+  if (!Number.isInteger(tile) || tile < 0 || tile >= AREA) return { state, error: "잘못된 칸이에요." };
   const [x, y] = xyOf(tile);
   if (!inLand(state.land, x, y)) return { state, error: "아직 넓히지 않은 땅이에요." };
   if (tile === TERMINAL_TILE) return { state, error: "단말기 자리예요." };
@@ -568,6 +571,7 @@ export function removeItem(state, tile) {
  * @returns { state, error }
  */
 export function moveItem(state, from, to) {
+  if (!Number.isInteger(to) || to < 0 || to >= AREA) return { state, error: "잘못된 칸이에요." };
   const cell = state.cells[from];
   if (!cell) return { state, error: "시설이 없어요." };
   const [x, y] = xyOf(to);
@@ -612,7 +616,7 @@ export function gradeOf(lifetime) {
  * @returns 문자열
  */
 export function formatNumber(value) {
-  const n = Math.max(0, value);
+  const n = Number.isFinite(value) ? Math.max(0, value) : 0;
   if (n < 1000) return String(Math.floor(n));
   let group = Math.min(Math.floor(Math.log10(n) / 3), SUFFIXES.length - 1);
   if (n / 1000 ** group >= 999.5 && group < SUFFIXES.length - 1) group += 1;
