@@ -99,7 +99,7 @@ const Board = memo(function Board({ game, onClick, onFlag }) {
       if (next < 0 || next >= cols * rows) return;
       setFocus(next);
       rootRef.current?.querySelector(`[data-i="${next}"]`)?.focus();
-    } else if (event.key === "f" || event.key === "F") {
+    } else if ((event.key === "f" || event.key === "F") && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
       onFlag(i);
     }
@@ -125,6 +125,7 @@ const Board = memo(function Board({ game, onClick, onFlag }) {
         onContextMenu={(event) => event.preventDefault()}
         onFocus={() => setFocus(i)}
         onPointerDown={(event) => {
+          suppress.current = false;
           if (event.pointerType === "mouse") {
             if (event.button === 2) onFlag(i);
             return;
@@ -271,7 +272,7 @@ export default function BugSweeper() {
   const onCellClick = useCallback(
     (i) =>
       apply((g) => {
-        if (g.cells[i] === OPEN) return chord(g, i);
+        if (g.cells[i] === OPEN) return modeRef.current === "flag" ? g : chord(g, i);
         if (modeRef.current === "flag") return toggleFlag(g, i);
         return g.cells[i] === FLAG ? g : reveal(g, i);
       }),
@@ -287,7 +288,8 @@ export default function BugSweeper() {
   }, []);
 
   if (view === "menu" || !game) {
-    const doneSeconds = dailyRecord?.history?.[today];
+    const done = dailyRecord?.history?.[today];
+    const doneSeconds = Number.isInteger(done) ? done : undefined;
     const streak = currentStreak(dailyRecord, today);
     return (
       <section className="panel">
@@ -300,7 +302,7 @@ export default function BugSweeper() {
           </div>
           <button
             type="button"
-            onClick={() => begin(DAILY_LEVEL, today)}
+            onClick={() => begin(DAILY_LEVEL, kstDate(Date.now()))}
             className="rounded-xl border-2 border-primary bg-indigo-50 px-5 py-4 text-left"
           >
             <span className="block text-lg font-extrabold text-primary">오늘의 판 · {LEVELS[DAILY_LEVEL].name}</span>
