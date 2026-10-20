@@ -39,6 +39,7 @@ jobs:
           PUBLIC_SITE_ENV: production
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
           PUBLIC_CONTACT_EMAIL: ${{ vars.PUBLIC_CONTACT_EMAIL }}
+          PUBLIC_ADSENSE_CLIENT: ${{ vars.PUBLIC_ADSENSE_CLIENT }}
 
       - name: Cloudflare Pages 배포
         working-directory: web
