@@ -27,7 +27,7 @@ const TICK_MS = 200;
 const SAVE_MS = 10000;
 const NOTICE_MS = 6000;
 const WELCOME_MIN_SECONDS = 60;
-const OFFLINE_THRESHOLD = 3;
+const OFFLINE_THRESHOLD = 600;
 
 /**
  * 센터 상태를 3D 장면이 그릴 모양으로 바꾼다.
@@ -109,7 +109,7 @@ export default function RackTycoon() {
   }, []);
 
   const save = useCallback(() => {
-    if (stateRef.current) saveGameData(meta.id, Date.now(), makeData(stateRef.current, Date.now()));
+    if (stateRef.current) saveGameData(meta.id, Date.now(), makeData(stateRef.current, lastRef.current));
   }, []);
 
   const say = useCallback((text) => {
@@ -174,7 +174,9 @@ export default function RackTycoon() {
       if (dt <= 0) return;
       let current = stateRef.current;
       if (dt > OFFLINE_THRESHOLD) {
-        current = offline(current, dt).state;
+        const settled = offline(current, dt);
+        current = settled.state;
+        if (settled.gain > 0) setWelcome({ gain: settled.gain, seconds: settled.seconds });
       } else {
         const broken = [];
         while (dt > 1e-6) {

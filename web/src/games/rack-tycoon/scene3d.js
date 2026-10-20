@@ -387,15 +387,17 @@ export function createScene(container, { width, height, pads, coolerPads, termin
   };
   const onKeyDown = (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.target instanceof Element && event.target.closest("input, textarea, select, button, a")) return;
+    if (event.target instanceof Element && event.target.closest("input, textarea, select, button, a, summary")) return;
     if (MOVE_KEYS[event.code]) {
       event.preventDefault();
       keys.add(MOVE_KEYS[event.code]);
     } else if (event.code === "KeyQ" || event.code === "KeyE") {
       if (!event.repeat) view.index += event.code === "KeyE" ? 1 : -1;
     } else if (event.code === "Space" || event.code === "Enter") {
+      const near = nearestTarget();
+      if (!near) return;
       event.preventDefault();
-      if (!event.repeat) interact(nearestTarget());
+      if (!event.repeat) interact(near);
     }
   };
   const onKeyUp = (event) => {

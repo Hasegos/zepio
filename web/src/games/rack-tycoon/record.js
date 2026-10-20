@@ -53,7 +53,7 @@ export function readState(raw) {
  * @returns { save, savedAt } save는 이어 할 센터 상태(없으면 null), savedAt은 마지막으로 저장한 시각(밀리초)
  */
 export function readData(raw) {
-  const save = readState(raw?.save);
+  const save = raw?.v === VERSION ? readState(raw.save) : null;
   const savedAt = typeof raw?.savedAt === "number" && Number.isFinite(raw.savedAt) && raw.savedAt > 0 ? raw.savedAt : 0;
   return { save, savedAt: save ? savedAt : 0 };
 }

@@ -124,7 +124,7 @@ export function advance(state, seconds) {
   const racks = state.racks.map((rack, i) => {
     if (!rack.tier || rack.broken) return rack;
     const over = analysis.temps[i] - LIMIT_TEMP;
-    const stress = over >= 0 ? rack.stress + STRESS_UP * (over + 1) * seconds : Math.max(0, rack.stress - STRESS_DOWN * seconds);
+    const stress = over > 0 ? rack.stress + STRESS_UP * (over + 1) * seconds : Math.max(0, rack.stress - STRESS_DOWN * seconds);
     if (stress >= 1) {
       breaks.push(i);
       return { ...rack, stress: 0, broken: true };
@@ -310,7 +310,8 @@ export function gradeOf(lifetime) {
 export function formatNumber(value) {
   const n = Math.max(0, value);
   if (n < 1000) return String(Math.floor(n));
-  const group = Math.min(Math.floor(Math.log10(n) / 3), SUFFIXES.length - 1);
+  let group = Math.min(Math.floor(Math.log10(n) / 3), SUFFIXES.length - 1);
+  if (n / 1000 ** group >= 999.5 && group < SUFFIXES.length - 1) group += 1;
   const scaled = n / 1000 ** group;
   return `${scaled >= 100 ? scaled.toFixed(0) : scaled >= 10 ? scaled.toFixed(1) : scaled.toFixed(2)}${SUFFIXES[group]}`;
 }
