@@ -4,11 +4,9 @@ export const AREA = GRID_WIDTH * GRID_HEIGHT;
 export const TERMINAL = [13, 7];
 export const START = [12, 8];
 export const LANDS = [
-  { name: "지하 서버실", w: 8, h: 6, cost: 0 },
-  { name: "1층 전체", w: 10, h: 8, cost: 300 },
-  { name: "별관 증축", w: 12, h: 10, cost: 4000 },
-  { name: "데이터 캠퍼스", w: 16, h: 12, cost: 60000 },
-  { name: "메가 캠퍼스", w: 20, h: 16, cost: 1500000 },
+  { name: "기본 부지", w: 8, h: 6, cost: 0 },
+  { name: "증축 부지", w: 12, h: 10, cost: 5000 },
+  { name: "확장 부지", w: 16, h: 12, cost: 80000 },
 ].map((land) => ({ ...land, x: (GRID_WIDTH - land.w) / 2, y: (GRID_HEIGHT - land.h) / 2 }));
 
 /**

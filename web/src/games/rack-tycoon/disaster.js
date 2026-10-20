@@ -1,6 +1,7 @@
 import { makeRng } from "../_shared/rng.js";
 import { analyze, EXTS, NO_FX, xyOf } from "./engine.js";
 import { GRID_HEIGHT, GRID_WIDTH, tileOf } from "./layout.js";
+import { traitOf } from "./sites.js";
 
 export const DISASTERS = {
   surge: { name: "트래픽 폭주", warn: 10, live: 45 },
@@ -85,7 +86,8 @@ export function describeEvent(state, ev) {
  */
 function pickKind(state, roll) {
   const hasServer = state.cells.some((cell) => cell && cell.kind === "server" && !cell.broken);
-  const weights = [["surge", 3], ["blackout", 2], ["fire", hasServer ? 2 : 0]];
+  const { weights: w } = traitOf(state.type);
+  const weights = [["surge", w.surge], ["blackout", w.blackout], ["fire", hasServer ? w.fire : 0]];
   const total = weights.reduce((sum, [, w]) => sum + w, 0);
   let r = roll() * total;
   for (const [kind, w] of weights) {
