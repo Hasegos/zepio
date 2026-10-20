@@ -86,9 +86,31 @@ function readSite(raw) {
 }
 
 /**
+ * 저장된 건물 연결을 검사한다. 가진 건물 두 개를 잇는 쌍만 남기고 겹치는 쌍은 하나로 합친다. 없거나 깨지면 빈 목록이다.
+ *
+ * @param raw 저장소에서 읽은 연결 목록
+ * @param sites 검사를 마친 건물 목록
+ * @returns 건물 종류 쌍의 목록
+ */
+function readLinks(raw, sites) {
+  const types = new Set(sites.map((site) => site.type));
+  const seen = new Set();
+  const out = [];
+  if (!Array.isArray(raw)) return out;
+  for (const pair of raw) {
+    if (!Array.isArray(pair) || pair.length !== 2 || pair[0] === pair[1] || !types.has(pair[0]) || !types.has(pair[1])) continue;
+    const key = [...pair].sort().join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push([pair[0], pair[1]]);
+  }
+  return out;
+}
+
+/**
  * 건물 목록과 보고 있는 건물로 게임 상태를 만든다.
  *
- * @param base { coins, lifetime, time, difficulty, stats }
+ * @param base { coins, lifetime, time, difficulty, stats, links }
  * @param sites 건물 목록
  * @param active 보고 있는 건물 번호
  * @returns 게임 상태
@@ -113,7 +135,7 @@ export function readState(raw) {
   const clean = sites.map(readSite);
   if (clean.some((site) => site === null) || new Set(clean.map((site) => site.type)).size !== clean.length) return null;
   const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
-  return build({ coins, lifetime, time, difficulty, stats: readStats(raw.stats) }, clean, active);
+  return build({ coins, lifetime, time, difficulty, stats: readStats(raw.stats), links: readLinks(raw.links, clean) }, clean, active);
 }
 
 /**
@@ -141,7 +163,7 @@ function migrateV2(raw) {
     return null;
   });
   const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
-  const base = { coins: Math.min(MAX_VALUE, coins + refund), lifetime, time, difficulty, stats: readStats(raw.stats) };
+  const base = { coins: Math.min(MAX_VALUE, coins + refund), lifetime, time, difficulty, stats: readStats(raw.stats), links: [] };
   return build(base, [{ type: "basement", land: nextLand, cells: kept }], 0);
 }
 

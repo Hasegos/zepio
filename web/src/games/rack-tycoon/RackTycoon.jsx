@@ -25,9 +25,9 @@ import {
   xyOf,
 } from "./engine.js";
 import { EventBanner, DifficultyChooser } from "./Banner.jsx";
-import { advanceAll, buySite, eachSite, offlineAll, switchSite, viewOf } from "./campus.js";
+import { advanceAll, buySite, campusFx, eachSite, linkCost, linkSites, offlineAll, spreadEvents, switchSite, viewOf } from "./campus.js";
 import Campus from "./Campus.jsx";
-import { burningTiles, describeEvent, effectsOf, newDisasters, putOut, stepDisasters } from "./disaster.js";
+import { burningTiles, describeEvent, newDisasters, putOut, stepDisasters } from "./disaster.js";
 import { describeHover, nextGoal, worldOf } from "./hover.js";
 import { GRID_HEIGHT, GRID_WIDTH, inLand, START, TERMINAL, TERMINAL_TILE } from "./layout.js";
 import Lists from "./Lists.jsx";
@@ -35,7 +35,7 @@ import meta from "./meta.js";
 import Panel from "./Panel.jsx";
 import { makeData, readData, stateFrom } from "./record.js";
 import { createScene } from "./scene3d.js";
-import { traitOf } from "./sites.js";
+import { connectionsOf, traitOf } from "./sites.js";
 import Toolbar from "./Toolbar.jsx";
 
 const TICK_MS = 200;
@@ -76,13 +76,14 @@ function loadBoot() {
  * @param state 게임 상태
  * @param evs 건물별 재난 진행 상태
  * @param analysis 보고 있는 건물의 analyze 결과
- * @returns { type, income, alert } 목록
+ * @returns { type, income, links, alert } 목록
  */
 function campusOf(state, evs, analysis) {
+  const fxs = campusFx(state, evs);
   return state.sites.map((_, i) => {
     const view = viewOf(state, i);
-    const income = i === state.active ? analysis.income : analyze(view, effectsOf(view, evs[i])).income;
-    return { type: view.type, income, alert: describeEvent(view, evs[i])?.title ?? null };
+    const income = i === state.active ? analysis.income : analyze(view, fxs[i]).income;
+    return { type: view.type, income, links: connectionsOf(state.links, view.type), alert: describeEvent(view, evs[i])?.title ?? null };
   });
 }
 
@@ -126,7 +127,7 @@ export default function RackTycoon() {
     const u = uiRef.current;
     const robot = sceneRef.current?.robotTile() ?? START;
     const ev = evsRef.current[state.active];
-    const analysis = analyze(state, effectsOf(state, ev));
+    const analysis = analyze(state, campusFx(state, evsRef.current)[state.active]);
     const access = accessibleTiles(state, robot);
     const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried });
     const event = describeEvent(state, ev);
@@ -259,6 +260,13 @@ export default function RackTycoon() {
     [act, update],
   );
 
+  const link = useCallback(
+    (a, b) => {
+      if (act(linkSites, a, b)) say(`${traitOf(a).name}과 ${traitOf(b).name}을 이었어요!`, "good");
+    },
+    [act, say],
+  );
+
   const buy = useCallback(
     (type) => {
       const before = evsRef.current;
@@ -364,11 +372,13 @@ export default function RackTycoon() {
         const live = !document.hidden && dt <= LIVE_GAP;
         while (dt > 1e-6) {
           const step = Math.min(MAX_STEP, dt);
-          const out = advanceAll(current, step, (view, i) => (live ? effectsOf(view, evsRef.current[i]) : NO_FX));
+          const fxs = live ? campusFx(current, evsRef.current) : null;
+          const out = advanceAll(current, step, (view, i) => fxs?.[i] ?? NO_FX);
           current = out.state;
           broken += out.breaks;
           if (live) {
-            const evs = [...evsRef.current];
+            const before = evsRef.current;
+            const evs = [...before];
             current = eachSite(current, (view, i) => {
               const next = stepDisasters(view, evs[i], step);
               evs[i] = next.ev;
@@ -376,7 +386,7 @@ export default function RackTycoon() {
               for (const note of next.notes) say(prefix + note.text, note.tone);
               return next.state;
             });
-            evsRef.current = evs;
+            evsRef.current = spreadEvents(current, before, evs);
           }
           dt -= step;
         }
@@ -477,7 +487,17 @@ export default function RackTycoon() {
         </div>
       </div>
 
-      <Campus sites={campus} active={state.active} coins={state.coins} showBuy={state.lifetime >= 20000 || state.sites.length > 1} onSwitch={switchTo} onBuy={buy} />
+      <Campus
+        sites={campus}
+        active={state.active}
+        coins={state.coins}
+        links={state.links}
+        linkCost={linkCost(state)}
+        showBuy={state.lifetime >= 20000 || state.sites.length > 1}
+        onSwitch={switchTo}
+        onBuy={buy}
+        onLink={link}
+      />
 
       {event && <EventBanner event={event} onExtinguish={extinguishNearest} />}
 
