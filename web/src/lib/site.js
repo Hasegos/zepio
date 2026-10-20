@@ -24,6 +24,16 @@ export function canonicalUrl(site, pathname) {
 }
 
 /**
+ * JSON-LD 객체를 `<script>` 안에 넣을 문자열로 바꾼다. `<`는 이스케이프해서 `</script>`로 태그가 닫히지 않게 한다.
+ *
+ * @param data JSON-LD 객체
+ * @returns 직렬화한 문자열
+ */
+export function jsonLdString(data) {
+  return JSON.stringify(data).replace(/</g, "\\u003c");
+}
+
+/**
  * 애드센스 게시자 ID이면(ca-pub-숫자) 그대로 돌려주고, 비었거나 모양이 다르면 null이다.
  *
  * @param value 환경변수 값
