@@ -43,7 +43,7 @@ export const SFX = {
 /**
  * 프롬프트 요새의 곡과 효과음을 담은 소리 컨트롤러를 만든다.
  *
- * @param options createSynth 옵션(시험에서 Context와 타이머를 바꾼다)
+ * @param options createSynth 옵션(Context와 타이머를 바꿔 끼울 수 있다)
  * @returns { unlock, setMuted, music, sfx, dispose }
  */
 export function createAudio(options = {}) {

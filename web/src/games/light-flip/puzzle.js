@@ -75,7 +75,7 @@ export function isSolved(board) {
  * @param board 판
  * @returns { count, presses } 누를 칸 번호 목록과 그 개수, 풀 수 없으면 null
  */
-export function solveMin(board) {
+function solveMin(board) {
   const rows = Array.from({ length: CELLS }, (_, r) => {
     let mask = board[r] ? AUG : 0;
     for (let j = 0; j < CELLS; j += 1) if ((EFFECT[j] >> r) & 1) mask |= 1 << j;
@@ -140,7 +140,7 @@ function scramble(random, presses) {
  * @param max 최소 이동 횟수의 상한
  * @returns { board, par } 섞인 판과 그 최소 이동 횟수
  */
-export function makeStage(random, min, max) {
+function makeStage(random, min, max) {
   let stage = null;
   for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
     const board = scramble(random, min + Math.floor(random() * (max - min + 1)));

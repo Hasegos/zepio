@@ -7,8 +7,8 @@ import { clerkLines, dockLines, guardLines, INTRO, keeperLines, SIGN_TIPS, TRAIN
 import { REGION_TASKS, TRAINER_TASKS } from "./tasks.js";
 import { buildingAtDoor, facing, GATE_TRUST, MAPS, progressOf, START, START_MAP, step, tileAt, walkable, warpAt } from "./world.js";
 
-export const ENCOUNTER_RATE = 0.14;
-export const COOLDOWN = 4;
+const ENCOUNTER_RATE = 0.14;
+const COOLDOWN = 4;
 
 /**
  * 지역별 의뢰 대기열을 만든다. 지역마다 시드에 1씩 더해 따로 섞는다.
@@ -43,7 +43,7 @@ export function initialState() {
  * @param seed 정수 시드
  * @returns 지도 화면 상태(제피의 소개 대사가 먼저 나온다)
  */
-export function newGame(seed) {
+function newGame(seed) {
   return {
     phase: "map",
     seed,

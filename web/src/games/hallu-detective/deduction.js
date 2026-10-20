@@ -16,7 +16,7 @@ function hasFinal(word) {
  * @param pair "은/는", "이/가", "와/과" 같은 받침 있음/없음 쌍
  * @returns 조사를 붙인 단어
  */
-export function josa(word, pair) {
+function josa(word, pair) {
   const [withFinal, without] = pair.split("/");
   return `${word}${hasFinal(word) ? withFinal : without}`;
 }
@@ -28,7 +28,7 @@ export function josa(word, pair) {
  * @param names 용의자 이름 목록
  * @returns 진술 문장
  */
-export function claimText(claim, names) {
+function claimText(claim, names) {
   switch (claim.t) {
     case "is":
       return `범인은 ${names[claim.x]}입니다.`;
@@ -48,7 +48,7 @@ export function claimText(claim, names) {
  * @param culprit 범인 번호
  * @returns 참이면 true
  */
-export function claimHolds(claim, culprit) {
+function claimHolds(claim, culprit) {
   switch (claim.t) {
     case "is":
       return culprit === claim.x;
@@ -69,7 +69,7 @@ export function claimHolds(claim, culprit) {
  * @param truths 참인 진술의 수
  * @returns 후보 번호 목록(정답이 되는 퍼즐은 하나뿐이다)
  */
-export function culpritsOf(claims, count, truths) {
+function culpritsOf(claims, count, truths) {
   return [...Array(count).keys()].filter((c) => claims.filter((cl) => claimHolds(cl, c)).length === truths);
 }
 
@@ -134,7 +134,7 @@ const AXIS = {
  * @param puzzle { cats, slots, unit, axis }
  * @returns 단서 문장
  */
-export function clueText(clue, puzzle) {
+function clueText(clue, puzzle) {
   const name = ([c, o]) => puzzle.cats[c].options[o];
   const a = name(clue.a);
   const b = clue.b ? name(clue.b) : "";
