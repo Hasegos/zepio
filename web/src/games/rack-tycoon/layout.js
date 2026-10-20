@@ -1,44 +1,38 @@
-export const GRID_WIDTH = 12;
-export const GRID_HEIGHT = 9;
-export const START = [6, 4];
-export const TERMINAL = [11, 4];
-export const COOLER_PADS = [
-  [5, 2],
-  [6, 2],
-  [5, 6],
-  [6, 6],
-];
+export const GRID_WIDTH = 20;
+export const GRID_HEIGHT = 16;
+export const AREA = GRID_WIDTH * GRID_HEIGHT;
+export const TERMINAL = [13, 7];
+export const START = [12, 8];
+export const LANDS = [
+  { name: "지하 서버실", w: 8, h: 6, cost: 0 },
+  { name: "1층 전체", w: 10, h: 8, cost: 300 },
+  { name: "별관 증축", w: 12, h: 10, cost: 4000 },
+  { name: "데이터 캠퍼스", w: 16, h: 12, cost: 60000 },
+  { name: "메가 캠퍼스", w: 20, h: 16, cost: 1500000 },
+].map((land) => ({ ...land, x: (GRID_WIDTH - land.w) / 2, y: (GRID_HEIGHT - land.h) / 2 }));
 
 /**
- * 랙을 놓을 수 있는 자리 16곳을 만든다. 위아래 두 줄에 통로를 사이에 두고 네 칸씩 두 무리로 놓인다.
+ * 칸의 가로, 세로 위치를 칸 번호로 바꾼다.
  *
- * @returns [x, y] 목록
+ * @param x 가로 칸
+ * @param y 세로 칸
+ * @returns 칸 번호(y * 가로 칸 수 + x)
  */
-function buildPads() {
-  const pads = [];
-  for (const y of [2, 6]) {
-    for (const x of [1, 2, 3, 4, 7, 8, 9, 10]) pads.push([x, y]);
-  }
-  return pads;
+export function tileOf(x, y) {
+  return y * GRID_WIDTH + x;
 }
-
-export const PADS = buildPads();
 
 /**
- * 가운데에 가까운 자리부터 열리도록 자리 번호를 정렬한다.
+ * 부지 단계 안에 있는 칸인지 확인한다.
  *
- * @returns 자리 번호 목록
+ * @param land 부지 단계
+ * @param x 가로 칸
+ * @param y 세로 칸
+ * @returns 부지 안이면 true
  */
-function buildUnlockOrder() {
-  const distance = ([x, y]) => Math.abs(x - 5.5) + Math.abs(y - 4);
-  return PADS.map((_, i) => i).sort((a, b) => distance(PADS[a]) - distance(PADS[b]) || a - b);
+export function inLand(land, x, y) {
+  const area = LANDS[land];
+  return x >= area.x && y >= area.y && x < area.x + area.w && y < area.y + area.h;
 }
 
-export const UNLOCK_ORDER = buildUnlockOrder();
-export const UNLOCK_RANK = PADS.map((_, i) => UNLOCK_ORDER.indexOf(i));
-
-export const NEIGHBORS = PADS.map(([x, y], i) =>
-  PADS.flatMap(([ox, oy], j) => (j !== i && Math.abs(ox - x) <= 1 && Math.abs(oy - y) <= 1 ? [j] : [])),
-);
-
-export const COOLER_DISTANCE = COOLER_PADS.map(([cx, cy]) => PADS.map(([x, y]) => Math.max(Math.abs(cx - x), Math.abs(cy - y))));
+export const TERMINAL_TILE = tileOf(TERMINAL[0], TERMINAL[1]);

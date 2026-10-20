@@ -89,6 +89,35 @@ export function findPath(blocked, width, height, from, to) {
 }
 
 /**
+ * 시작 칸에서 걸어서 닿을 수 있는 모든 칸을 구한다.
+ *
+ * @param blocked 막힌 칸 번호의 집합
+ * @param width 가로 칸 수
+ * @param height 세로 칸 수
+ * @param from [x, y] 시작 칸
+ * @returns 닿을 수 있는 칸 번호의 집합, 시작 칸이 막혀 있으면 빈 집합
+ */
+export function reachable(blocked, width, height, from) {
+  const seen = new Set();
+  if (!isFree(blocked, width, height, from[0], from[1])) return seen;
+  const start = from[1] * width + from[0];
+  seen.add(start);
+  const queue = [start];
+  for (let head = 0; head < queue.length; head += 1) {
+    const x = queue[head] % width;
+    const y = (queue[head] - x) / width;
+    for (const [nx, ny] of neighbors(blocked, width, height, x, y)) {
+      const id = ny * width + nx;
+      if (!seen.has(id)) {
+        seen.add(id);
+        queue.push(id);
+      }
+    }
+  }
+  return seen;
+}
+
+/**
  * 막힌 칸(랙 등)에 붙어 있는 빈 칸 중 시작 칸에서 가장 가까운 곳으로 가는 길을 구한다.
  *
  * @param blocked 막힌 칸 번호의 집합
