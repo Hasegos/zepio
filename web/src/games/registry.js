@@ -1,16 +1,12 @@
 import agentTown from "./agent-town/meta.js";
-import colorClash from "./color-clash/meta.js";
 import halluDetective from "./hallu-detective/meta.js";
 import lightFlip from "./light-flip/meta.js";
-import memorySequence from "./memory-sequence/meta.js";
 import patternChallenge from "./pattern-challenge/meta.js";
 import promptFortress from "./prompt-fortress/meta.js";
 import tinyIsle from "./tiny-isle/meta.js";
 
 export const games = [
   { ...patternChallenge, load: () => import("./pattern-challenge/index.jsx") },
-  { ...memorySequence, load: () => import("./memory-sequence/index.jsx") },
-  { ...colorClash, load: () => import("./color-clash/index.jsx") },
   { ...lightFlip, load: () => import("./light-flip/index.jsx") },
   { ...tinyIsle, load: () => import("./tiny-isle/index.jsx") },
   { ...agentTown, load: () => import("./agent-town/index.jsx") },

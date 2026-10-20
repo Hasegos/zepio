@@ -13,7 +13,7 @@ const MESSAGES = {
  *
  * @param props.title 공유 제목
  * @param props.text 공유 글(주소 제외)
- * @param props.path 게임 페이지 경로(예: /games/memory-sequence/)
+ * @param props.path 게임 페이지 경로(예: /games/light-flip/)
  */
 export default function ShareButton({ title, text, path }) {
   const [outcome, setOutcome] = useState(null);

@@ -33,8 +33,8 @@ describe("canonicalUrl", () => {
   it("경로 끝에 슬래시를 붙이고 이미 있으면 그대로 둔다", () => {
     expect(canonicalUrl("https://example.com", "/")).toBe("https://example.com/");
     expect(canonicalUrl("https://example.com", "/about")).toBe("https://example.com/about/");
-    expect(canonicalUrl(new URL("https://example.com"), "/games/memory-sequence/")).toBe(
-      "https://example.com/games/memory-sequence/",
+    expect(canonicalUrl(new URL("https://example.com"), "/games/light-flip/")).toBe(
+      "https://example.com/games/light-flip/",
     );
   });
 
