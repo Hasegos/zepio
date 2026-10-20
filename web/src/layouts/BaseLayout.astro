@@ -45,6 +45,9 @@ const imageUrl = indexable ? new URL(image, Astro.site).href : null;
       )
     }
     <meta name="twitter:card" content={imageUrl ? "summary_large_image" : "summary"} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {imageUrl && <meta name="twitter:image" content={imageUrl} />}
     {indexable && !noindex && [jsonLd].flat().map((data) => <script is:inline type="application/ld+json" set:html={jsonLdString(data)} />)}
     {
       adsense && (
