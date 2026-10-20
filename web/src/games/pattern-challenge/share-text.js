@@ -1,4 +1,5 @@
-import { correctCount, formatDuration } from "./reducer.js";
+import { correctCount } from "./reducer.js";
+import { formatDuration } from "../_shared/time.js";
 
 /**
  * 끝난 판의 공유 글을 만든다. 문제 내용과 정답은 담지 않고 문제별 정오만 담는다.

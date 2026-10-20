@@ -1,7 +1,7 @@
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getGameData, saveGameData } from "../../lib/storage.js";
-import { mountReact } from "../mount-react.jsx";
+import { mountReact } from "../_shared/mount-react.jsx";
 import AgentTown from "./AgentTown.jsx";
 import { newGame } from "./reducer.js";
 import { snapshot } from "./record.js";

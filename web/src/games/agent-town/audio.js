@@ -1,4 +1,4 @@
-import { bars, createSynth, noteFreq } from "../audio.js";
+import { bars, createSynth, noteFreq } from "../_shared/audio.js";
 
 export { noteFreq };
 

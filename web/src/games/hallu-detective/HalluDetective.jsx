@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { useAudio } from "../useAudio.js";
-import ShareButton from "../ShareButton.jsx";
+import { useAudio } from "../_shared/useAudio.js";
+import ShareButton from "../_shared/ShareButton.jsx";
 import { createAudio } from "./audio.js";
 import { titleFor } from "./logic.js";
 import meta from "./meta.js";
@@ -10,7 +10,7 @@ import { mergeEnding, readData, restore, snapshot } from "./record.js";
 import { initialState, reducer, summary } from "./reducer.js";
 import { PUZZLES } from "./puzzles.js";
 import { getGameData, saveGameData, saveResult } from "../../lib/storage.js";
-import { useGameBack } from "../useGameBack.js";
+import { useGameBack } from "../_shared/useGameBack.js";
 
 const TRACK = { office: "office", puzzle: "puzzle", ending: "ending" };
 const SOUND = { open: "select", submit: "select", toggle: "tick", move: "tick", choose: "tick", cell: "tick", memo: "tick" };

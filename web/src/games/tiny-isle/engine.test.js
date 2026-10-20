@@ -3,7 +3,7 @@ import { greedyMove, lookaheadMove, playOut, randomPicker } from "./bots.js";
 import { apply, createRun, currentScore, finish, HAND_SIZE, isOver, legalCells, questStatus, restoreRun, serializeRun } from "./engine.js";
 import { dailyIsland, findIsland, ISLAND_LIST } from "./islands.js";
 import { QUEST_BONUS, QUESTS } from "./quests.js";
-import { makeRng } from "./rng.js";
+import { makeRng } from "../_shared/rng.js";
 import { CELLS } from "./rules.js";
 
 const sprout = ISLAND_LIST[0];

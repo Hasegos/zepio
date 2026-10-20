@@ -5,8 +5,9 @@ import Grid from "./Grid.jsx";
 import { makeStages, STAGE_RANGES } from "./puzzle.js";
 import { mergeResult } from "./record.js";
 import Result from "./Result.jsx";
-import { formatDuration, initialState, reducer, totals } from "./reducer.js";
-import { useGameBack } from "../useGameBack.js";
+import { initialState, reducer, totals } from "./reducer.js";
+import { formatDuration } from "../_shared/time.js";
+import { useGameBack } from "../_shared/useGameBack.js";
 
 /**
  * Light Flip 한 판을 진행한다. 시작 화면, 5판 풀이, 결과 화면을 오간다.

@@ -1,7 +1,7 @@
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDaily, getGameData, saveGameData } from "../../lib/storage.js";
-import { mountReact } from "../mount-react.jsx";
+import { mountReact } from "../_shared/mount-react.jsx";
 import { greedyMove, playOut } from "./bots.js";
 import { apply, createRun, serializeRun } from "./engine.js";
 import { ISLAND_LIST } from "./islands.js";

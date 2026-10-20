@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeRng } from "./rng.js";
+import { makeRng } from "../_shared/rng.js";
 import { BUILDING_IDS, BUILDINGS, canBuild, CELLS, change, NEAR, NEIGHBORS, scoreAt, scoreBoard, SIZE } from "./rules.js";
 
 const land = () => Array(CELLS).fill("g");

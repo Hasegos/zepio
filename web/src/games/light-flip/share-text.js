@@ -1,4 +1,5 @@
-import { formatDuration, totals } from "./reducer.js";
+import { totals } from "./reducer.js";
+import { formatDuration } from "../_shared/time.js";
 
 /**
  * 끝난 판의 공유 글을 만든다. 격자 배치는 담지 않는다.

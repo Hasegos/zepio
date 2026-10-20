@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CELLS, toggle } from "./puzzle.js";
-import { formatDuration, initialState, reducer, totals } from "./reducer.js";
+import { initialState, reducer, totals } from "./reducer.js";
 
 const empty = () => new Array(CELLS).fill(0);
 // 1단계는 칸 12를 누르면 풀리고, 2단계는 칸 0을 누르면 풀린다
@@ -80,12 +80,5 @@ describe("reducer", () => {
     const intro = initialState();
     expect(press(intro, 3)).toBe(intro);
     expect(reducer(intro, { type: "next", now: 1 })).toBe(intro);
-  });
-});
-
-describe("formatDuration", () => {
-  it("mm:ss로 바꾸고 음수는 0으로 본다", () => {
-    expect(formatDuration(65000)).toBe("01:05");
-    expect(formatDuration(-5)).toBe("00:00");
   });
 });

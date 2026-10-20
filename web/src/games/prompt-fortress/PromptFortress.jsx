@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
 import { getDaily, getGameData, saveDaily, saveGameData, saveResult } from "../../lib/storage.js";
-import { useAudio } from "../useAudio.js";
-import { useGameBack } from "../useGameBack.js";
+import { useAudio } from "../_shared/useAudio.js";
+import { useGameBack } from "../_shared/useGameBack.js";
 import { createAudio } from "./audio.js";
 import { dailyLevelId } from "./daily.js";
 import { LevelView, Menu } from "./Level.jsx";

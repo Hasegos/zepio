@@ -1,5 +1,5 @@
 import { CELLS, LAND, ROCK, SIZE, WATER } from "./rules.js";
-import { hashSeed, makeRng, shuffle } from "./rng.js";
+import { hashSeed, makeRng, shuffle } from "../_shared/rng.js";
 
 export const REROLLS = 2;
 export const DEMOLISH = 2;

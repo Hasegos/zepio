@@ -1,8 +1,7 @@
 import { totalScore } from "./logic.js";
 import { MIN_SCORE, BASE_SCORE, PUZZLES, SPOTS } from "./puzzles.js";
+import { isInt, isObject } from "../_shared/validate.js";
 
-const int = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
-const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
 /**
  * 진행 중인 게임 상태에서 저장할 부분만 뽑는다.
@@ -21,16 +20,16 @@ export function snapshot(state) {
  * @returns 사무소 화면 상태, 못 쓰면 null
  */
 export function restore(raw) {
-  if (!isObject(raw) || !int(raw.coins, 0, 999)) return null;
+  if (!isObject(raw) || !isInt(raw.coins, 0, 999)) return null;
   const ids = PUZZLES.map((p) => p.id);
   const spots = SPOTS.map((s) => s.id);
   const solvedOk =
     isObject(raw.solved) &&
     Object.entries(raw.solved).every(
-      ([id, e]) => ids.includes(id) && isObject(e) && int(e.score, MIN_SCORE, BASE_SCORE) && int(e.wrong, 0, 99),
+      ([id, e]) => ids.includes(id) && isObject(e) && isInt(e.score, MIN_SCORE, BASE_SCORE) && isInt(e.wrong, 0, 99),
     );
-  const hintsOk = isObject(raw.hints) && Object.entries(raw.hints).every(([id, n]) => ids.includes(id) && int(n, 0, 3));
-  const wrongOk = isObject(raw.wrong) && Object.entries(raw.wrong).every(([id, n]) => ids.includes(id) && int(n, 0, 99));
+  const hintsOk = isObject(raw.hints) && Object.entries(raw.hints).every(([id, n]) => ids.includes(id) && isInt(n, 0, 3));
+  const wrongOk = isObject(raw.wrong) && Object.entries(raw.wrong).every(([id, n]) => ids.includes(id) && isInt(n, 0, 99));
   const foundOk = isObject(raw.found) && Object.entries(raw.found).every(([id, v]) => spots.includes(id) && v === true);
   if (!(solvedOk && hintsOk && wrongOk && foundOk)) return null;
   return {
@@ -60,8 +59,8 @@ export function readData(raw) {
     save: valid && isObject(raw.save) ? raw.save : null,
     muted: valid && raw.muted === true,
     best: {
-      endings: int(best.endings, 0, 99999) ? best.endings : 0,
-      score: int(best.score, 0, BASE_SCORE * PUZZLES.length) ? best.score : 0,
+      endings: isInt(best.endings, 0, 99999) ? best.endings : 0,
+      score: isInt(best.score, 0, BASE_SCORE * PUZZLES.length) ? best.score : 0,
     },
   };
 }

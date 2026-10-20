@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { correctCount, formatDuration, initialState, reducer } from "./reducer.js";
+import { correctCount, initialState, reducer } from "./reducer.js";
 
 const puzzles = [
   { answer: 1, options: [{}, {}, {}] },
@@ -65,14 +65,5 @@ describe("reducer", () => {
     ]);
     const again = reducer(finished, { type: "start", puzzles, now: 10 });
     expect(again).toMatchObject({ phase: "playing", index: 0, answers: [], startedAt: 10 });
-  });
-});
-
-describe("formatDuration", () => {
-  it("mm:ss로 바꾸고 음수는 0으로 본다", () => {
-    expect(formatDuration(0)).toBe("00:00");
-    expect(formatDuration(65_000)).toBe("01:05");
-    expect(formatDuration(3_600_000)).toBe("60:00");
-    expect(formatDuration(-5)).toBe("00:00");
   });
 });
