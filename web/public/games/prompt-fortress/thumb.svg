@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="프롬프트 요새">
+  <rect width="320" height="180" fill="#dbe7f3"/>
+  <rect y="140" width="320" height="40" fill="#9db4cc"/>
+  <g stroke="#14213d" stroke-width="5" stroke-linejoin="round">
+    <rect x="36" y="34" width="132" height="110" rx="10" fill="#fdf6e3"/>
+    <rect x="52" y="50" width="100" height="24" rx="5" fill="#fff"/>
+    <rect x="52" y="82" width="100" height="24" rx="5" fill="#fde2e2"/>
+    <rect x="52" y="114" width="100" height="22" rx="5" fill="#fff"/>
+  </g>
+  <g fill="#b3302a"><circle cx="64" cy="94" r="5"/><path d="M80 94h58" stroke="#b3302a" stroke-width="5" stroke-linecap="round"/></g>
+  <g transform="translate(196 30)">
+    <path d="M44 0l44 16v38c0 34-22 56-44 66C22 110 0 88 0 54V16z" fill="#f2c14e" stroke="#14213d" stroke-width="6" stroke-linejoin="round"/>
+    <rect x="28" y="48" width="32" height="26" rx="4" fill="#14213d"/>
+    <path d="M34 48v-8a10 10 0 0 1 20 0v8" fill="none" stroke="#14213d" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="44" cy="60" r="4" fill="#f2c14e"/>
+  </g>
+</svg>
