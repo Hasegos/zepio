@@ -1,6 +1,6 @@
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mountReact } from "../mount-react.jsx";
+import { mountReact } from "../_shared/mount-react.jsx";
 import { cardText, solve } from "./engine.js";
 import { LEVELS } from "./levels.js";
 import PromptFortress from "./PromptFortress.jsx";

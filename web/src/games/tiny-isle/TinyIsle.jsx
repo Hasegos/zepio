@@ -10,8 +10,8 @@ import Play from "./Play.jsx";
 import { mergeBest, readData } from "./record.js";
 import { initialState, reducer } from "./reducer.js";
 import Result from "./Result.jsx";
-import { hashSeed } from "./rng.js";
-import { useGameBack } from "../useGameBack.js";
+import { hashSeed } from "../_shared/rng.js";
+import { useGameBack } from "../_shared/useGameBack.js";
 
 /**
  * 오늘의 섬으로 놀 때 쓰는 시드를 구한다.

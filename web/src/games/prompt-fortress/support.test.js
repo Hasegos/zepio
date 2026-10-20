@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { noteFreq } from "../audio.js";
+import { noteFreq } from "../_shared/audio.js";
 import { createAudio, SFX, TRACKS } from "./audio.js";
 import { dailyLevelId } from "./daily.js";
 import { LEVELS } from "./levels.js";

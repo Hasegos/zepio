@@ -1,4 +1,4 @@
-import { bars, createSynth, noteFreq } from "../audio.js";
+import { bars, createSynth, noteFreq } from "../_shared/audio.js";
 
 const arpeggio = (notes, last) => notes.map((n, i) => ({ wave: "square", from: noteFreq(n), to: noteFreq(n), dur: i === notes.length - 1 ? last : 0.1, gain: 0.05, at: i * 0.1 }));
 

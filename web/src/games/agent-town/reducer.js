@@ -2,7 +2,7 @@ import { CONTEXT_CAP, playMove, startBattle, USAGE_CAP } from "./battle.js";
 import { currentTitle } from "./codex.js";
 import { GYMS } from "./gyms.js";
 import { activeGear, buy, isSlotItem, ITEMS, MAX_SLOTS, MEMBERS, slotsOf, toggleSlot } from "./party.js";
-import { makeRng, shuffle } from "./rng.js";
+import { makeRng, shuffle } from "../_shared/rng.js";
 import { clerkLines, dockLines, guardLines, INTRO, keeperLines, SIGN_TIPS, TRAINER_TALK, wardenLines, zepiLines } from "./story.js";
 import { REGION_TASKS, TRAINER_TASKS } from "./tasks.js";
 import { buildingAtDoor, facing, GATE_TRUST, MAPS, progressOf, START, START_MAP, step, tileAt, walkable, warpAt } from "./world.js";

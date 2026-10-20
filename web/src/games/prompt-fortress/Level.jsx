@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import ShareButton from "../ShareButton.jsx";
+import ShareButton from "../_shared/ShareButton.jsx";
 import { ACTIONS, cardText, TAGS } from "./engine.js";
 import { LEVELS } from "./levels.js";
 import meta from "./meta.js";

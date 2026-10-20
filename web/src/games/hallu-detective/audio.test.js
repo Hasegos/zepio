@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAudio, SFX, TRACKS } from "./audio.js";
-import { noteFreq } from "../audio.js";
+import { noteFreq } from "../_shared/audio.js";
 
 describe("환각 탐정 소리", () => {
   it("곡은 사무소, 퍼즐, 엔딩이고 두 성부의 길이가 같다", () => {

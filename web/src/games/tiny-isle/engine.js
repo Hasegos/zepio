@@ -1,6 +1,6 @@
 import { DEMOLISH, expandPool, findIsland, REROLLS } from "./islands.js";
 import { pickQuests, QUEST_BONUS, questById } from "./quests.js";
-import { makeRng, shuffle } from "./rng.js";
+import { makeRng, shuffle } from "../_shared/rng.js";
 import { breakdown, canBuild, CELLS, change, scoreBoard } from "./rules.js";
 
 export const HAND_SIZE = 3;

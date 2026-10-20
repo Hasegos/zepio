@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { getGameData, saveGameData, saveResult } from "../../lib/storage.js";
-import { useAudio } from "../useAudio.js";
+import { useAudio } from "../_shared/useAudio.js";
 import { createAudio } from "./audio.js";
 import Battle from "./Battle.jsx";
 import Codex from "./Codex.jsx";
@@ -14,7 +14,7 @@ import { mergeEnding, readData, restore, snapshot } from "./record.js";
 import { initialState, reducer } from "./reducer.js";
 import Title, { Ending } from "./Title.jsx";
 import { MAPS } from "./world.js";
-import { useGameBack } from "../useGameBack.js";
+import { useGameBack } from "../_shared/useGameBack.js";
 
 const TRACK = { title: "title", ending: "ending" };
 

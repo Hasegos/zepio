@@ -1,5 +1,5 @@
 import { useState } from "react";
-import ShareButton from "../ShareButton.jsx";
+import ShareButton from "../_shared/ShareButton.jsx";
 import meta from "./meta.js";
 import Sprite from "./Sprite.jsx";
 import { townShareText } from "./share-text.js";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { shareResult, withUrl } from "../lib/share.js";
+import { shareResult, withUrl } from "../../lib/share.js";
 
 const MESSAGES = {
   shared: "공유했어요.",

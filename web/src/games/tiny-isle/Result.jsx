@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import ShareButton from "../ShareButton.jsx";
+import ShareButton from "../_shared/ShareButton.jsx";
 import Board from "./Board.jsx";
 import Glyph from "./Glyph.jsx";
 import meta from "./meta.js";
