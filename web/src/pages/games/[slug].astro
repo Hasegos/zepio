@@ -2,6 +2,7 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import GameStage from "../../components/GameStage.astro";
 import { liveGames } from "../../games/registry.js";
+import { canonicalUrl } from "../../lib/site.js";
 
 /**
  * live 게임마다 정적 페이지 경로를 만든다.
@@ -18,9 +19,42 @@ const content = contents[`../../games/${game.slug}/content.js`]?.default;
 if (!content?.intro?.length || !content?.howToPlay?.length) {
   throw new Error(`${game.slug}: content.js에 intro와 howToPlay가 필요합니다.`);
 }
+
+const image = `/games/${game.slug}/og.png`;
+const pageUrl = canonicalUrl(Astro.site, Astro.url.pathname);
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    name: game.name,
+    description: game.description,
+    url: pageUrl,
+    image: new URL(image, Astro.site).href,
+    inLanguage: "ko",
+    applicationCategory: "Game",
+    gamePlatform: "Web browser",
+    operatingSystem: "Any",
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: 0, priceCurrency: "KRW" },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "홈", item: new URL("/", Astro.site).href },
+      { "@type": "ListItem", position: 2, name: game.name, item: pageUrl },
+    ],
+  },
+];
 ---
 
-<BaseLayout title={game.seoTitle ?? `${game.name} | Zepio`} description={game.description}>
+<BaseLayout
+  title={game.seoTitle ?? `${game.name} | Zepio`}
+  description={game.description}
+  image={image}
+  imageAlt={`${game.name} 게임 화면`}
+  jsonLd={jsonLd}
+>
   <nav class="mb-3 text-sm text-slate-600" aria-label="경로">
     <a href="/" class="underline">홈</a> / {game.name}
   </nav>
