@@ -16,8 +16,8 @@ export function getStaticPaths() {
 const { game } = Astro.props;
 const contents = import.meta.glob("../../games/*/content.js", { eager: true });
 const content = contents[`../../games/${game.slug}/content.js`]?.default;
-if (!content?.intro?.length || !content?.howToPlay?.length) {
-  throw new Error(`${game.slug}: content.js에 intro와 howToPlay가 필요합니다.`);
+if (!content?.intro?.length || !content?.howToPlay?.length || !content.tips?.length || !content.audience || !content.faq?.length) {
+  throw new Error(`${game.slug}: content.js에 intro, howToPlay, tips, audience, faq가 필요합니다.`);
 }
 
 const image = `/games/${game.slug}/og.png`;
@@ -75,5 +75,29 @@ const jsonLd = [
     <ol class="list-decimal space-y-1 pl-5">
       {content.howToPlay.map((step) => <li>{step}</li>)}
     </ol>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="mb-2 text-xl font-bold">공략 팁</h2>
+    <ul class="list-disc space-y-1 pl-5">
+      {content.tips.map((tip) => <li>{tip}</li>)}
+    </ul>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="mb-2 text-xl font-bold">이런 분께 추천해요</h2>
+    <p>{content.audience}</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="mb-2 text-xl font-bold">자주 묻는 질문</h2>
+    <dl class="space-y-3">
+      {content.faq.map((item) => (
+        <div>
+          <dt class="font-bold">{item.q}</dt>
+          <dd class="mt-1">{item.a}</dd>
+        </div>
+      ))}
+    </dl>
   </section>
 </BaseLayout>
