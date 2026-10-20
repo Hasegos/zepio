@@ -251,6 +251,7 @@ export default function RackTycoon() {
 
   const switchTo = useCallback(
     (index) => {
+      sceneRef.current?.stop();
       if (!act(switchSite, index)) return;
       confirmRef.current = { tile: -1, at: 0 };
       update({ panel: null, carried: null });
@@ -266,6 +267,7 @@ export default function RackTycoon() {
         evsRef.current = before;
         return;
       }
+      sceneRef.current?.stop();
       act(switchSite, stateRef.current.sites.length - 1);
       update({ panel: null, carried: null });
       say(`${traitOf(type).name}을 샀어요! 위 탭에서 건물을 오갈 수 있어요.`, "good");

@@ -4,7 +4,7 @@ import { SITE_IDS, traitOf } from "./sites.js";
 /**
  * 캠퍼스의 건물 탭과 새 건물 구매 목록. 건물이 하나뿐이면 탭은 숨기고, 처음 건물을 살 만큼 벌기 전에는 구매 목록도 숨긴다.
  *
- * @param props.sites { type, income, alert } 목록 (건물 순서대로)
+ * @param props.sites 건물 탭에 보일 건물 목록(종류, 초당 수익, 재난 알림), 건물 순서대로
  * @param props.active 보고 있는 건물 번호
  * @param props.coins 가진 코인
  * @param props.showBuy 구매 목록을 보일지
