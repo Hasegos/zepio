@@ -1,13 +1,15 @@
 import { runLevel } from "./engine.js";
+import { dailyLevelId } from "./daily.js";
 import { LEVELS } from "./levels.js";
 
 /**
  * 처음 상태를 만든다.
  *
+ * @param stars 저장돼 있던 방별 최고 별
  * @returns { phase, stars, level } 방 목록 화면, 방별 최고 별, 열린 방(없으면 null)
  */
-export function initialState() {
-  return { phase: "menu", stars: {}, level: null };
+export function initialState(stars = {}) {
+  return { phase: "menu", stars, level: null };
 }
 
 /**
@@ -37,7 +39,7 @@ function finish(state, shown) {
  * 한 번의 행동으로 상태를 바꾼다. 상태에 맞지 않는 행동은 같은 상태를 돌려준다.
  *
  * @param state 현재 상태
- * @param action open, add, remove, move, clear, run, tick, skip, retry, next, leave 중 하나
+ * @param action open(daily에 오늘 날짜를 주면 잠긴 방도 오늘의 방으로 연다), add, remove, move, clear, run, tick, skip, retry, next, leave 중 하나
  * @returns 새 상태
  */
 export function reducer(state, action) {
@@ -46,8 +48,9 @@ export function reducer(state, action) {
   switch (action.type) {
     case "open": {
       const index = LEVELS.findIndex((l) => l.id === action.id);
-      if (index < 0 || !isOpen(state.stars, index)) return state;
-      return { ...state, phase: "level", level: { id: action.id, rules: [], run: null } };
+      const daily = typeof action.daily === "string" && dailyLevelId(action.daily) === action.id ? action.daily : null;
+      if (index < 0 || !(daily || isOpen(state.stars, index))) return state;
+      return { ...state, phase: "level", level: { id: action.id, rules: [], run: null, daily } };
     }
     case "add": {
       if (!editing) return state;
@@ -89,7 +92,7 @@ export function reducer(state, action) {
       const done = level.run.shown >= levelOf(level.id).messages.length;
       const next = LEVELS[index + 1];
       if (!done || !next || !isOpen(state.stars, index + 1)) return state;
-      return { ...state, level: { id: next.id, rules: [], run: null } };
+      return { ...state, level: { id: next.id, rules: [], run: null, daily: null } };
     }
     case "leave":
       return state.phase === "level" ? { ...state, phase: "menu", level: null } : state;
