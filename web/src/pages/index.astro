@@ -5,11 +5,19 @@ import { liveGames } from "../games/registry.js";
 
 const CATEGORY_LABELS = { puzzle: "퍼즐", arcade: "아케이드", casual: "캐주얼", simulation: "시뮬레이션" };
 const dailyGame = liveGames.find((game) => game.hasDaily);
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Zepio",
+  url: new URL("/", Astro.site).href,
+  inLanguage: "ko",
+};
 ---
 
 <BaseLayout
   title="Zepio | 무료 웹게임"
   description="회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임 플랫폼 Zepio입니다."
+  jsonLd={jsonLd}
 >
   <section class="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-primary to-violet-700 p-5 text-white sm:p-8">
     <div class="flex-1">
