@@ -44,7 +44,7 @@ function eventsOf(track) {
  * @param options.Context AudioContext 생성자(기본은 브라우저 것)
  * @param options.setTimer 반복 타이머 등록 함수(기본 setInterval)
  * @param options.clearTimer 타이머 해제 함수(기본 clearInterval)
- * @returns { unlock, setMuted, music, sfx, dispose }
+ * @returns { unlock, suspend, resume, setMuted, music, sfx, dispose } suspend는 시계까지 멈춰 곡이 그 자리에서 쉬고, resume은 음소거가 아닐 때만 이어 간다
  */
 export function createSynth({ tracks, sfx, Context, setTimer = setInterval, clearTimer = clearInterval }) {
   const Ctor = Context ?? (typeof window === "undefined" ? undefined : window.AudioContext ?? window.webkitAudioContext);
@@ -140,6 +140,12 @@ export function createSynth({ tracks, sfx, Context, setTimer = setInterval, clea
       if (!ensure()) return;
       if (ctx.state === "suspended") ctx.resume?.();
       startLoop();
+    },
+    suspend() {
+      ctx?.suspend?.();
+    },
+    resume() {
+      if (!muted) ctx?.resume?.();
     },
     setMuted(value) {
       muted = Boolean(value);
