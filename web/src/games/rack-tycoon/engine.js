@@ -28,12 +28,32 @@ export const GENS = [
   { name: "가스 터빈", cost: 5000, cap: 100, heat: 8 },
   { name: "핵융합로", cost: 60000, cap: 400, heat: 14 },
 ];
+export const BATTERIES = [
+  null,
+  { name: "배터리 팩", cost: 150, cap: 12 },
+  { name: "배터리 룸", cost: 1200, cap: 60 },
+  { name: "UPS 시설", cost: 12000, cap: 250 },
+];
+export const EXTS = [
+  null,
+  { name: "스프링클러", cost: 120, reach: 2 },
+  { name: "소화 설비", cost: 900, reach: 3 },
+  { name: "가스 소화 시스템", cost: 8000, reach: 4 },
+];
 export const KINDS = {
   server: { label: "서버", levels: TIERS, growth: 1.07 },
   cooler: { label: "냉각기", levels: COOLERS, growth: 1.06 },
   hub: { label: "허브", levels: HUBS, growth: 1.18 },
   gen: { label: "발전기", levels: GENS, growth: 1.1 },
+  battery: { label: "배터리", levels: BATTERIES, growth: 1.12 },
+  ext: { label: "소화기", levels: EXTS, growth: 1.1 },
 };
+export const DIFFICULTIES = {
+  calm: { name: "평화", bonus: 1, text: "재난이 없어요. 느긋하게 키우는 방치형이에요." },
+  normal: { name: "보통", bonus: 1.2, text: "몇 분에 한 번 재난이 와요. 수익 ×1.2" },
+  hard: { name: "위험", bonus: 1.6, text: "재난이 자주 오고 피해도 커요. 수익 ×1.6" },
+};
+export const NO_FX = { outputMul: 1, heatMul: 1, demandMul: 1, capMul: 1, burning: new Set() };
 export const GRADES = [
   { name: "서버실", min: 0 },
   { name: "소규모 센터", min: 2000 },
@@ -68,7 +88,7 @@ const STRAIGHT = [
 /**
  * 새 시설 한 칸을 만든다.
  *
- * @param kind 시설 종류(server, cooler, hub, gen)
+ * @param kind 시설 종류(server, cooler, hub, gen, battery, ext)
  * @param level 단계
  * @returns 칸 내용
  */
@@ -85,7 +105,7 @@ export function newState() {
   const cells = Array(AREA).fill(null);
   cells[tileOf(8, 7)] = makeCell("hub", 1);
   cells[tileOf(9, 7)] = makeCell("server", 1);
-  return { coins: START_COINS, lifetime: 0, land: 0, cells, time: 0 };
+  return { coins: START_COINS, lifetime: 0, land: 0, cells, time: 0, difficulty: null, stats: { surge: 0, blackout: 0, fire: 0, saved: 0 } };
 }
 
 /**
@@ -223,36 +243,46 @@ export function synergyNeighbors(state, tile) {
  * 열은 서버와 발전기가 주변 두 칸까지 퍼뜨리고 냉각기가 거리에 따라 뺀다. 수익은 서버 단계 수익에
  * 온도 비율, 네트워크 효율, 이웃한 같은 단계 서버 시너지(+6%씩)를 곱하고, 전력이 모자라면 전체가 같은 비율로 준다.
  *
+ * 재난 효과(fx)가 있으면 수익과 열, 대역폭 수요, 전력 상한에 곱해지고 불에 탄 서버는 꺼진 것으로 본다.
+ * 난이도에 따른 수익 배율도 여기서 곱한다.
+ *
  * @param state 게임 상태
+ * @param fx 재난 효과 { outputMul, heatMul, demandMul, capMul, burning }, 기본은 효과 없음
  * @returns { heat, outputs, net, links, hubs, income, usage, cap, efficiency, maxTemp, counts }
  */
-export function analyze(state) {
+export function analyze(state, fx = NO_FX) {
   const heat = Array(AREA).fill(0);
   const servers = [];
   const hubs = [];
-  const counts = { server: 0, cooler: 0, hub: 0, gen: 0 };
+  const counts = { server: 0, cooler: 0, hub: 0, gen: 0, battery: 0, ext: 0 };
   let usage = 0;
-  let cap = BASE_POWER;
+  let supply = BASE_POWER;
+  let backup = 0;
   state.cells.forEach((cell, tile) => {
     if (!cell) return;
     counts[cell.kind] += 1;
     if (cell.broken) return;
     const spec = KINDS[cell.kind].levels[cell.level];
     if (cell.kind === "server") {
-      servers.push({ tile, demand: spec.demand, spec, level: cell.level });
+      if (fx.burning.has(tile)) return;
+      servers.push({ tile, demand: spec.demand * fx.demandMul, spec, level: cell.level });
       usage += spec.power;
-      addHeat(heat, tile, spec.heat);
+      addHeat(heat, tile, spec.heat * fx.heatMul);
     } else if (cell.kind === "cooler") {
       usage += spec.power;
       addCool(heat, tile, spec);
     } else if (cell.kind === "hub") {
       usage += spec.power;
       hubs.push({ tile, cap: spec.cap, reach: spec.reach });
-    } else {
-      cap += spec.cap;
+    } else if (cell.kind === "gen") {
+      supply += spec.cap;
       addHeat(heat, tile, spec.heat);
+    } else if (cell.kind === "battery") {
+      backup += spec.cap;
     }
   });
+  const cap = supply * fx.capMul + (fx.capMul < 1 ? backup : 0);
+  const bonus = DIFFICULTIES[state.difficulty ?? "calm"].bonus;
   for (let i = 0; i < AREA; i += 1) heat[i] = Math.max(0, heat[i]);
   const { net, links, used } = connect(servers, hubs);
   const efficiency = usage > cap ? cap / usage : 1;
@@ -263,7 +293,8 @@ export function analyze(state) {
     const neighbors = synergyNeighbors(state, server.tile);
     const temp = heat[server.tile];
     maxTemp = Math.max(maxTemp, temp);
-    outputs[server.tile] = server.spec.output * thermal(temp) * net.get(server.tile) * (1 + SYNERGY * neighbors) * efficiency;
+    outputs[server.tile] =
+      server.spec.output * thermal(temp) * net.get(server.tile) * (1 + SYNERGY * neighbors) * efficiency * fx.outputMul * bonus;
     income += outputs[server.tile];
   }
   return {
@@ -287,14 +318,15 @@ export function analyze(state) {
  *
  * @param state 게임 상태
  * @param seconds 흘릴 시간(초)
+ * @param fx 재난 효과, 기본은 효과 없음
  * @returns { state, breaks } breaks는 이번에 고장난 칸 번호 목록
  */
-export function advance(state, seconds) {
-  const analysis = analyze(state);
+export function advance(state, seconds, fx = NO_FX) {
+  const analysis = analyze(state, fx);
   const gain = analysis.income * seconds;
   const breaks = [];
   const cells = state.cells.map((cell, tile) => {
-    if (!cell || cell.kind !== "server" || cell.broken) return cell;
+    if (!cell || cell.kind !== "server" || cell.broken || fx.burning.has(tile)) return cell;
     const over = analysis.heat[tile] - LIMIT_TEMP;
     const stress = over > 0 ? cell.stress + STRESS_UP * (over + 1) * seconds : Math.max(0, cell.stress - STRESS_DOWN * seconds);
     if (stress >= 1) {
@@ -595,6 +627,18 @@ export function expandLand(state) {
   if (cost === null) return { state, error: "이미 가장 넓은 부지예요." };
   if (state.coins < cost) return { state, error: "코인이 부족해요." };
   return { state: { ...state, coins: state.coins - cost, land: state.land + 1 }, error: null };
+}
+
+/**
+ * 재난 난이도를 바꾼다.
+ *
+ * @param state 게임 상태
+ * @param id 난이도 id(calm, normal, hard)
+ * @returns { state, error }
+ */
+export function setDifficulty(state, id) {
+  if (!Object.hasOwn(DIFFICULTIES, id)) return { state, error: "알 수 없는 난이도예요." };
+  return { state: { ...state, difficulty: id }, error: null };
 }
 
 /**
