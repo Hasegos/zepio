@@ -33,6 +33,8 @@ const links = [
         featured && (
           <a
             href={`/games/${featured.slug}`}
+            data-play-now
+            data-games={JSON.stringify(Object.fromEntries(liveGames.map((game) => [game.id, game.slug])))}
             class="ml-1 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
           >
             Play Now
@@ -42,3 +44,6 @@ const links = [
     </nav>
   </div>
 </header>
+<script>
+  import "../scripts/play-now.js";
+</script>
