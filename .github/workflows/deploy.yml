@@ -56,14 +56,3 @@ jobs:
             process.exit(1);
           }
           JS
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: server/pyproject.toml
-
-      - name: 문제 데이터 검증 (일일 문제 3일 치 이상)
-        run: |
-          pip install -e server
-          python -m zepio validate --min-ahead 3

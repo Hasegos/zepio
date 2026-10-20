@@ -1,3 +1,5 @@
+import { hashSeed, makeRng } from "../_shared/rng.js";
+
 export const RUN_SLOTS = [1, 1, 2, 2, 3];
 
 /**
@@ -15,4 +17,15 @@ export function pickPuzzles(pool, random = Math.random) {
     used.add(chosen.id);
     return chosen;
   });
+}
+
+/**
+ * 날짜의 일일 문제 5개를 뽑는다. 같은 날짜는 항상 같은 문제를 낸다.
+ *
+ * @param pool 문제 목록
+ * @param date 날짜(YYYY-MM-DD)
+ * @returns 슬롯 순서대로 놓인 문제 목록
+ */
+export function pickDaily(pool, date) {
+  return pickPuzzles(pool, makeRng(hashSeed(`zepio-pattern-${date}`)));
 }

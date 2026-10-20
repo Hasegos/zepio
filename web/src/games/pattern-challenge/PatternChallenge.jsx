@@ -5,8 +5,7 @@ import pool from "./data/pool.json";
 import meta from "./meta.js";
 import Board from "./Board.jsx";
 import Result from "./Result.jsx";
-import { fetchDaily } from "./daily.js";
-import { pickPuzzles, RUN_SLOTS } from "./pick-puzzles.js";
+import { pickDaily, pickPuzzles, RUN_SLOTS } from "./pick-puzzles.js";
 import { PatternDefs } from "./PuzzleCell.jsx";
 import { mergeResult } from "./record.js";
 import { correctCount, initialState, reducer } from "./reducer.js";
@@ -14,18 +13,15 @@ import { useGameBack } from "../_shared/useGameBack.js";
 
 /**
  * Pattern Challenge 한 판을 진행한다. 시작 화면, 5문제 풀이, 결과 화면을 오간다.
- * 시작 화면에서 오늘(KST)의 도전과 일반 모드를 고른다. 오늘의 문제 파일을 못 불러오면 일반 모드만 안내한다.
- *
- * @param props.signal 화면이 사라질 때 오늘의 문제 요청을 취소하는 신호
+ * 시작 화면에서 오늘(KST)의 도전과 일반 모드를 고른다. 오늘의 문제는 날짜로 정해 모두가 같다.
  */
-export default function PatternChallenge({ signal }) {
+export default function PatternChallenge() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   useGameBack(state.phase === "intro" ? 0 : 1, () => dispatch({ type: "back" }));
   const [now, setNow] = useState(() => Date.now());
   const [record, setRecord] = useState(null);
   const [mode, setMode] = useState("normal");
-  const [dateKey, setDateKey] = useState(() => kstDate(Date.now()));
-  const [daily, setDaily] = useState({ status: "loading", date: "", puzzles: null });
+  const [today, setToday] = useState(() => kstDate(Date.now()));
   const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
   const [dailyResult, setDailyResult] = useState(null);
   const playing = state.phase === "playing";
@@ -37,23 +33,13 @@ export default function PatternChallenge({ signal }) {
   }, [playing]);
 
   useEffect(() => {
-    let active = true;
-    fetchDaily(dateKey, signal).then((puzzles) => {
-      if (active) setDaily({ status: puzzles ? "ready" : "unavailable", date: dateKey, puzzles });
-    });
-    return () => {
-      active = false;
-    };
-  }, [signal, dateKey]);
-
-  useEffect(() => {
     if (state.phase !== "result") return;
     if (mode === "daily") {
-      const next = nextDailyRecord(getDaily(meta.id), daily.date, correctCount(state));
+      const next = nextDailyRecord(getDaily(meta.id), today, correctCount(state));
       const saved = saveDaily(meta.id, next);
       saveResult(meta.id, state.finishedAt, getGameData(meta.id));
       setDailyRecord(next);
-      setDailyResult({ date: daily.date, streak: currentStreak(next, daily.date), max: next.max, saved });
+      setDailyResult({ date: today, streak: currentStreak(next, today), max: next.max, saved });
       return;
     }
     const outcome = mergeResult(getGameData(meta.id), {
@@ -74,21 +60,17 @@ export default function PatternChallenge({ signal }) {
   }, []);
   const startNormal = useCallback(() => begin("normal", pickPuzzles(pool)), [begin]);
   const startDaily = useCallback(() => {
-    const today = kstDate(Date.now());
-    if (today !== daily.date) {
-      setDaily({ status: "loading", date: "", puzzles: null });
-      setDateKey(today);
-      return;
-    }
-    begin("daily", daily.puzzles);
-  }, [begin, daily.date, daily.puzzles]);
+    const date = kstDate(Date.now());
+    setToday(date);
+    begin("daily", pickDaily(pool, date));
+  }, [begin]);
   const select = useCallback((option) => dispatch({ type: "select", option }), []);
   const submit = useCallback(() => dispatch({ type: "submit", now: Date.now() }), []);
   const next = useCallback(() => dispatch({ type: "next", now: Date.now() }), []);
 
-  const doneToday = daily.status === "ready" && dailyRecord?.last === daily.date;
-  const dailyOpen = daily.status === "ready" && !doneToday;
-  const streak = currentStreak(dailyRecord, daily.date);
+  const doneToday = dailyRecord?.last === today;
+  const dailyOpen = !doneToday;
+  const streak = currentStreak(dailyRecord, today);
 
   return (
     <section className="panel">
@@ -101,16 +83,10 @@ export default function PatternChallenge({ signal }) {
           </p>
           <div className="w-full max-w-sm rounded-xl border border-primary/30 bg-indigo-50 p-4" aria-live="polite">
             <p className="font-bold">오늘의 도전</p>
-            {daily.status === "loading" && <p className="mt-1 text-sm text-slate-700">오늘의 문제를 확인하는 중…</p>}
-            {daily.status === "unavailable" && (
-              <p className="mt-1 text-sm text-slate-700">
-                오늘의 도전을 준비하지 못했어요. 일반 모드로 즐겨 보세요.
-              </p>
-            )}
             {dailyOpen && (
               <>
                 <p className="mt-1 text-sm text-slate-700">
-                  {daily.date} · 모두가 같은 5문제{streak > 0 ? ` · 연속 ${streak}일 도전 중` : ""}
+                  {today} · 모두가 같은 5문제{streak > 0 ? ` · 연속 ${streak}일 도전 중` : ""}
                 </p>
                 <button
                   type="button"
@@ -123,7 +99,7 @@ export default function PatternChallenge({ signal }) {
             )}
             {doneToday && (
               <p className="mt-1 text-sm text-slate-700">
-                오늘 완료 · 정답 {dailyRecord.history?.[daily.date] ?? 0} / {RUN_SLOTS.length} · 연속 {streak}일. 내일
+                오늘 완료 · 정답 {dailyRecord.history?.[today] ?? 0} / {RUN_SLOTS.length} · 연속 {streak}일. 내일
                 새로운 문제가 열려요.
               </p>
             )}
