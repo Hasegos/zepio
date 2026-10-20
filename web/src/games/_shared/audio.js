@@ -41,7 +41,7 @@ function eventsOf(track) {
  *
  * @param options.tracks 곡 데이터 { 이름: { bpm, lead, bass } }
  * @param options.sfx 효과음 데이터 { 이름: [소리 조각] }
- * @param options.Context AudioContext 생성자(기본은 브라우저 것, 시험에서 바꾼다)
+ * @param options.Context AudioContext 생성자(기본은 브라우저 것)
  * @param options.setTimer 반복 타이머 등록 함수(기본 setInterval)
  * @param options.clearTimer 타이머 해제 함수(기본 clearInterval)
  * @returns { unlock, setMuted, music, sfx, dispose }

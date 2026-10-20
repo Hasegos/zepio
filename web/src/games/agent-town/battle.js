@@ -2,7 +2,7 @@ import { MEMBERS } from "./party.js";
 
 export const USAGE_CAP = 18;
 export const CONTEXT_CAP = 10;
-export const DISASTER_FINE = 10;
+const DISASTER_FINE = 10;
 
 const drain = (task) => (task.urgent ? 2 : 1);
 const PEAK_MOVES = ["ask", "read", "plan", "edit", "test", "summon"];
@@ -48,7 +48,7 @@ export function startBattle(task, carry = {}) {
  * @param id 기술 식별자
  * @returns 사용량
  */
-export function usageCost(b, gear, id) {
+function usageCost(b, gear, id) {
   return baseCost(b, gear, id) + peakFee(b, gear, id);
 }
 
@@ -114,7 +114,7 @@ export function availableMoves(b, gear, party) {
  * @param gear 가진 장비
  * @returns 귀띔 한 줄
  */
-export function hintFor(b, gear) {
+function hintFor(b, gear) {
   const t = b.task;
   if (t.danger && !b.safe) {
     return gear.guard

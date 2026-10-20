@@ -6,7 +6,7 @@ export const DEMOLISH = 2;
 
 const GLYPHS = { ".": LAND, "~": WATER, "#": ROCK };
 
-export const ISLANDS = [
+const ISLANDS = [
   {
     id: "sprout",
     name: "새싹섬",
@@ -63,7 +63,7 @@ export const ISLANDS = [
  * @param mask 여덟 줄의 문자열
  * @returns 길이 64의 지형 배열
  */
-export function parseMask(mask) {
+function parseMask(mask) {
   return mask.flatMap((row) => [...row].map((glyph) => GLYPHS[glyph] ?? WATER));
 }
 

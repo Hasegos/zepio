@@ -16,7 +16,6 @@ export const BUILDINGS = [
   { id: "school", name: "학교", rule: "기본 1 · 두 칸 안의 집마다 +1 (최대 6)", coast: false },
   { id: "forest", name: "숲", rule: "기본 1 · 두 칸 안의 다른 숲마다 +1 (최대 4)", coast: false },
 ];
-export const BUILDING_IDS = BUILDINGS.map((building) => building.id);
 
 /**
  * 칸 번호의 위·아래·왼쪽·오른쪽 이웃 칸 번호를 구한다.
@@ -53,7 +52,7 @@ function nearOf(i) {
 }
 
 export const NEIGHBORS = Array.from({ length: CELLS }, (_, i) => neighborsOf(i));
-export const NEAR = Array.from({ length: CELLS }, (_, i) => nearOf(i));
+const NEAR = Array.from({ length: CELLS }, (_, i) => nearOf(i));
 
 /**
  * 건물 하나가 지금 주는 점수를 구한다. 점수는 판 전체에서 매번 다시 계산하는 값이라 순서에 상관없다.

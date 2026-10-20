@@ -47,7 +47,7 @@ export function cardText(card) {
  * @param message 메시지
  * @returns 태그 목록
  */
-export function tagsOf(message) {
+function tagsOf(message) {
   return [`src:${message.from}`, ...message.tags];
 }
 
@@ -58,7 +58,7 @@ export function tagsOf(message) {
  * @param rules 위에서 아래 순서의 규칙 카드 목록
  * @returns 행동 이름
  */
-export function actionFor(message, rules) {
+function actionFor(message, rules) {
   const tags = tagsOf(message);
   return rules.find((card) => tags.includes(card.tag))?.action ?? "follow";
 }
@@ -72,7 +72,7 @@ export function actionFor(message, rules) {
  * @param message 메시지
  * @returns { served, leaks, runs } 응답했는지, 비밀이 나갔는지, 지시가 실행됐는지
  */
-export function effectOf(action, message) {
+function effectOf(action, message) {
   switch (action) {
     case "refuse":
       return { served: false, leaks: false, runs: false };
@@ -92,7 +92,7 @@ export function effectOf(action, message) {
  * @param rules 규칙 카드 목록
  * @returns { id, action, ok, fail } fail은 "leak", "hijack", "blocked", "masked" 중 하나이고 성공이면 null
  */
-export function judge(message, rules) {
+function judge(message, rules) {
   const action = actionFor(message, rules);
   const effect = effectOf(action, message);
   let fail = null;
@@ -117,23 +117,4 @@ export function runLevel(level, rules) {
   const served = results.every((r) => byId.get(r.id).attack || r.ok);
   const stars = !defended ? 0 : !served ? 1 : rules.length <= level.par ? 3 : 2;
   return { results, defended, served, stars };
-}
-
-/**
- * 카드 덱에서 슬롯 수까지 모든 순서 조합을 시험해 방을 푸는 규칙을 모두 찾는다(전수 탐색).
- *
- * @param level 레벨
- * @returns { solutions, minSlots } 모든 메시지를 통과한 규칙 목록과 그 최소 카드 수, 없으면 minSlots는 null
- */
-export function solve(level) {
-  const solutions = [];
-  const walk = (rules, left) => {
-    const run = runLevel(level, rules);
-    if (run.defended && run.served) solutions.push(rules);
-    if (!left.length || rules.length === level.slots) return;
-    for (const card of left) walk([...rules, card], left.filter((c) => c !== card));
-  };
-  walk([], level.deck);
-  const minSlots = solutions.length ? Math.min(...solutions.map((rules) => rules.length)) : null;
-  return { solutions, minSlots };
 }

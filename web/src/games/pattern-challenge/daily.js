@@ -53,7 +53,7 @@ function withTimeout(signal) {
  *
  * @param date 불러올 날짜(YYYY-MM-DD)
  * @param signal 화면이 사라질 때 요청을 취소하는 신호
- * @param fetchImpl 요청 함수(테스트에서 바꾼다)
+ * @param fetchImpl 요청 함수(기본값은 전역 fetch)
  * @returns 그날의 문제 5개, 없으면 null
  */
 export async function fetchDaily(date, signal, fetchImpl = fetch) {

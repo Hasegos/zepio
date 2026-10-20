@@ -13,7 +13,7 @@ function cellsOf(board, id) {
   return board.flatMap((b, i) => (b === id ? [i] : []));
 }
 
-export const QUESTS = [
+const QUESTS = [
   {
     id: "homes",
     name: "내 집 마련",

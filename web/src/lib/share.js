@@ -15,7 +15,7 @@ export function withUrl(text, url) {
  * @param payload.title 공유 제목
  * @param payload.text 공유 글(주소 제외)
  * @param payload.url 게임 주소
- * @param nav 브라우저의 navigator(테스트에서 바꾼다)
+ * @param nav 브라우저의 navigator(기본값은 전역 navigator)
  * @returns "shared" 공유 창으로 보냄, "cancelled" 사용자가 닫음, "copied" 클립보드에 복사함, "manual" 둘 다 안 되어 직접 복사해야 함
  */
 export async function shareResult({ title, text, url }, nav = globalThis.navigator) {

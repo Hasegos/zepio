@@ -34,42 +34,10 @@ function stuckMove(state) {
  * @param state 판 상태
  * @returns 수, 둘 수 없으면 null
  */
-export function greedyMove(state) {
+function greedyMove(state) {
   let best = null;
   for (const c of candidates(state)) if (!best || c.delta > best.delta) best = c;
   return best ? { t: "place", slot: best.slot, i: best.i } : stuckMove(state);
-}
-
-/**
- * 한 수 앞까지 보고 고른다. 놓은 뒤 남은 카드와 다음 카드로 얻을 최고 점수를 절반 넘게 반영한다.
- *
- * @param state 판 상태
- * @returns 수, 둘 수 없으면 null
- */
-export function lookaheadMove(state) {
-  let best = null;
-  for (const c of candidates(state)) {
-    const after = apply(state, { t: "place", slot: c.slot, i: c.i });
-    const follow = candidates(after).reduce((top, n) => Math.max(top, n.delta), 0);
-    const value = c.delta + 0.7 * follow;
-    if (!best || value > best.value) best = { ...c, value };
-  }
-  return best ? { t: "place", slot: best.slot, i: best.i } : stuckMove(state);
-}
-
-/**
- * 규칙에 맞는 수 중 아무거나 두는 수를 만든다.
- *
- * @param rng 난수 함수
- * @returns 수를 고르는 함수
- */
-export function randomPicker(rng) {
-  return (state) => {
-    const list = candidates(state);
-    if (!list.length) return stuckMove(state);
-    const c = list[Math.floor(rng() * list.length)];
-    return { t: "place", slot: c.slot, i: c.i };
-  };
 }
 
 /**
@@ -80,7 +48,7 @@ export function randomPicker(rng) {
  * @param pick 상태를 받아 수를 돌려주는 함수
  * @returns 끝난 판 상태
  */
-export function playOut(island, seed, pick) {
+function playOut(island, seed, pick) {
   let state = createRun(island, seed);
   while (!isOver(state)) {
     const move = pick(state);

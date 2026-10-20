@@ -23,7 +23,7 @@ export function kstDate(ms) {
  * @param date YYYY-MM-DD
  * @returns 전날 YYYY-MM-DD
  */
-export function previousDate(date) {
+function previousDate(date) {
   const [year, month, day] = date.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
 }

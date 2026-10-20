@@ -9,7 +9,7 @@ export const CAVE_GYM_TRUST = 30;
 export const LEAGUE_GYM_TRUST = 34;
 export const LEAGUE_BADGES = ["town", "forest", "harbor", "cave"];
 
-export const DIRS = {
+const DIRS = {
   up: [0, -1],
   down: [0, 1],
   left: [-1, 0],
