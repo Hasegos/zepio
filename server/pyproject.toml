@@ -9,11 +9,6 @@ description = "Zepio 문제 생성과 검증 CLI (오프라인 도구)"
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2.7"]
 
-[project.optional-dependencies]
-dev = ["pytest>=8"]
 
 [tool.setuptools]
 packages = ["zepio"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
