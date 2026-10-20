@@ -59,14 +59,23 @@ const jsonLd = {
   <h2 id="games" class="mb-3 mt-8 scroll-mt-4 text-xl font-bold">추천 게임</h2>
   <ul class="grid gap-4 sm:grid-cols-2">
     {
-      liveGames.map((game) => (
+      liveGames.map((game, index) => (
         <li
           data-game-card={game.id}
           data-slug={game.slug}
           data-name={game.name}
           class="overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
         >
-          <img src={game.thumbnail} alt="" width="320" height="180" class="aspect-video w-full object-cover" />
+          <img
+            src={game.thumbnail}
+            alt=""
+            width="320"
+            height="180"
+            loading={index >= 2 ? "lazy" : undefined}
+            fetchpriority={index === 0 ? "high" : undefined}
+            decoding="async"
+            class="aspect-video w-full object-cover"
+          />
           <div class="p-4">
             <div class="flex items-center justify-between gap-2">
               <h3 class="text-lg font-bold">{game.name}</h3>
