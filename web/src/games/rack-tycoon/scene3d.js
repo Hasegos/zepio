@@ -276,7 +276,7 @@ export function createScene(container, { width, height, racks, heat = [], start,
 
   const goTo = (path, rackIndex) => {
     if (path === null) return;
-    player.path = path;
+    player.path = path.length ? [[Math.floor(player.x), Math.floor(player.z)], ...path] : path;
     player.target = rackIndex;
     const last = path[path.length - 1];
     goal.visible = Boolean(last);
@@ -328,9 +328,9 @@ export function createScene(container, { width, height, racks, heat = [], start,
       keys.add(MOVE_KEYS[event.code]);
     } else if (event.code === "KeyQ" || event.code === "KeyE") {
       if (!event.repeat) view.index += event.code === "KeyE" ? 1 : -1;
-    } else if ((event.code === "Space" || event.code === "Enter") && !event.repeat) {
+    } else if (event.code === "Space" || event.code === "Enter") {
       event.preventDefault();
-      interact(nearestRack());
+      if (!event.repeat) interact(nearestRack());
     }
   };
   const onKeyUp = (event) => {
@@ -465,6 +465,7 @@ export function createScene(container, { width, height, racks, heat = [], start,
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
       scene.traverse((object) => {
+        if (object.isInstancedMesh) object.dispose();
         object.geometry?.dispose();
         object.material?.dispose();
       });
