@@ -1,4 +1,4 @@
-import { summarizers } from "../games/records.js";
+import { recordLoaders } from "../games/records.js";
 import { currentStreak, kstDate } from "../lib/daily.js";
 import { loadRecords } from "../lib/storage.js";
 
@@ -9,13 +9,16 @@ const cards = new Map(
 
 for (const [id, card] of cards) {
   const entry = games[id];
-  const plays = Number.isInteger(entry?.plays) ? entry.plays : 0;
-  const text = entry ? summarizers[id]?.(entry.data, plays) : "";
   const line = card.querySelector("[data-record]");
-  if (text && line) {
-    line.textContent = text;
-    line.hidden = false;
-  }
+  if (!entry || !line) continue;
+  const plays = Number.isInteger(entry.plays) ? entry.plays : 0;
+  recordLoaders[id]?.().then(({ summarize }) => {
+    const text = summarize(entry.data, plays);
+    if (text) {
+      line.textContent = text;
+      line.hidden = false;
+    }
+  });
 }
 
 const banner = document.querySelector("[data-daily]");
