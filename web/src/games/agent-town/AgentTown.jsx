@@ -18,7 +18,6 @@ import { useGameBack } from "../_shared/useGameBack.js";
 
 const TRACK = { title: "title", ending: "ending" };
 
-/** 화면 깊이: 제목이 첫 화면이고 시설·전투·엔딩은 지도 위에 한 단계 더 쌓인다. */
 const DEPTH = { title: 0, map: 1, facility: 2, battle: 2, ending: 2 };
 
 const KEY_DIRS = {

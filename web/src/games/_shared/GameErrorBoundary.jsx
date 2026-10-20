@@ -7,18 +7,26 @@ import { Component } from "react";
 export default class GameErrorBoundary extends Component {
   state = { failed: false, attempt: 0 };
 
+  /** 렌더 중 예외가 나면 실패 상태로 바꾼다. */
   static getDerivedStateFromError() {
     return { failed: true };
   }
 
+  /**
+   * 잡은 오류를 콘솔에 남긴다.
+   *
+   * @param error 던져진 오류
+   */
   componentDidCatch(error) {
     console.error("[game] render failed", error);
   }
 
+  /** 실패 상태를 풀고 자식을 새로 그린다. */
   retry = () => {
     this.setState((s) => ({ failed: false, attempt: s.attempt + 1 }));
   };
 
+  /** 실패하면 안내 화면을, 아니면 자식을 그린다. */
   render() {
     if (this.state.failed) {
       return (

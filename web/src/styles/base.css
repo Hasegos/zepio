@@ -6,7 +6,6 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* 한글은 어절 단위로 줄을 바꿔 읽기 쉽게 한다 */
   p,
   li,
   h1,
