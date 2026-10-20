@@ -7,4 +7,5 @@ export const recordLoaders = {
   "prompt-fortress": () => import("./prompt-fortress/record.js"),
   "stack-tower": () => import("./stack-tower/record.js"),
   "bug-sweeper": () => import("./bug-sweeper/record.js"),
+  "rack-tycoon": () => import("./rack-tycoon/record.js"),
 };

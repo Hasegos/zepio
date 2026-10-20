@@ -4,6 +4,7 @@ import halluDetective from "./hallu-detective/meta.js";
 import lightFlip from "./light-flip/meta.js";
 import patternChallenge from "./pattern-challenge/meta.js";
 import promptFortress from "./prompt-fortress/meta.js";
+import rackTycoon from "./rack-tycoon/meta.js";
 import stackTower from "./stack-tower/meta.js";
 import tinyIsle from "./tiny-isle/meta.js";
 
@@ -16,6 +17,7 @@ export const games = [
   { ...promptFortress, load: () => import("./prompt-fortress/index.jsx") },
   { ...stackTower, load: () => import("./stack-tower/index.jsx") },
   { ...bugSweeper, load: () => import("./bug-sweeper/index.jsx") },
+  { ...rackTycoon, load: () => import("./rack-tycoon/index.jsx") },
 ];
 
 export const liveGames = games.filter((game) => game.status === "live");
