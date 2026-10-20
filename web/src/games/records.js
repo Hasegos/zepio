@@ -6,4 +6,5 @@ export const recordLoaders = {
   "hallu-detective": () => import("./hallu-detective/record.js"),
   "prompt-fortress": () => import("./prompt-fortress/record.js"),
   "stack-tower": () => import("./stack-tower/record.js"),
+  "bug-sweeper": () => import("./bug-sweeper/record.js"),
 };
