@@ -143,7 +143,7 @@ export default function Board({
           ref={nextRef}
           type="button"
           onClick={onNext}
-          className="rounded-xl bg-primary px-5 py-3.5 text-lg font-bold text-white"
+          className="btn-primary"
         >
           {last ? "결과 보기" : "다음 문제"}
         </button>

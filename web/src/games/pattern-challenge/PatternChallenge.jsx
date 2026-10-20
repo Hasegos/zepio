@@ -91,7 +91,7 @@ export default function PatternChallenge({ signal }) {
   const streak = currentStreak(dailyRecord, daily.date);
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
+    <section className="panel">
       <PatternDefs />
       {state.phase === "intro" && (
         <div className="flex flex-col items-center gap-5 py-8 text-center">

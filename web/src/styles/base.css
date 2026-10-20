@@ -1,0 +1,28 @@
+@layer base {
+  body {
+    background: #f6f7fb;
+    color: var(--color-ink);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 한글은 어절 단위로 줄을 바꿔 읽기 쉽게 한다 */
+  p,
+  li,
+  h1,
+  h2,
+  h3 {
+    word-break: keep-all;
+  }
+
+  h1,
+  h2 {
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}

@@ -43,11 +43,11 @@ export default function Result({ state, record, onRetry }) {
       </div>
 
       <dl className="grid grid-cols-2 gap-3 text-center">
-        <div className="flex flex-col-reverse rounded-xl bg-slate-50 p-4">
+        <div className="stat-tile">
           <dt className="text-sm text-slate-600">추가 이동</dt>
           <dd className="text-2xl font-extrabold">{extra}회</dd>
         </div>
-        <div className="flex flex-col-reverse rounded-xl bg-slate-50 p-4">
+        <div className="stat-tile">
           <dt className="text-sm text-slate-600">걸린 시간</dt>
           <dd className="text-2xl font-extrabold">{formatDuration(state.finishedAt - state.startedAt)}</dd>
         </div>
@@ -80,7 +80,7 @@ export default function Result({ state, record, onRetry }) {
       <button
         type="button"
         onClick={onRetry}
-        className="rounded-xl bg-primary px-5 py-3.5 text-lg font-bold text-white"
+        className="btn-primary"
       >
         다시 도전하기
       </button>
