@@ -4,6 +4,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  ConeGeometry,
   CylinderGeometry,
   DirectionalLight,
   Group,
@@ -63,8 +64,17 @@ const HUB_HEIGHT = [0, 0.6, 0.8, 1, 1.25];
 const HUB_COLOR = ["#34d399", "#34d399", "#10b981", "#059669", "#047857"];
 const GEN_HEIGHT = [0, 0.35, 0.6, 0.9, 1.2];
 const GEN_COLOR = ["#fde047", "#fde047", "#f59e0b", "#ea580c", "#dc2626"];
-const GHOST_HEIGHT = { server: 1, cooler: 0.8, hub: 0.7, gen: 0.5 };
-const GHOST_COLOR = { server: "#6366f1", cooler: "#22d3ee", hub: "#10b981", gen: "#f59e0b" };
+const BATTERY_HEIGHT = [0, 0.5, 0.7, 0.95];
+const BATTERY_COLOR = ["#86efac", "#86efac", "#22c55e", "#15803d"];
+const EXT_HEIGHT = [0, 0.45, 0.6, 0.8];
+const EXT_COLOR = ["#fca5a5", "#fca5a5", "#ef4444", "#b91c1c"];
+const GHOST_HEIGHT = { server: 1, cooler: 0.8, hub: 0.7, gen: 0.5, battery: 0.6, ext: 0.5 };
+const GHOST_COLOR = { server: "#6366f1", cooler: "#22d3ee", hub: "#10b981", gen: "#f59e0b", battery: "#16a34a", ext: "#ef4444" };
+const MOODS = {
+  none: { background: "#e8ecff", ambient: 1.7, sun: 1.6 },
+  surge: { background: "#d9f6ff", ambient: 1.9, sun: 1.8 },
+  blackout: { background: "#8c92bd", ambient: 0.75, sun: 0.7 },
+};
 const LED_COLORS = ["#22c55e", "#22c55e", "#22c55e", "#15803d", "#f59e0b"];
 const MOVE_KEYS = {
   KeyW: "forward",
@@ -154,7 +164,8 @@ export function createScene(
 
   const scene = new Scene();
   scene.background = new Color(COLORS.background);
-  scene.add(new AmbientLight("#ffffff", 1.7));
+  const ambient = new AmbientLight("#ffffff", 1.7);
+  scene.add(ambient);
   const sun = new DirectionalLight("#ffffff", 1.6);
   sun.position.set(-6, 14, 8);
   scene.add(sun);
@@ -184,10 +195,13 @@ export function createScene(
   const coolerMesh = new InstancedMesh(new BoxGeometry(0.8, 1, 0.8), new MeshLambertMaterial(), area);
   const hubMesh = new InstancedMesh(new CylinderGeometry(0.3, 0.36, 1, 18), new MeshLambertMaterial(), area);
   const genMesh = new InstancedMesh(new BoxGeometry(0.9, 1, 0.9), new MeshLambertMaterial(), area);
+  const batteryMesh = new InstancedMesh(new BoxGeometry(0.76, 1, 0.76), new MeshLambertMaterial(), area);
+  const extMesh = new InstancedMesh(new CylinderGeometry(0.22, 0.28, 1, 12), new MeshLambertMaterial(), area);
+  const flameMesh = new InstancedMesh(new ConeGeometry(0.26, 0.8, 7), new MeshBasicMaterial(), area);
   const ledMesh = new InstancedMesh(new BoxGeometry(0.6, 0.06, 0.02), new MeshBasicMaterial(), area * 4);
-  const itemMeshes = [serverMesh, coolerMesh, hubMesh, genMesh];
-  scene.add(...itemMeshes, ledMesh);
-  for (const mesh of [...itemMeshes, ledMesh]) {
+  const itemMeshes = [serverMesh, coolerMesh, hubMesh, genMesh, batteryMesh, extMesh];
+  scene.add(...itemMeshes, ledMesh, flameMesh);
+  for (const mesh of [...itemMeshes, ledMesh, flameMesh]) {
     mesh.frustumCulled = false;
     for (let i = 0; i < mesh.count; i += 1) mesh.setMatrixAt(i, matrix.makeScale(0, 0, 0));
   }
@@ -261,6 +275,8 @@ export function createScene(
     links: [],
     ghost: null,
     selected: null,
+    burning: [],
+    mood: "none",
   };
   let blocked = new Set();
   let worldDirty = true;
@@ -349,6 +365,8 @@ export function createScene(
       place(coolerMesh, "cooler", COOLER_HEIGHT);
       place(hubMesh, "hub", HUB_HEIGHT);
       place(genMesh, "gen", GEN_HEIGHT);
+      place(batteryMesh, "battery", BATTERY_HEIGHT);
+      place(extMesh, "ext", EXT_HEIGHT);
       if (item && item.kind === "server") {
         rackColors[i].set(item.broken ? COLORS.broken : SERVER_COLOR[item.level]).lerp(tint.set(COLORS.hot), item.broken ? 0 : item.heat * 0.6);
         serverMesh.setColorAt(i, rackColors[i]);
@@ -359,6 +377,10 @@ export function createScene(
         hubMesh.setColorAt(i, tint.set(HUB_COLOR[item.level]));
       } else if (item && item.kind === "gen") {
         genMesh.setColorAt(i, tint.set(GEN_COLOR[item.level]));
+      } else if (item && item.kind === "battery") {
+        batteryMesh.setColorAt(i, tint.set(BATTERY_COLOR[item.level]));
+      } else if (item && item.kind === "ext") {
+        extMesh.setColorAt(i, tint.set(EXT_COLOR[item.level]));
       }
       const front = y + 0.5 < land.y + land.h / 2 ? 1 : -1;
       for (let row = 0; row < 4; row += 1) {
@@ -370,6 +392,27 @@ export function createScene(
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
+  };
+
+  const applyFlames = (tick) => {
+    for (let i = 0; i < area; i += 1) flameMesh.setMatrixAt(i, matrix.makeScale(0, 0, 0));
+    world.burning.forEach((tile, n) => {
+      const x = tile % width;
+      const y = (tile - x) / width;
+      const roll = (Math.imul(tile + 7, 2654435761) + Math.imul(tick + n, 40503)) >>> 0;
+      const grow = 0.8 + (roll % 60) / 100;
+      flameMesh.setMatrixAt(tile, matrix.makeScale(1, grow, 1).setPosition(x + 0.5, 1.15 + grow * 0.3, y + 0.5));
+      flameMesh.setColorAt(tile, tint.set(roll % 3 ? "#fb923c" : "#fde047"));
+    });
+    flameMesh.instanceMatrix.needsUpdate = true;
+    if (flameMesh.instanceColor) flameMesh.instanceColor.needsUpdate = true;
+  };
+
+  const applyMood = () => {
+    const mood = MOODS[world.mood] ?? MOODS.none;
+    scene.background.set(mood.background);
+    ambient.intensity = mood.ambient;
+    sun.intensity = mood.sun;
   };
 
   const applyLinks = () => {
@@ -437,6 +480,8 @@ export function createScene(
     view.targetZ = land.y + land.h / 2;
     view.targetSize = Math.max(MIN_VIEW, (land.w + land.h) * VIEW_PER_TILE);
     applyItems();
+    applyFlames(Math.max(lastBlink, 0));
+    applyMood();
     applyLinks();
     applyGhost();
   };
@@ -639,6 +684,7 @@ export function createScene(
       ledMesh.setColorAt(i, tint.set(LED_COLORS[roll % LED_COLORS.length]));
     }
     if (ledMesh.instanceColor) ledMesh.instanceColor.needsUpdate = true;
+    if (world.burning.length) applyFlames(tick);
     if (brokenTiles.size && serverMesh.instanceColor) {
       for (const tile of brokenTiles) serverMesh.setColorAt(tile, tint.set(tick % 2 ? COLORS.hot : COLORS.broken));
       serverMesh.instanceColor.needsUpdate = true;
