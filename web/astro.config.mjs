@@ -15,5 +15,7 @@ export default defineConfig({
   output: "static",
   site: env.PUBLIC_SITE_URL || "http://localhost:4321",
   integrations: [react(), sitemap()],
-  vite: { plugins: [tailwindcss()] },
+  // CSP(script-src, style-src 'self')가 인라인을 막으므로 작은 스크립트와 스타일도 파일로 내보낸다.
+  build: { inlineStylesheets: "never" },
+  vite: { plugins: [tailwindcss()], build: { assetsInlineLimit: 0 } },
 });
