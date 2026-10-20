@@ -21,6 +21,7 @@ import {
   PlaneGeometry,
   Raycaster,
   Scene,
+  Sphere,
   SphereGeometry,
   Vector2,
   Vector3,
@@ -203,6 +204,7 @@ export function createScene(
   scene.add(...itemMeshes, ledMesh, flameMesh);
   for (const mesh of [...itemMeshes, ledMesh, flameMesh]) {
     mesh.frustumCulled = false;
+    mesh.boundingSphere = new Sphere(new Vector3(width / 2, 0.5, height / 2), Math.hypot(width, height) / 2 + 2);
     for (let i = 0; i < mesh.count; i += 1) mesh.setMatrixAt(i, matrix.makeScale(0, 0, 0));
   }
 
