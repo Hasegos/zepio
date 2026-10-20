@@ -5,7 +5,7 @@ import Mascot from "./Mascot.astro";
 const path = Astro.url.pathname;
 const featured = liveGames[0];
 const links = [
-  { href: "/", label: "홈", current: path === "/" },
+  { href: "/", label: "홈", current: path === "/", hideOnNarrow: true },
   { href: "/#games", label: "게임", current: path.startsWith("/games/") },
   { href: "/about/", label: "소개", current: path.startsWith("/about") },
 ];
@@ -23,7 +23,10 @@ const links = [
           <a
             href={link.href}
             aria-current={link.current ? "page" : undefined}
-            class="rounded-lg px-2.5 py-2 text-sm sm:px-3 font-bold text-slate-600 hover:bg-slate-100 aria-[current=page]:text-primary"
+            class:list={[
+              "whitespace-nowrap rounded-lg px-2 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 aria-[current=page]:text-primary min-[375px]:px-2.5 sm:px-3",
+              link.hideOnNarrow && "max-[359px]:hidden",
+            ]}
           >
             {link.label}
           </a>
@@ -35,7 +38,7 @@ const links = [
             href={`/games/${featured.slug}`}
             data-play-now
             data-games={JSON.stringify(Object.fromEntries(liveGames.map((game) => [game.id, game.slug])))}
-            class="ml-1 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+            class="ml-1 whitespace-nowrap rounded-xl bg-primary px-3 py-2 text-sm font-bold text-white hover:bg-indigo-700 min-[360px]:px-4"
           >
             Play Now
           </a>

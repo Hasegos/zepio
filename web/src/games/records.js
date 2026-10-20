@@ -5,4 +5,5 @@ export const recordLoaders = {
   "agent-town": () => import("./agent-town/record.js"),
   "hallu-detective": () => import("./hallu-detective/record.js"),
   "prompt-fortress": () => import("./prompt-fortress/record.js"),
+  "stack-tower": () => import("./stack-tower/record.js"),
 };

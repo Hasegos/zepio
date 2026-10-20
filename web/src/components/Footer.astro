@@ -8,7 +8,7 @@ const infoLinks = [
   { href: "/privacy/", label: "개인정보처리방침" },
   { href: "/terms/", label: "이용약관" },
 ];
-const linkClass = "text-slate-700 hover:text-primary hover:underline";
+const linkClass = "inline-block py-1.5 text-slate-700 hover:text-primary hover:underline";
 ---
 
 <footer class="border-t border-slate-200 bg-white">
@@ -22,7 +22,7 @@ const linkClass = "text-slate-700 hover:text-primary hover:underline";
       </div>
       <nav aria-label="게임 목록">
         <p class="text-sm font-extrabold">게임</p>
-        <ul class="mt-2 space-y-1 text-sm font-semibold">
+        <ul class="mt-1 text-sm font-semibold">
           {
             liveGames.map((game) => (
               <li>
@@ -36,7 +36,7 @@ const linkClass = "text-slate-700 hover:text-primary hover:underline";
       </nav>
       <nav aria-label="사이트 정보">
         <p class="text-sm font-extrabold">사이트 정보</p>
-        <ul class="mt-2 space-y-1 text-sm font-semibold">
+        <ul class="mt-1 text-sm font-semibold">
           {
             infoLinks.map((link) => (
               <li>

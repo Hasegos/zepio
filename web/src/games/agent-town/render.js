@@ -224,7 +224,7 @@ export function drawWorld(canvas, mapId) {
  * @param x 왼쪽 위 화면 x
  * @param y 왼쪽 위 화면 y
  * @param dir up, down, left, right
- * @param frame 걷는 모양(0 또는 1)
+ * @param frame 걷는 모양(0 서 있기, 1 왼발 딛기, 2 오른발 딛기)
  * @param scale 확대 배율(제목과 전투 화면용)
  */
 export function drawAgent(ctx, x, y, dir, frame, scale = 1) {
@@ -233,9 +233,8 @@ export function drawAgent(ctx, x, y, dir, frame, scale = 1) {
   const dark = "#b95d3f";
   const bob = frame ? 1 : 0;
   r(3, 14, 10, 1, "rgba(0,0,0,0.22)");
-  const step = frame ? 1 : 0;
-  r(4, 11 - bob, 2, 3 + step, dark);
-  r(10, 11 - bob, 2, 3 + (frame ? 0 : 1), dark);
+  r(4, 11 - bob, 2, frame === 1 ? 4 : 3, dark);
+  r(10, 11 - bob, 2, frame === 2 ? 4 : 3, dark);
   r(0, 6 - bob, 3, 3, body);
   r(13, 6 - bob, 3, 3, body);
   r(2, 3 - bob, 12, 9, body);
@@ -332,27 +331,26 @@ export function drawRequest(ctx, x, y, task, frame, scale = 1) {
  *
  * @param ctx 화면 캔버스 컨텍스트
  * @param world drawWorld로 그려 둔 지도 그림
- * @param view { mapId, player: {x, y, dir}, from: {x, y}|null, t: 0~1, npcs, tick, light } light는 어두운 지도에서 보이는 반지름(칸)
+ * @param view { mapId, player: {x, y, dir}, from: {x, y}|null, t: 0~1, foot: 0|1, npcs, tick, light } foot는 이번 걸음에 내딛는 발(0 왼발, 1 오른발), light는 어두운 지도에서 보이는 반지름(칸)
  */
 export function drawFrame(ctx, world, view) {
-  const { mapId, player, from, t, npcs, tick, light = 2.5 } = view;
+  const { mapId, player, from, t, foot = 0, npcs, tick, light = 2.5 } = view;
   const map = MAPS[mapId];
   const fx = from ? from.x + (player.x - from.x) * t : player.x;
   const fy = from ? from.y + (player.y - from.y) * t : player.y;
+  const baseX = Math.round(fx * TILE);
+  const baseY = Math.round(fy * TILE);
   const maxX = map.width * TILE - VIEW_PX_W;
   const maxY = map.height * TILE - VIEW_PX_H;
-  const camX = Math.max(0, Math.min(maxX, Math.round(fx * TILE + TILE / 2 - VIEW_PX_W / 2)));
-  const camY = Math.max(0, Math.min(maxY, Math.round(fy * TILE + TILE / 2 - VIEW_PX_H / 2)));
+  const camX = Math.max(0, Math.min(maxX, baseX + (TILE - VIEW_PX_W) / 2));
+  const camY = Math.max(0, Math.min(maxY, baseY + (TILE - VIEW_PX_H) / 2));
+  const stride = t > 0.15 && t < 0.85 ? (foot ? 2 : 1) : 0;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(world, camX, camY, VIEW_PX_W, VIEW_PX_H, 0, 0, VIEW_PX_W, VIEW_PX_H);
   const idle = Math.floor(tick / 500) % 2;
   const things = [
     ...npcs.map((npc) => ({ y: npc.y, draw: () => drawNpc(ctx, npc.x * TILE - camX, npc.y * TILE - camY, npc, idle) })),
-    {
-      y: fy,
-      draw: () =>
-        drawAgent(ctx, Math.round(fx * TILE) - camX, Math.round(fy * TILE) - camY, player.dir, t < 1 ? Math.floor(t * 2) % 2 : 0),
-    },
+    { y: fy, draw: () => drawAgent(ctx, baseX - camX, baseY - camY, player.dir, stride) },
   ].sort((a, b) => a.y - b.y);
   for (const thing of things) thing.draw();
   ctx.font = "bold 8px sans-serif";
@@ -366,8 +364,8 @@ export function drawFrame(ctx, world, view) {
     ctx.fillText(b.name, cx, cy);
   }
   if (map.dark) {
-    const cx = Math.round(fx * TILE) - camX + TILE / 2;
-    const cy = Math.round(fy * TILE) - camY + TILE / 2;
+    const cx = baseX - camX + TILE / 2;
+    const cy = baseY - camY + TILE / 2;
     const r = light * TILE;
     const dark = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
     dark.addColorStop(0, "rgba(6,8,18,0)");
