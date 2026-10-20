@@ -1,5 +1,5 @@
 import { isInt, isObject } from "../_shared/validate.js";
-import { analyze, formatRate, gradeOf, KINDS, newState, xyOf } from "./engine.js";
+import { analyze, DIFFICULTIES, formatRate, gradeOf, KINDS, newState, xyOf } from "./engine.js";
 import { AREA, inLand, LANDS, TERMINAL_TILE } from "./layout.js";
 
 const MAX_VALUE = 1e18;
@@ -33,6 +33,18 @@ function readCell(cell, tile, land) {
 }
 
 /**
+ * 저장된 재난 기록을 안전한 모양으로 다듬는다. 없거나 깨진 값은 0으로 본다.
+ *
+ * @param raw 저장소에서 읽은 기록
+ * @returns { surge, blackout, fire, saved }
+ */
+function readStats(raw) {
+  const clean = {};
+  for (const key of ["surge", "blackout", "fire", "saved"]) clean[key] = isObject(raw) && isInt(raw[key], 0, 1e9) ? raw[key] : 0;
+  return clean;
+}
+
+/**
  * 저장된 상태가 게임에서 쓸 수 있는 모양인지 검사하고 안전한 복사본을 돌려준다.
  * 깨진 값이 하나라도 있으면 null이다.
  *
@@ -50,7 +62,8 @@ export function readState(raw) {
     if (cell === undefined) return null;
     clean.push(cell);
   }
-  return { coins, lifetime, land, cells: clean, time };
+  const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
+  return { coins, lifetime, land, cells: clean, time, difficulty, stats: readStats(raw.stats) };
 }
 
 /**

@@ -37,6 +37,8 @@ export function falloffOf(kind, level) {
   const spec = KINDS[kind].levels[level];
   if (kind === "cooler") return Array.from({ length: spec.reach }, (_, i) => 1 - i / spec.reach);
   if (kind === "hub") return Array.from({ length: spec.reach }, (_, i) => 1 - (0.5 * i) / spec.reach);
+  if (kind === "ext") return Array.from({ length: spec.reach }, () => 0.8);
+  if (kind === "battery") return [];
   return spec.heat > 0 ? [0.5, 0.25] : [];
 }
 
@@ -67,6 +69,8 @@ export function worldOf(state, analysis, ui) {
     links: ui.overlay === "net" ? analysis.links.map((link) => ({ hub: link.hub, server: link.server, eff: analysis.net.get(link.server) })) : [],
     ghost: ui.ghost,
     selected: ui.selected,
+    burning: ui.burning,
+    mood: ui.mood,
   };
 }
 
@@ -90,6 +94,8 @@ export function summaryOf(state, analysis, tile) {
     const hub = analysis.hubs.find((entry) => entry.tile === tile);
     return `${spec.name} · 대역폭 ${hub ? hub.used : 0}/${spec.cap}`;
   }
+  if (cell.kind === "battery") return `${spec.name} · 정전 때 전력 +${spec.cap}`;
+  if (cell.kind === "ext") return `${spec.name} · 반경 ${spec.reach}칸의 불을 꺼요`;
   return `${spec.name} · 전력 +${spec.cap}`;
 }
 
@@ -163,6 +169,10 @@ export function nextGoal(state, analysis) {
   if (analysis.usage >= analysis.cap - 1) return "전력이 거의 찼어요. 발전기(4)를 놓으세요.";
   if (analysis.maxTemp > SAFE_TEMP) return "열지도(H)로 뜨거운 곳을 확인하고 냉각기(2)를 가까이 놓아 보세요.";
   if (counts.server >= 8 && counts.hub < 2) return "서버가 늘었어요. 허브(3)를 더 놓아 대역폭을 나누세요.";
+  if (state.difficulty === "normal" || state.difficulty === "hard") {
+    if (counts.battery === 0 && analysis.usage >= 20) return "정전에 대비해 배터리(5)를 놓아 보세요. 정전 때 전력을 보태 줘요.";
+    if (counts.ext === 0 && counts.server >= 6) return "화재에 대비해 소화기(6)를 서버 가까이 놓아 보세요. 불을 자동으로 꺼요.";
+  }
   const cost = expandCost(state);
   if (cost !== null && state.coins >= cost) return "부지를 넓힐 수 있어요. 위의 부지 넓히기 버튼을 눌러 보세요.";
   return "같은 단계 서버를 붙이면 수익이 오르지만 열도 올라요. 배치를 바꿔 가며 가장 좋은 모양을 찾아보세요.";

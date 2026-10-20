@@ -7,6 +7,8 @@ export const TOOLS = [
   { id: "cooler", label: "냉각기", key: "2" },
   { id: "hub", label: "허브", key: "3" },
   { id: "gen", label: "발전기", key: "4" },
+  { id: "battery", label: "배터리", key: "5" },
+  { id: "ext", label: "소화기", key: "6" },
   { id: "move", label: "옮기기", key: "M" },
   { id: "remove", label: "철거", key: "X" },
 ];
