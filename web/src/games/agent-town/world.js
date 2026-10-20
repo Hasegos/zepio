@@ -197,6 +197,7 @@ const FOREST_BUILDINGS = [
 const HARBOR_BUILDINGS = [
   { id: "market", name: "항구 시장", facility: "market", x: 2, y: 2, w: 4, h: 3, door: [4, 4], theme: "blue" },
   { id: "inn", name: "항구 여관", facility: "rest", x: 10, y: 2, w: 4, h: 3, door: [12, 4], theme: "pink" },
+  { id: "ledger", name: "항구 서고", facility: "compact", x: 15, y: 2, w: 4, h: 3, door: [17, 4], theme: "gray" },
   { id: "gym", name: "경리부", facility: "gym", x: 20, y: 1, w: 6, h: 4, door: [23, 4], theme: "orange" },
 ];
 const CAVE_BUILDINGS = [
@@ -206,6 +207,7 @@ const CAVE_BUILDINGS = [
 ];
 const LEAGUE_BUILDINGS = [
   { id: "lounge", name: "대기실", facility: "rest", x: 1, y: 2, w: 4, h: 3, door: [3, 4], theme: "pink" },
+  { id: "briefing", name: "정리실", facility: "compact", x: 15, y: 2, w: 4, h: 3, door: [16, 4], theme: "green" },
   { id: "gym", name: "챔피언 홀", facility: "gym", x: 6, y: 1, w: 8, h: 4, door: [10, 4], theme: "orange" },
 ];
 const LEAGUE_SIGNS = [{ id: "plaque", name: "리그 현판", x: 12, y: 8 }];
