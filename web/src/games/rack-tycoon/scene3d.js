@@ -143,7 +143,7 @@ function buildRobot() {
  * @param options.onHover 가리키는 칸이 바뀔 때 호출, 칸 번호나 null을 받는다
  * @param options.onInteract 로봇 앞에서 Space나 Enter를 눌렀을 때 호출, 칸 번호를 받는다
  * @param options.onCancel 오른쪽 클릭했을 때 호출
- * @returns { setWorld, walkTo, walkBeside, robotTile, dispose } 또는 WebGL을 못 쓰면 null
+ * @returns { setWorld, walkTo, walkBeside, robotTile, stop, dispose } 또는 WebGL을 못 쓰면 null
  */
 export function createScene(
   container,
@@ -279,6 +279,7 @@ export function createScene(
     selected: null,
     burning: [],
     mood: "none",
+    theme: MOODS.none.background,
   };
   let blocked = new Set();
   let worldDirty = true;
@@ -412,7 +413,7 @@ export function createScene(
 
   const applyMood = () => {
     const mood = MOODS[world.mood] ?? MOODS.none;
-    scene.background.set(mood.background);
+    scene.background.set(world.mood === "none" ? world.theme : mood.background);
     ambient.intensity = mood.ambient;
     sun.intensity = mood.sun;
   };
@@ -813,6 +814,9 @@ export function createScene(
     },
     robotTile() {
       return here();
+    },
+    stop() {
+      stopPath();
     },
     dispose() {
       disposed = true;

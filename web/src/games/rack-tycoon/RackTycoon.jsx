@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getGameData, saveGameData } from "../../lib/storage.js";
 import {
   accessibleTiles,
-  advance,
   analyze,
   diagnose,
   expandLand,
@@ -16,7 +15,6 @@ import {
   moveItem,
   newState,
   NO_FX,
-  offline,
   placeItem,
   refundOf,
   removeItem,
@@ -27,6 +25,8 @@ import {
   xyOf,
 } from "./engine.js";
 import { EventBanner, DifficultyChooser } from "./Banner.jsx";
+import { advanceAll, buySite, eachSite, offlineAll, switchSite, viewOf } from "./campus.js";
+import Campus from "./Campus.jsx";
 import { burningTiles, describeEvent, effectsOf, newDisasters, putOut, stepDisasters } from "./disaster.js";
 import { describeHover, nextGoal, worldOf } from "./hover.js";
 import { GRID_HEIGHT, GRID_WIDTH, inLand, START, TERMINAL, TERMINAL_TILE } from "./layout.js";
@@ -35,6 +35,7 @@ import meta from "./meta.js";
 import Panel from "./Panel.jsx";
 import { makeData, readData, stateFrom } from "./record.js";
 import { createScene } from "./scene3d.js";
+import { traitOf } from "./sites.js";
 import Toolbar from "./Toolbar.jsx";
 
 const TICK_MS = 200;
@@ -62,11 +63,27 @@ function loadBoot() {
   let welcome = null;
   const away = data.savedAt ? (now - data.savedAt) / 1000 : 0;
   if (away >= WELCOME_MIN_SECONDS) {
-    const settled = offline(state, away);
+    const settled = offlineAll(state, away);
     state = settled.state;
     if (settled.gain > 0) welcome = { gain: settled.gain, seconds: settled.seconds };
   }
   return { state, welcome, now };
+}
+
+/**
+ * 건물마다 탭에 보일 수익과 재난 알림을 모은다.
+ *
+ * @param state 게임 상태
+ * @param evs 건물별 재난 진행 상태
+ * @param analysis 보고 있는 건물의 analyze 결과
+ * @returns { type, income, alert } 목록
+ */
+function campusOf(state, evs, analysis) {
+  return state.sites.map((_, i) => {
+    const view = viewOf(state, i);
+    const income = i === state.active ? analysis.income : analyze(view, effectsOf(view, evs[i])).income;
+    return { type: view.type, income, alert: describeEvent(view, evs[i])?.title ?? null };
+  });
 }
 
 /**
@@ -81,15 +98,23 @@ export default function RackTycoon() {
   const confirmRef = useRef({ tile: -1, at: 0 });
   const [boot] = useState(loadBoot);
   const stateRef = useRef(boot.state);
-  const evRef = useRef(null);
-  evRef.current ??= newDisasters();
+  const evsRef = useRef(null);
+  evsRef.current ??= boot.state.sites.map((_, i) => newDisasters(Date.now() + i * 977));
   const lastRef = useRef(boot.now);
   const uiRef = useRef({ tool: "select", overlay: "none", hoverTile: null, panel: null, carried: null });
   const [ui, setUi] = useState(uiRef.current);
   const [snap, setSnap] = useState(() => {
     const analysis = analyze(boot.state);
     const access = accessibleTiles(boot.state, START);
-    return { state: boot.state, analysis, access, issues: diagnose(boot.state, analysis, access), hover: { ghost: null, text: "", tone: "ok" }, event: null };
+    return {
+      state: boot.state,
+      analysis,
+      access,
+      issues: diagnose(boot.state, analysis, access),
+      hover: { ghost: null, text: "", tone: "ok" },
+      event: null,
+      campus: campusOf(boot.state, evsRef.current, analysis),
+    };
   });
   const [notice, setNotice] = useState({ text: "", tone: "bad" });
   const [welcome, setWelcome] = useState(boot.welcome);
@@ -100,15 +125,15 @@ export default function RackTycoon() {
     const state = stateRef.current;
     const u = uiRef.current;
     const robot = sceneRef.current?.robotTile() ?? START;
-    const fx = effectsOf(state, evRef.current);
-    const analysis = analyze(state, fx);
+    const ev = evsRef.current[state.active];
+    const analysis = analyze(state, effectsOf(state, ev));
     const access = accessibleTiles(state, robot);
     const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried });
-    const event = describeEvent(state, evRef.current);
-    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event });
+    const event = describeEvent(state, ev);
+    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event, campus: campusOf(state, evsRef.current, analysis) });
     const selected = u.carried ?? (u.panel?.kind === "item" ? u.panel.tile : null);
     const mood = event && event.phase === "live" && event.kind !== "fire" ? event.kind : "none";
-    sceneRef.current?.setWorld(worldOf(state, analysis, { overlay: u.overlay, ghost: hover.ghost, selected, burning: burningTiles(evRef.current), mood }));
+    sceneRef.current?.setWorld(worldOf(state, analysis, { overlay: u.overlay, ghost: hover.ghost, selected, burning: burningTiles(ev), mood }));
   }, []);
 
   const update = useCallback(
@@ -147,7 +172,7 @@ export default function RackTycoon() {
 
   const reset = useCallback(() => {
     stateRef.current = newState();
-    evRef.current = newDisasters();
+    evsRef.current = [newDisasters()];
     lastRef.current = Date.now();
     setWelcome(null);
     update({ panel: null, carried: null, tool: "select" });
@@ -194,8 +219,9 @@ export default function RackTycoon() {
   const extinguish = useCallback(
     (tile) => {
       const scene = sceneRef.current;
+      const site = stateRef.current.active;
       const done = () => {
-        evRef.current = putOut(evRef.current, tile);
+        evsRef.current = evsRef.current.map((ev, i) => (i === site ? putOut(ev, tile) : ev));
         say("불을 껐어요!", "good");
         refresh();
       };
@@ -207,7 +233,7 @@ export default function RackTycoon() {
   );
 
   const extinguishNearest = useCallback(() => {
-    const lit = burningTiles(evRef.current);
+    const lit = burningTiles(evsRef.current[stateRef.current.active]);
     if (!lit.length) return;
     const [rx, ry] = sceneRef.current?.robotTile() ?? START;
     const dist = (tile) => Math.max(Math.abs((tile % GRID_WIDTH) - rx), Math.abs(Math.floor(tile / GRID_WIDTH) - ry));
@@ -217,10 +243,36 @@ export default function RackTycoon() {
   const pickDifficulty = useCallback(
     (id) => {
       if (!act(setDifficulty, id)) return;
-      evRef.current = newDisasters();
+      evsRef.current = stateRef.current.sites.map((_, i) => newDisasters(Date.now() + i * 977));
       refresh();
     },
     [act, refresh],
+  );
+
+  const switchTo = useCallback(
+    (index) => {
+      sceneRef.current?.stop();
+      if (!act(switchSite, index)) return;
+      confirmRef.current = { tile: -1, at: 0 };
+      update({ panel: null, carried: null });
+    },
+    [act, update],
+  );
+
+  const buy = useCallback(
+    (type) => {
+      const before = evsRef.current;
+      evsRef.current = [...before, newDisasters(Date.now() + before.length * 977)];
+      if (!act(buySite, type)) {
+        evsRef.current = before;
+        return;
+      }
+      sceneRef.current?.stop();
+      act(switchSite, stateRef.current.sites.length - 1);
+      update({ panel: null, carried: null });
+      say(`${traitOf(type).name}을 샀어요! 위 탭에서 건물을 오갈 수 있어요.`, "good");
+    },
+    [act, say, update],
   );
 
   const startMove = useCallback(
@@ -246,7 +298,7 @@ export default function RackTycoon() {
       }
       if (u.tool === "select") {
         if (drag) return;
-        if (burningTiles(evRef.current).includes(tile)) extinguish(tile);
+        if (burningTiles(evsRef.current[state.active]).includes(tile)) extinguish(tile);
         else if (cell) update({ panel: { kind: "item", tile } });
         else if (inLand(state.land, x, y)) {
           if (sceneRef.current && !sceneRef.current.walkTo(tile)) say("로봇이 그 칸에 닿을 수 없어요.");
@@ -304,26 +356,31 @@ export default function RackTycoon() {
       if (dt <= 0) return;
       let current = stateRef.current;
       if (dt > OFFLINE_THRESHOLD) {
-        const settled = offline(current, dt);
+        const settled = offlineAll(current, dt);
         current = settled.state;
         if (settled.gain > 0) setWelcome({ gain: settled.gain, seconds: settled.seconds });
       } else {
-        const broken = [];
+        let broken = 0;
         const live = !document.hidden && dt <= LIVE_GAP;
         while (dt > 1e-6) {
           const step = Math.min(MAX_STEP, dt);
-          const out = advance(current, step, live ? effectsOf(current, evRef.current) : NO_FX);
+          const out = advanceAll(current, step, (view, i) => (live ? effectsOf(view, evsRef.current[i]) : NO_FX));
           current = out.state;
-          broken.push(...out.breaks);
+          broken += out.breaks;
           if (live) {
-            const next = stepDisasters(current, evRef.current, step);
-            current = next.state;
-            evRef.current = next.ev;
-            for (const note of next.notes) say(note.text, note.tone);
+            const evs = [...evsRef.current];
+            current = eachSite(current, (view, i) => {
+              const next = stepDisasters(view, evs[i], step);
+              evs[i] = next.ev;
+              const prefix = i === current.active ? "" : `${traitOf(view.type).name}: `;
+              for (const note of next.notes) say(prefix + note.text, note.tone);
+              return next.state;
+            });
+            evsRef.current = evs;
           }
           dt -= step;
         }
-        if (broken.length) say(`서버 ${broken.length}대가 과열로 고장났어요. 로봇을 보내 고쳐 주세요.`);
+        if (broken) say(`서버 ${broken}대가 과열로 고장났어요. 로봇을 보내 고쳐 주세요.`);
       }
       stateRef.current = current;
       refresh();
@@ -359,7 +416,8 @@ export default function RackTycoon() {
     };
   }, [refresh, save, say, update, cancel, pickTool, handleTile]);
 
-  const { state, analysis, access, issues, hover, event } = snap;
+  const { state, analysis, access, issues, hover, event, campus } = snap;
+  const totalIncome = campus.reduce((sum, site) => sum + site.income, 0);
   const grade = gradeOf(state.lifetime);
   const floor = GRADES[grade.index].min;
   const progress = grade.next === null ? 1 : (state.lifetime - floor) / (grade.next - floor);
@@ -393,7 +451,7 @@ export default function RackTycoon() {
         </div>
         <div className="stat-tile !p-2.5">
           <dt className="text-xs text-slate-600">초당 수익</dt>
-          <dd className="text-lg font-extrabold">{formatRate(analysis.income)}</dd>
+          <dd className="text-lg font-extrabold">{formatRate(totalIncome)}</dd>
         </div>
         <div className="stat-tile !p-2.5">
           <dt className="text-xs text-slate-600">
@@ -418,6 +476,8 @@ export default function RackTycoon() {
           <div className="h-full bg-primary" style={{ width: `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%` }} />
         </div>
       </div>
+
+      <Campus sites={campus} active={state.active} coins={state.coins} showBuy={state.lifetime >= 20000 || state.sites.length > 1} onSwitch={switchTo} onBuy={buy} />
 
       {event && <EventBanner event={event} onExtinguish={extinguishNearest} />}
 

@@ -1,5 +1,6 @@
 import { AREA, GRID_HEIGHT, GRID_WIDTH, inLand, LANDS, START, TERMINAL_TILE, tileOf } from "./layout.js";
 import { reachable } from "./pathfind.js";
+import { traitOf } from "./sites.js";
 
 export const TIERS = [
   null,
@@ -66,7 +67,6 @@ export const SAFE_TEMP = 10;
 export const LIMIT_TEMP = 20;
 export const OFFLINE_CAP_SECONDS = 8 * 3600;
 export const MAX_STEP = 1;
-export const BASE_POWER = 4;
 const HEAT_FALL = [1, 0.5, 0.25];
 const MIN_RATIO = 0.4;
 const UNLINKED = 0.3;
@@ -97,15 +97,37 @@ function makeCell(kind, level) {
 }
 
 /**
- * 막 시작한 센터의 상태를 만든다. 공유기 하나와 소형 서버 하나가 먼저 놓여 있다.
+ * 새 건물의 시작 배치를 만든다. 공유기 하나와 소형 서버 하나가 놓여 있다.
+ *
+ * @returns 칸 배열
+ */
+export function starterCells() {
+  const cells = Array(AREA).fill(null);
+  cells[tileOf(8, 7)] = makeCell("hub", 1);
+  cells[tileOf(9, 7)] = makeCell("server", 1);
+  return cells;
+}
+
+/**
+ * 막 시작한 캠퍼스의 상태를 만든다. 지하 서버실 하나가 있다. 최상위의 type, land, cells는 지금 보고 있는 건물이고,
+ * sites에는 건물마다 { type, land, cells }가 있다(보고 있는 건물의 항목은 저장할 때만 맞춘다).
  *
  * @returns 게임 상태
  */
 export function newState() {
-  const cells = Array(AREA).fill(null);
-  cells[tileOf(8, 7)] = makeCell("hub", 1);
-  cells[tileOf(9, 7)] = makeCell("server", 1);
-  return { coins: START_COINS, lifetime: 0, land: 0, cells, time: 0, difficulty: null, stats: { surge: 0, blackout: 0, fire: 0, saved: 0 } };
+  const cells = starterCells();
+  return {
+    coins: START_COINS,
+    lifetime: 0,
+    time: 0,
+    difficulty: null,
+    stats: { surge: 0, blackout: 0, fire: 0, saved: 0 },
+    type: "basement",
+    land: 0,
+    cells,
+    active: 0,
+    sites: [{ type: "basement", land: 0, cells }],
+  };
 }
 
 /**
@@ -256,7 +278,8 @@ export function analyze(state, fx = NO_FX) {
   const hubs = [];
   const counts = { server: 0, cooler: 0, hub: 0, gen: 0, battery: 0, ext: 0 };
   let usage = 0;
-  let supply = BASE_POWER;
+  const trait = traitOf(state.type);
+  let supply = trait.baseCap;
   let backup = 0;
   state.cells.forEach((cell, tile) => {
     if (!cell) return;
@@ -267,7 +290,7 @@ export function analyze(state, fx = NO_FX) {
       if (fx.burning.has(tile)) return;
       servers.push({ tile, demand: spec.demand * fx.demandMul, spec, level: cell.level });
       usage += spec.power;
-      addHeat(heat, tile, spec.heat * fx.heatMul);
+      addHeat(heat, tile, spec.heat * fx.heatMul * trait.heatMul);
     } else if (cell.kind === "cooler") {
       usage += spec.power;
       addCool(heat, tile, spec);
@@ -276,7 +299,7 @@ export function analyze(state, fx = NO_FX) {
       hubs.push({ tile, cap: spec.cap, reach: spec.reach });
     } else if (cell.kind === "gen") {
       supply += spec.cap;
-      addHeat(heat, tile, spec.heat);
+      addHeat(heat, tile, spec.heat * trait.heatMul);
     } else if (cell.kind === "battery") {
       backup += spec.cap;
     }
@@ -294,7 +317,7 @@ export function analyze(state, fx = NO_FX) {
     const temp = heat[server.tile];
     maxTemp = Math.max(maxTemp, temp);
     outputs[server.tile] =
-      server.spec.output * thermal(temp) * net.get(server.tile) * (1 + SYNERGY * neighbors) * efficiency * fx.outputMul * bonus;
+      server.spec.output * thermal(temp) * net.get(server.tile) * (1 + SYNERGY * neighbors) * efficiency * fx.outputMul * bonus * trait.incomeMul;
     income += outputs[server.tile];
   }
   return {
@@ -339,19 +362,6 @@ export function advance(state, seconds, fx = NO_FX) {
     state: { ...state, coins: state.coins + gain, lifetime: state.lifetime + gain, cells, time: state.time + seconds },
     breaks,
   };
-}
-
-/**
- * 접속하지 않은 동안 쌓인 수익을 한꺼번에 계산한다. 그 사이에는 새 고장이 나지 않고 이미 난 고장은 그대로라고 보며, 최대 8시간까지만 인정한다.
- *
- * @param state 게임 상태
- * @param seconds 접속하지 않은 시간(초)
- * @returns { state, gain, seconds } seconds는 인정한 시간
- */
-export function offline(state, seconds) {
-  const counted = Math.max(0, Math.min(seconds, OFFLINE_CAP_SECONDS));
-  const gain = analyze(state).income * counted;
-  return { state: { ...state, coins: state.coins + gain, lifetime: state.lifetime + gain }, gain, seconds: counted };
 }
 
 /**
@@ -405,7 +415,7 @@ export function upgradeCost(state, tile) {
  */
 export function repairCost(state, tile) {
   const cell = state.cells[tile];
-  return Math.ceil(KINDS[cell.kind].levels[cell.level].cost * REPAIR_RATE);
+  return Math.ceil(KINDS[cell.kind].levels[cell.level].cost * REPAIR_RATE * traitOf(state.type).repairMul);
 }
 
 /**
