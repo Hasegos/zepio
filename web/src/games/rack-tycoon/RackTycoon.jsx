@@ -1,68 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getGameData, saveGameData } from "../../lib/storage.js";
 import {
+  accessibleTiles,
   advance,
   analyze,
-  COOLERS,
+  diagnose,
+  expandLand,
   formatNumber,
   formatRate,
   formatSpan,
   GRADES,
   gradeOf,
-  isOpen,
   LIMIT_TEMP,
   MAX_STEP,
+  moveItem,
   newState,
   offline,
+  placeItem,
+  refundOf,
+  removeItem,
+  repairItem,
   SAFE_TEMP,
-  TIERS,
+  upgradeItem,
+  xyOf,
 } from "./engine.js";
-import { COOLER_PADS, GRID_HEIGHT, GRID_WIDTH, PADS, START, TERMINAL } from "./layout.js";
+import { describeHover, nextGoal, worldOf } from "./hover.js";
+import { GRID_HEIGHT, GRID_WIDTH, inLand, START, TERMINAL, TERMINAL_TILE } from "./layout.js";
+import Lists from "./Lists.jsx";
 import meta from "./meta.js";
 import Panel from "./Panel.jsx";
 import { makeData, readData, stateFrom } from "./record.js";
 import { createScene } from "./scene3d.js";
+import Toolbar from "./Toolbar.jsx";
 
 const TICK_MS = 200;
 const SAVE_MS = 10000;
 const NOTICE_MS = 6000;
+const CONFIRM_MS = 3000;
+const CONFIRM_REFUND = 500;
 const WELCOME_MIN_SECONDS = 60;
 const OFFLINE_THRESHOLD = 600;
-
-/**
- * 센터 상태를 3D 장면이 그릴 모양으로 바꾼다.
- *
- * @param state 게임 상태
- * @param analysis analyze 결과
- * @returns scene.setWorld에 넘길 값
- */
-function worldOf(state, analysis) {
-  return {
-    racks: state.racks.map((rack, i) => ({
-      tier: rack.tier,
-      broken: rack.broken,
-      open: isOpen(state, i),
-      heat: Math.min(1, Math.max(0, (analysis.temps[i] - SAFE_TEMP) / (LIMIT_TEMP - SAFE_TEMP))),
-    })),
-    coolers: [...state.coolers],
-  };
-}
-
-/**
- * 랙 한 자리를 목록에 보여 줄 한 줄로 요약한다.
- *
- * @param state 게임 상태
- * @param analysis analyze 결과
- * @param i 랙 자리 번호
- * @returns 요약 문구
- */
-function rackSummary(state, analysis, i) {
-  const rack = state.racks[i];
-  if (!isOpen(state, i)) return "잠김";
-  if (rack.tier === 0) return "비어 있음";
-  if (rack.broken) return `${TIERS[rack.tier].name} · 고장`;
-  return `${TIERS[rack.tier].name} · 초당 ${formatRate(analysis.outputs[i])} · 온도 ${analysis.temps[i].toFixed(1)}`;
-}
+const PLACE_TOOLS = ["server", "cooler", "hub", "gen"];
+const KEY_TOOLS = { Digit1: "server", Digit2: "cooler", Digit3: "hub", Digit4: "gen", KeyM: "move", KeyX: "remove" };
+const KEY_OVERLAYS = { KeyH: "heat", KeyN: "net" };
+const TONES = { ok: "text-slate-700", poor: "text-slate-500", bad: "text-red-700" };
 
 /**
  * 저장된 센터를 읽어 오고, 접속하지 않은 시간이 길면 그동안의 수익을 정산한다.
@@ -84,18 +65,25 @@ function loadBoot() {
 }
 
 /**
- * Rack Tycoon 화면. 3D 데이터센터 장면 위에 상태 표시줄과 작업 창을 얹고, 200ms마다 시간을 흘려보내며 10초마다 자동 저장한다.
+ * Rack Tycoon 화면. 빈 부지에 서버, 냉각기, 허브, 발전기를 마음대로 놓아 데이터센터를 키운다.
+ * 3D 장면 위에 도구 모음, 상태 표시줄, 작업 창을 얹고, 200ms마다 시간을 흘려보내며 10초마다 자동 저장한다.
  * WebGL을 쓸 수 없어도 목록으로 같은 작업을 할 수 있다.
  */
 export default function RackTycoon() {
   const stageRef = useRef(null);
   const sceneRef = useRef(null);
   const noticeTimer = useRef(null);
+  const confirmRef = useRef({ tile: -1, at: 0 });
   const [boot] = useState(loadBoot);
   const stateRef = useRef(boot.state);
   const lastRef = useRef(boot.now);
-  const [snap, setSnap] = useState(() => ({ state: boot.state, analysis: analyze(boot.state) }));
-  const [panel, setPanel] = useState(null);
+  const uiRef = useRef({ tool: "select", overlay: "none", hoverTile: null, panel: null, carried: null });
+  const [ui, setUi] = useState(uiRef.current);
+  const [snap, setSnap] = useState(() => {
+    const analysis = analyze(boot.state);
+    const access = accessibleTiles(boot.state, START);
+    return { state: boot.state, analysis, access, issues: diagnose(boot.state, analysis, access), hover: { ghost: null, text: "", tone: "ok" } };
+  });
   const [notice, setNotice] = useState("");
   const [welcome, setWelcome] = useState(boot.welcome);
   const [noWebgl, setNoWebgl] = useState(false);
@@ -103,10 +91,24 @@ export default function RackTycoon() {
 
   const refresh = useCallback(() => {
     const state = stateRef.current;
+    const u = uiRef.current;
+    const robot = sceneRef.current?.robotTile() ?? START;
     const analysis = analyze(state);
-    setSnap({ state, analysis });
-    sceneRef.current?.setWorld(worldOf(state, analysis));
+    const access = accessibleTiles(state, robot);
+    const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried });
+    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover });
+    const selected = u.carried ?? (u.panel?.kind === "item" ? u.panel.tile : null);
+    sceneRef.current?.setWorld(worldOf(state, analysis, { overlay: u.overlay, ghost: hover.ghost, selected }));
   }, []);
+
+  const update = useCallback(
+    (patch) => {
+      uiRef.current = { ...uiRef.current, ...patch };
+      setUi(uiRef.current);
+      refresh();
+    },
+    [refresh],
+  );
 
   const save = useCallback(() => {
     if (stateRef.current) saveGameData(meta.id, Date.now(), makeData(stateRef.current, lastRef.current));
@@ -123,11 +125,12 @@ export default function RackTycoon() {
       const result = action(stateRef.current, ...args);
       if (result.error) {
         say(result.error);
-        return;
+        return false;
       }
       stateRef.current = result.state;
       refresh();
       save();
+      return true;
     },
     [refresh, save, say],
   );
@@ -135,33 +138,114 @@ export default function RackTycoon() {
   const reset = useCallback(() => {
     stateRef.current = newState();
     lastRef.current = Date.now();
-    setPanel(null);
     setWelcome(null);
-    refresh();
+    update({ panel: null, carried: null, tool: "select" });
     save();
     document.activeElement?.blur?.();
-  }, [refresh, save]);
-
-  const openFromList = useCallback((target) => {
-    setPanel(target);
-    stageRef.current?.scrollIntoView({ block: "nearest" });
-  }, []);
+  }, [save, update]);
 
   const closePanel = useCallback(() => {
-    setPanel(null);
+    update({ panel: null });
     document.activeElement?.blur?.();
-  }, []);
+  }, [update]);
+
+  const cancel = useCallback(() => {
+    const u = uiRef.current;
+    if (u.panel) closePanel();
+    else if (u.carried !== null) update({ carried: null });
+    else if (u.tool !== "select") update({ tool: "select" });
+  }, [closePanel, update]);
+
+  const pickTool = useCallback(
+    (tool) => {
+      confirmRef.current = { tile: -1, at: 0 };
+      update({ tool, carried: null, panel: null });
+    },
+    [update],
+  );
+
+  const sendRepair = useCallback(
+    (tile) => {
+      const scene = sceneRef.current;
+      const robot = scene?.robotTile() ?? START;
+      if (!accessibleTiles(stateRef.current, robot).has(tile)) {
+        say("로봇이 닿을 수 없어요. 주변 통로를 열어 주세요.");
+        return;
+      }
+      const fix = () => act(repairItem, tile, sceneRef.current?.robotTile() ?? START);
+      if (!scene) fix();
+      else if (scene.walkBeside(tile, fix)) say("로봇이 수리하러 가요.");
+      else say("로봇이 닿을 수 없어요. 주변 통로를 열어 주세요.");
+    },
+    [act, say],
+  );
+
+  const startMove = useCallback(
+    (tile) => update({ tool: "move", carried: tile, panel: null }),
+    [update],
+  );
+
+  const handleTile = useCallback(
+    ({ tile, drag }) => {
+      const u = uiRef.current;
+      const state = stateRef.current;
+      const cell = state.cells[tile];
+      const [x, y] = xyOf(tile);
+      if (tile === TERMINAL_TILE) {
+        if (drag) return;
+        if (u.tool !== "select") {
+          say("단말기 자리예요.");
+          return;
+        }
+        const open = () => update({ panel: { kind: "terminal", tile } });
+        if (!sceneRef.current?.walkBeside(tile, open)) open();
+        return;
+      }
+      if (u.tool === "select") {
+        if (drag) return;
+        if (cell) update({ panel: { kind: "item", tile } });
+        else if (inLand(state.land, x, y)) sceneRef.current?.walkTo(tile);
+        else say("아직 넓히지 않은 땅이에요. 단말기에서 부지를 넓히세요.");
+      } else if (PLACE_TOOLS.includes(u.tool)) {
+        if (!cell) act(placeItem, tile, u.tool);
+        else if (!drag && cell.kind === u.tool) act(upgradeItem, tile);
+        else if (!drag) say("이미 시설이 있어요.");
+      } else if (u.tool === "remove") {
+        if (!cell || drag) return;
+        const now = Date.now();
+        const refund = refundOf(state, tile);
+        if (refund >= CONFIRM_REFUND && !(confirmRef.current.tile === tile && now - confirmRef.current.at < CONFIRM_MS)) {
+          confirmRef.current = { tile, at: now };
+          say(`비싼 시설이에요. 한 번 더 누르면 철거해요 (+${formatNumber(refund)}).`);
+          return;
+        }
+        confirmRef.current = { tile: -1, at: 0 };
+        act(removeItem, tile);
+      } else if (u.tool === "move") {
+        if (drag) return;
+        if (u.carried === null) {
+          if (cell) update({ carried: tile });
+        } else if (cell) {
+          update({ carried: tile === u.carried ? null : tile });
+        } else if (act(moveItem, u.carried, tile)) {
+          update({ carried: null });
+        }
+      }
+    },
+    [act, say, update],
+  );
 
   useEffect(() => {
     lastRef.current = Date.now();
     const scene = createScene(stageRef.current, {
       width: GRID_WIDTH,
       height: GRID_HEIGHT,
-      pads: PADS,
-      coolerPads: COOLER_PADS,
       terminal: TERMINAL,
       start: START,
-      onInteract: (target) => setPanel(target),
+      onTile: handleTile,
+      onHover: (tile) => update({ hoverTile: tile }),
+      onInteract: (tile) => update({ panel: tile === TERMINAL_TILE ? { kind: "terminal", tile } : { kind: "item", tile } }),
+      onCancel: cancel,
     });
     sceneRef.current = scene;
     if (!scene) setNoWebgl(true);
@@ -186,7 +270,7 @@ export default function RackTycoon() {
           broken.push(...out.breaks);
           dt -= step;
         }
-        if (broken.length) say(`랙 ${broken.map((i) => i + 1).join(", ")}번이 과열로 고장났어요. 가서 고쳐 주세요.`);
+        if (broken.length) say(`서버 ${broken.length}대가 과열로 고장났어요. 로봇을 보내 고쳐 주세요.`);
       }
       stateRef.current = current;
       refresh();
@@ -196,7 +280,14 @@ export default function RackTycoon() {
       if (document.hidden) save();
     };
     const onKey = (event) => {
-      if (event.key === "Escape") closePanel();
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key === "Escape") {
+        cancel();
+        return;
+      }
+      if (event.target instanceof Element && event.target.closest("input, textarea, select")) return;
+      if (KEY_TOOLS[event.code]) pickTool(KEY_TOOLS[event.code]);
+      else if (KEY_OVERLAYS[event.code]) update({ overlay: uiRef.current.overlay === KEY_OVERLAYS[event.code] ? "none" : KEY_OVERLAYS[event.code] });
     };
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", save);
@@ -212,19 +303,22 @@ export default function RackTycoon() {
       scene?.dispose();
       sceneRef.current = null;
     };
-  }, [refresh, save, say, closePanel]);
+  }, [refresh, save, say, update, cancel, pickTool, handleTile]);
 
-  const { state, analysis } = snap;
+  const { state, analysis, access, issues, hover } = snap;
   const grade = gradeOf(state.lifetime);
   const floor = GRADES[grade.index].min;
   const progress = grade.next === null ? 1 : (state.lifetime - floor) / (grade.next - floor);
-  const broken = state.racks.filter((rack) => rack.broken).length;
+  const alerts = issues.slice(0, 2);
+  const hint = hover.text || nextGoal(state, analysis);
+  const hot = analysis.maxTemp >= LIMIT_TEMP ? "text-red-700" : analysis.maxTemp > SAFE_TEMP ? "text-amber-700" : "";
+  const carriedName = ui.carried !== null && state.cells[ui.carried] ? "옮길 곳을 누르세요" : "";
 
   return (
     <div className="flex flex-col gap-3">
       {coarse && (
         <p className="rounded-xl bg-amber-100 px-4 py-3 text-sm font-semibold text-amber-900" role="note">
-          Rack Tycoon은 PC에서 마우스와 키보드로 하기 좋게 만든 게임이에요. 터치 화면에서도 목록으로 할 수 있지만 PC를 권장해요.
+          Rack Tycoon은 PC에서 마우스와 키보드로 하기 좋게 만든 게임이에요. 터치 화면에서도 할 수 있지만 PC를 권장해요.
         </p>
       )}
       {welcome && (
@@ -248,16 +342,16 @@ export default function RackTycoon() {
           <dd className="text-lg font-extrabold">{formatRate(analysis.income)}</dd>
         </div>
         <div className="stat-tile !p-2.5">
-          <dt className="text-xs text-slate-600">전력 {analysis.usage}/{analysis.cap}</dt>
+          <dt className="text-xs text-slate-600">
+            전력 {analysis.usage}/{analysis.cap}
+          </dt>
           <dd className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-200" role="presentation">
             <div className={`h-full ${analysis.efficiency < 1 ? "bg-red-500" : "bg-emerald-500"}`} style={{ width: `${Math.min(100, (analysis.usage / analysis.cap) * 100)}%` }} />
           </dd>
         </div>
         <div className="stat-tile !p-2.5">
           <dt className="text-xs text-slate-600">최고 온도</dt>
-          <dd className={`text-lg font-extrabold ${analysis.maxTemp >= LIMIT_TEMP ? "text-red-700" : analysis.maxTemp > SAFE_TEMP ? "text-amber-700" : ""}`}>
-            {analysis.maxTemp.toFixed(1)}
-          </dd>
+          <dd className={`text-lg font-extrabold ${hot}`}>{analysis.maxTemp.toFixed(1)}</dd>
         </div>
       </dl>
 
@@ -271,55 +365,54 @@ export default function RackTycoon() {
         </div>
       </div>
 
-      <p className="min-h-6 text-sm font-semibold text-red-700" role="status">
-        {notice || (broken > 0 ? `고장난 서버 ${broken}대가 있어요.` : "")}
-      </p>
+      {!noWebgl && <Toolbar tool={ui.tool} onTool={pickTool} overlay={ui.overlay} onOverlay={(overlay) => update({ overlay })} state={state} onExpand={() => act(expandLand)} />}
+
+      <p className={`min-h-5 text-sm font-semibold ${TONES[hover.text ? hover.tone : "ok"]}`}>{carriedName || hint}</p>
+      <div className="min-h-6" role="status">
+        {notice ? (
+          <p className="text-sm font-semibold text-red-700">{notice}</p>
+        ) : (
+          alerts.map((issue) => (
+            <p key={issue.text} className={`text-sm font-semibold ${issue.level === "bad" ? "text-red-700" : "text-amber-800"}`}>
+              {issue.text}
+            </p>
+          ))
+        )}
+      </div>
 
       <div className="relative">
-        <div ref={stageRef} className="h-[60vh] max-h-[640px] min-h-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-indigo-100" />
+        <div ref={stageRef} className="h-[62vh] max-h-[680px] min-h-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-indigo-100" />
         {noWebgl && (
           <p className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm font-semibold text-slate-700">
-            이 브라우저에서는 3D 화면을 쓸 수 없어요. 아래 목록으로 센터를 관리할 수 있어요.
+            이 브라우저에서는 3D 화면을 쓸 수 없어요. 아래 목록에서 좌표로 시설을 설치하고 관리할 수 있어요.
           </p>
         )}
-        {panel && <Panel target={panel} state={state} analysis={analysis} onAct={act} onClose={closePanel} onReset={reset} />}
+        {ui.panel && (
+          <Panel
+            target={ui.panel}
+            state={state}
+            analysis={analysis}
+            access={access}
+            issues={issues}
+            onAct={act}
+            onRepair={sendRepair}
+            onMove={startMove}
+            onClose={closePanel}
+            onReset={reset}
+          />
+        )}
       </div>
       <p className="text-xs text-slate-600">
-        클릭으로 이동하고 랙 · 냉각기 · 단말기를 누르면 그 앞까지 걸어가요. WASD · 방향키로 직접 움직이고, Q/E로 돌리고, 휠로 확대해요. Space나 Enter로 앞의 시설을 열어요.
+        바닥을 누르면 로봇이 걸어가요. 도구(1~4)를 고르면 빈 칸에 설치하고, 끌면서 여러 칸에 놓을 수 있어요. H는 열지도, N은 네트워크, M은 옮기기, X는 철거, Esc나 오른쪽 클릭은 취소예요. WASD로 직접 움직이고 Q/E로 돌리고 휠로 확대해요.
       </p>
 
-      <details className="rounded-2xl border border-slate-200 bg-white p-4">
-        <summary className="cursor-pointer text-sm font-bold">목록으로 관리하기 (로봇 이동 없이 바로 열기)</summary>
-        <div className="mt-3 flex flex-col gap-3">
-          <button type="button" onClick={() => openFromList({ kind: "terminal", index: 0 })} className="self-start rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold">
-            사무실 단말기
-          </button>
-          <ul className="grid gap-1.5 sm:grid-cols-2">
-            {PADS.map((_, i) => (
-              <li key={i}>
-                <button
-                  type="button"
-                  onClick={() => openFromList({ kind: "rack", index: i })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-xs font-semibold"
-                >
-                  랙 {i + 1}번 · {rackSummary(state, analysis, i)}
-                </button>
-              </li>
-            ))}
-            {COOLER_PADS.map((_, c) => (
-              <li key={`c${c}`}>
-                <button
-                  type="button"
-                  onClick={() => openFromList({ kind: "cooler", index: c })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-xs font-semibold"
-                >
-                  냉각기 {c + 1}번 · {state.coolers[c] ? COOLERS[state.coolers[c]].name : "비어 있음"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </details>
+      <Lists
+        state={state}
+        analysis={analysis}
+        onOpen={(tile) => update({ panel: { kind: "item", tile } })}
+        onTerminal={() => update({ panel: { kind: "terminal", tile: TERMINAL_TILE } })}
+        onPlace={(kind, tile) => act(placeItem, tile, kind)}
+      />
     </div>
   );
 }
