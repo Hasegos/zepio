@@ -192,17 +192,20 @@ const TOWN_BUILDINGS = [
 const FOREST_BUILDINGS = [
   { id: "camp", name: "야영지", facility: "rest", x: 3, y: 2, w: 4, h: 3, door: [5, 4], theme: "green" },
   { id: "archive", name: "옛 서고", facility: "compact", x: 8, y: 2, w: 4, h: 3, door: [10, 4], theme: "gray" },
+  { id: "smithy", name: "숲 대장간", facility: "forge", x: 20, y: 5, w: 4, h: 3, door: [22, 7], theme: "gray" },
   { id: "gym", name: "숲의 오두막", facility: "gym", x: 22, y: 1, w: 5, h: 3, door: [24, 3], theme: "green" },
 ];
 const HARBOR_BUILDINGS = [
   { id: "market", name: "항구 시장", facility: "market", x: 2, y: 2, w: 4, h: 3, door: [4, 4], theme: "blue" },
   { id: "inn", name: "항구 여관", facility: "rest", x: 10, y: 2, w: 4, h: 3, door: [12, 4], theme: "pink" },
   { id: "ledger", name: "항구 서고", facility: "compact", x: 15, y: 2, w: 4, h: 3, door: [17, 4], theme: "gray" },
+  { id: "workshop", name: "부두 대장간", facility: "forge", x: 10, y: 11, w: 4, h: 3, door: [11, 13], theme: "blue" },
   { id: "gym", name: "경리부", facility: "gym", x: 20, y: 1, w: 6, h: 4, door: [23, 4], theme: "orange" },
 ];
 const CAVE_BUILDINGS = [
   { id: "shelter", name: "대피소", facility: "rest", x: 3, y: 2, w: 4, h: 3, door: [5, 4], theme: "gray" },
   { id: "cooling", name: "냉각실", facility: "compact", x: 10, y: 2, w: 4, h: 3, door: [12, 4], theme: "blue" },
+  { id: "bench", name: "정비실", facility: "forge", x: 16, y: 2, w: 4, h: 3, door: [18, 4], theme: "green" },
   { id: "gym", name: "보안실", facility: "gym", x: 22, y: 1, w: 6, h: 4, door: [25, 4], theme: "orange" },
 ];
 const LEAGUE_BUILDINGS = [
