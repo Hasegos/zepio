@@ -229,7 +229,7 @@ function TerminalBody({ state, analysis, issues, onAct, onReset, onDifficulty })
           {LANDS[state.land].name} ({LANDS[state.land].w}×{LANDS[state.land].h})
         </Stat>
         <Stat label="시설">
-          서버 {analysis.counts.server} · 냉각 {analysis.counts.cooler} · 허브 {analysis.counts.hub} · 발전 {analysis.counts.gen}
+          서버 {analysis.counts.server} · 냉각 {analysis.counts.cooler} · 허브 {analysis.counts.hub} · 발전 {analysis.counts.gen} · 배터리 {analysis.counts.battery} · 소화기 {analysis.counts.ext}
         </Stat>
         <Stat label={`전력 ${analysis.usage}/${analysis.cap}`} wide>
           {analysis.efficiency < 1 ? `부족해서 수익이 ${Math.floor(analysis.efficiency * 100)}%예요` : `충분해요 (기본 ${BASE_POWER} + 발전기)`}

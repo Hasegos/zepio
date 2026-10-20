@@ -15,6 +15,7 @@ import {
   MAX_STEP,
   moveItem,
   newState,
+  NO_FX,
   offline,
   placeItem,
   refundOf,
@@ -311,7 +312,7 @@ export default function RackTycoon() {
         const live = !document.hidden && dt <= LIVE_GAP;
         while (dt > 1e-6) {
           const step = Math.min(MAX_STEP, dt);
-          const out = advance(current, step, effectsOf(current, evRef.current));
+          const out = advance(current, step, live ? effectsOf(current, evRef.current) : NO_FX);
           current = out.state;
           broken.push(...out.breaks);
           if (live) {
@@ -338,6 +339,7 @@ export default function RackTycoon() {
         return;
       }
       if (event.target instanceof Element && event.target.closest("input, textarea, select")) return;
+      if (stateRef.current.difficulty === null) return;
       if (KEY_TOOLS[event.code]) pickTool(KEY_TOOLS[event.code]);
       else if (KEY_OVERLAYS[event.code]) update({ overlay: uiRef.current.overlay === KEY_OVERLAYS[event.code] ? "none" : KEY_OVERLAYS[event.code] });
     };
@@ -356,7 +358,6 @@ export default function RackTycoon() {
       sceneRef.current = null;
     };
   }, [refresh, save, say, update, cancel, pickTool, handleTile]);
-
 
   const { state, analysis, access, issues, hover, event } = snap;
   const grade = gradeOf(state.lifetime);

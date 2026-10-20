@@ -13,10 +13,12 @@ const TONES = {
  */
 export function EventBanner({ event, onExtinguish }) {
   return (
-    <div className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-3 ${TONES[event.tone]}`} role="alert">
+    <div className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-3 ${TONES[event.tone]}`}>
       <div>
-        <p className="text-sm font-extrabold">{event.title}</p>
-        <p className="mt-0.5 text-sm font-semibold">{event.text}</p>
+        <div role="alert">
+          <p className="text-sm font-extrabold">{event.title}</p>
+          <p className="mt-0.5 text-sm font-semibold">{event.text}</p>
+        </div>
         {event.phase === "live" && <p className="mt-0.5 text-xs font-semibold opacity-80">남은 시간 {event.left}초</p>}
       </div>
       {event.kind === "fire" && event.phase === "live" && (
@@ -37,6 +39,7 @@ export function DifficultyChooser({ onPick }) {
   return (
     <div
       role="dialog"
+      aria-modal="true"
       aria-label="재난 난이도 선택"
       className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-white/85 p-4 backdrop-blur-sm"
     >
