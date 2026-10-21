@@ -21,9 +21,10 @@ function headline(floors) {
  *
  * @param props.result 이번 판의 floors(층수)와 perfects(완벽 정렬 횟수)
  * @param props.record 저장한 최고 기록과 새 기록 여부, 저장 전에는 null
+ * @param props.daily 오늘의 도전이면 { date, streak }, 아니면 null
  * @param props.onRetry 다시 도전하기를 눌렀을 때 호출
  */
-export default function Result({ result, record, onRetry }) {
+export default function Result({ result, record, daily, onRetry }) {
   const headingRef = useRef(null);
 
   useEffect(() => {
@@ -36,7 +37,9 @@ export default function Result({ result, record, onRetry }) {
         <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-extrabold outline-none">
           {headline(result.floors)}
         </h2>
-        <p className="mt-1 text-slate-600">Stack Tower 끝</p>
+        <p className="mt-1 text-slate-600">
+          Stack Tower{daily ? ` · 오늘의 도전 · 연속 ${daily.streak}일` : ""} 끝
+        </p>
       </div>
 
       <dl className="grid grid-cols-2 gap-3 text-center">
@@ -50,14 +53,14 @@ export default function Result({ result, record, onRetry }) {
         </div>
       </dl>
 
-      {record && (
+      {!daily && record && (
         <p className="text-center text-sm text-slate-600">
           {record.isNewBest && <strong className="mr-2 text-success-strong">새 기록!</strong>}내 최고 기록:{" "}
           {record.data.bestFloors}층 · 완벽 정렬 {record.data.bestPerfects}회
         </p>
       )}
 
-      <ShareButton title="Zepio Stack Tower" text={stackTowerShareText(result)} path={`/games/${meta.slug}/`} />
+      <ShareButton title="Zepio Stack Tower" text={stackTowerShareText(result, daily?.date)} path={`/games/${meta.slug}/`} />
 
       <button type="button" onClick={onRetry} className="btn-primary">
         다시 도전하기

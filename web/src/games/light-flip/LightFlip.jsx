@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { getGameData, saveResult } from "../../lib/storage.js";
+import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
+import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
+import DailyCard from "../_shared/DailyCard.jsx";
+import { hashSeed, makeRng } from "../_shared/rng.js";
 import meta from "./meta.js";
 import Grid from "./Grid.jsx";
 import { makeStages, STAGE_RANGES } from "./puzzle.js";
@@ -18,6 +21,10 @@ export default function LightFlip() {
   useGameBack(state.phase === "intro" ? 0 : 1, () => dispatch({ type: "back" }));
   const [now, setNow] = useState(() => Date.now());
   const [record, setRecord] = useState(null);
+  const [mode, setMode] = useState("normal");
+  const [today, setToday] = useState(() => kstDate(Date.now()));
+  const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
+  const [dailyResult, setDailyResult] = useState(null);
   const headingRef = useRef(null);
   const nextRef = useRef(null);
   const playing = state.phase === "playing";
@@ -33,10 +40,18 @@ export default function LightFlip() {
   useEffect(() => {
     if (state.phase !== "result") return;
     const { extra } = totals(state);
+    if (mode === "daily") {
+      const next = nextDailyRecord(getDaily(meta.id), today, extra);
+      saveDaily(meta.id, next);
+      saveResult(meta.id, state.finishedAt, getGameData(meta.id));
+      setDailyRecord(next);
+      setDailyResult({ date: today, streak: currentStreak(next, today) });
+      return;
+    }
     const outcome = mergeResult(getGameData(meta.id), { extra, ms: state.finishedAt - state.startedAt });
     saveResult(meta.id, state.finishedAt, outcome.data);
     setRecord(outcome);
-  }, [state]);
+  }, [state, mode, today]);
 
   useEffect(() => {
     if (playing) headingRef.current?.focus({ preventScroll: true });
@@ -46,12 +61,20 @@ export default function LightFlip() {
     if (state.solved) nextRef.current?.focus({ preventScroll: true });
   }, [state.solved]);
 
-  const start = useCallback(() => {
+  const begin = useCallback((nextMode, date) => {
     const at = Date.now();
     setNow(at);
     setRecord(null);
-    dispatch({ type: "start", stages: makeStages(), now: at });
+    setDailyResult(null);
+    setMode(nextMode);
+    dispatch({ type: "start", stages: makeStages(date ? makeRng(hashSeed(`${meta.id}:${date}`)) : undefined), now: at });
   }, []);
+  const start = useCallback(() => begin("normal", null), [begin]);
+  const startDaily = useCallback(() => {
+    const date = kstDate(Date.now());
+    setToday(date);
+    begin("daily", date);
+  }, [begin]);
   const press = useCallback((cell) => dispatch({ type: "press", cell }), []);
 
   return (
@@ -62,12 +85,24 @@ export default function LightFlip() {
           <p className="text-slate-600">
             총 {STAGE_RANGES.length}판 · {meta.estimatedPlayTime}
           </p>
+          <DailyCard
+            date={today}
+            streak={currentStreak(dailyRecord, today)}
+            doneText={
+              dailyRecord?.last === today
+                ? `오늘 완료 · 추가 이동 ${dailyRecord.history?.[today] ?? 0}회 · 연속 ${currentStreak(dailyRecord, today)}일. 내일 새로운 판이 열려요.`
+                : null
+            }
+            onStart={startDaily}
+          />
           <button
             type="button"
             onClick={start}
-            className="rounded-xl bg-primary px-8 py-3.5 text-lg font-bold text-white"
+            className={`w-full max-w-sm rounded-xl px-8 py-3.5 text-lg font-bold ${
+              dailyRecord?.last === today ? "bg-primary text-white" : "border-2 border-primary bg-white text-primary"
+            }`}
           >
-            시작하기
+            일반 모드로 시작하기
           </button>
         </div>
       )}
@@ -120,7 +155,7 @@ export default function LightFlip() {
           )}
         </div>
       )}
-      {state.phase === "result" && <Result state={state} record={record} onRetry={start} />}
+      {state.phase === "result" && <Result state={state} record={record} daily={mode === "daily" ? dailyResult : null} onRetry={start} />}
     </section>
   );
 }

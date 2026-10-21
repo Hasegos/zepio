@@ -1,3 +1,5 @@
+import { shareText } from "../_shared/share-text.js";
+
 /**
  * 끝난 방의 공유 글을 만든다. 방 이름과 별만 담는다.
  *
@@ -8,6 +10,5 @@
  */
 export function fortressShareText(level, stars, daily = null) {
   const mark = "★".repeat(stars) + "☆".repeat(3 - stars);
-  const place = daily ? `오늘의 방 ${daily} · ${level.title}` : level.title;
-  return `Zepio 프롬프트 요새\n${place} ${mark}`;
+  return shareText("프롬프트 요새", `${level.title} ${mark}`, daily && { label: "오늘의 방", date: daily });
 }

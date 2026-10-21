@@ -1,4 +1,5 @@
 import ShareButton from "../_shared/ShareButton.jsx";
+import { shareText } from "../_shared/share-text.js";
 import { CHALLENGE_COINS, CHALLENGE_SECONDS, clockText } from "./challenge.js";
 import { formatNumber } from "./engine.js";
 import meta from "./meta.js";
@@ -53,7 +54,7 @@ export default function Challenge({ challenge, info, lifetime, onStart, onQuit }
       </p>
       <ShareButton
         title="Zepio Rack Tycoon"
-        text={`Zepio Rack Tycoon\n오늘의 도전 ${challenge.date} · ${traitOf(challenge.type).name} · ${formatNumber(challenge.score)}점`}
+        text={shareText("Rack Tycoon", `${traitOf(challenge.type).name} · ${formatNumber(challenge.score)}점`, { label: "오늘의 도전", date: challenge.date })}
         path={`/games/${meta.slug}/`}
       />
       <div className="flex gap-2">
