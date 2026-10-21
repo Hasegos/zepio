@@ -1,4 +1,5 @@
 import { correctCount } from "./reducer.js";
+import { shareText } from "../_shared/share-text.js";
 import { formatDuration } from "../_shared/time.js";
 
 /**
@@ -9,8 +10,7 @@ import { formatDuration } from "../_shared/time.js";
  * @returns 공유 글(주소 제외)
  */
 export function patternShareText(state, date) {
-  const title = date ? `Zepio 오늘의 도전 ${date}` : "Zepio Pattern Challenge";
   const marks = state.answers.map((answer) => (answer.correct ? "🟩" : "🟥")).join("");
   const time = formatDuration(state.finishedAt - state.startedAt);
-  return `${title}\n${marks} ${correctCount(state)}/${state.puzzles.length} · ${time}`;
+  return shareText("Pattern Challenge", `${marks} ${correctCount(state)}/${state.puzzles.length} · ${time}`, date && { label: "오늘의 도전", date });
 }

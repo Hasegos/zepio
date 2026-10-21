@@ -1,3 +1,4 @@
+import { shareText } from "../_shared/share-text.js";
 import { formatDuration } from "../_shared/time.js";
 import { LEVELS } from "./engine.js";
 
@@ -8,6 +9,6 @@ import { LEVELS } from "./engine.js";
  * @returns 공유 글(주소 제외)
  */
 export function bugSweeperShareText(result) {
-  const daily = result.date ? ` · 오늘의 판 ${result.date}` : "";
-  return `Zepio Bug Sweeper\n${LEVELS[result.level].name} · ${formatDuration(result.seconds * 1000)}${daily}`;
+  const line = `${LEVELS[result.level].name} · ${formatDuration(result.seconds * 1000)}`;
+  return shareText("Bug Sweeper", line, result.date && { label: "오늘의 판", date: result.date });
 }
