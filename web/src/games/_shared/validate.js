@@ -19,3 +19,15 @@ export function isObject(value) {
 export function isInt(n, min, max) {
   return Number.isInteger(n) && n >= min && n <= max;
 }
+
+/**
+ * 유한한 수이면서 범위 안인지 확인한다. 정수가 아니어도 되는 값(밀리초 등)에 쓴다.
+ *
+ * @param n 확인할 값
+ * @param min 최솟값(포함)
+ * @param max 최댓값(포함)
+ * @returns 범위 안의 수이면 true
+ */
+export function isNum(n, min, max) {
+  return Number.isFinite(n) && n >= min && n <= max;
+}

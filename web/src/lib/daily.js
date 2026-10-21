@@ -5,6 +5,7 @@ const KST_FORMAT = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 const HISTORY_MAX = 60;
+const STREAK_MAX = 99999;
 const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
@@ -38,9 +39,15 @@ function isValid(record) {
   return (
     DATE_FORMAT.test(record?.last) &&
     Number.isInteger(record.streak) &&
+    record.streak >= 0 &&
+    record.streak <= STREAK_MAX &&
     Number.isInteger(record.max) &&
+    record.max >= 0 &&
+    record.max <= STREAK_MAX &&
     record.history !== null &&
-    typeof record.history === "object"
+    typeof record.history === "object" &&
+    !Array.isArray(record.history) &&
+    Object.values(record.history).every(Number.isFinite)
   );
 }
 

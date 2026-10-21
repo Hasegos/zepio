@@ -1,4 +1,7 @@
+import { isInt, isNum } from "../_shared/validate.js";
 import { RUN_SLOTS } from "./pick-puzzles.js";
+
+const MAX_MS = 86400000;
 
 /**
  * 한 판의 결과를 저장된 최고 기록과 합친다. 정답 수가 많을수록, 같으면 시간이 짧을수록 좋은 기록이다.
@@ -9,7 +12,7 @@ import { RUN_SLOTS } from "./pick-puzzles.js";
  * @returns 저장할 데이터와, 이전 기록을 넘어섰는지(isNewBest)
  */
 export function mergeResult(prev, result) {
-  const hasPrev = Number.isInteger(prev?.bestCorrect) && Number.isFinite(prev?.bestMs);
+  const hasPrev = isInt(prev?.bestCorrect, 0, RUN_SLOTS.length) && isNum(prev?.bestMs, 0, MAX_MS);
   const better =
     !hasPrev ||
     result.correct > prev.bestCorrect ||
@@ -28,6 +31,6 @@ export function mergeResult(prev, result) {
  * @returns 요약 문구, 데이터가 깨졌으면 빈 문자열
  */
 export function summarize(data, plays) {
-  if (!Number.isInteger(data?.bestCorrect)) return "";
+  if (!isInt(data?.bestCorrect, 0, RUN_SLOTS.length)) return "";
   return `최고 ${data.bestCorrect} / ${RUN_SLOTS.length} 정답 · ${plays}회 플레이`;
 }

@@ -1,4 +1,7 @@
+import { isInt } from "../_shared/validate.js";
 import { ISLAND_LIST } from "./islands.js";
+
+const MAX_SCORE = 9999999;
 
 /**
  * 저장 데이터를 안전한 모양으로 다듬는다. 깨진 항목은 버리고 빈 기록에서 시작한다.
@@ -11,7 +14,7 @@ export function readData(raw) {
   if (raw?.v === 1 && raw.best !== null && typeof raw.best === "object") {
     for (const island of ISLAND_LIST) {
       const entry = raw.best[island.id];
-      if (Number.isInteger(entry?.score) && entry.score >= 0 && [0, 1, 2, 3].includes(entry.stars)) {
+      if (isInt(entry?.score, 0, MAX_SCORE) && [0, 1, 2, 3].includes(entry.stars)) {
         best[island.id] = { score: entry.score, stars: entry.stars };
       }
     }
