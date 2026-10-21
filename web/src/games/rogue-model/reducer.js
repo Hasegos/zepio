@@ -6,7 +6,17 @@ import { advance, buy, collect, newGame, starsOf } from "./engine.js";
  * @returns 시작 화면 상태
  */
 export function initialState() {
-  return { phase: "intro", run: null, sim: null, startedAt: 0, finishedAt: 0 };
+  return { phase: "intro", run: null, sim: null, history: [], startedAt: 0, finishedAt: 0 };
+}
+
+/**
+ * 한 턴 끝의 지도 모습을 타임랩스용으로 뽑는다. 배열과 객체는 턴마다 새로 만들어지므로 그대로 담아도 된다.
+ *
+ * @param sim 상태
+ * @returns { a, d, w, blocked, cut, levels }
+ */
+function frameOf(sim) {
+  return { a: sim.a, d: sim.d, w: sim.w, blocked: sim.blocked, cut: sim.cut, levels: sim.levels };
 }
 
 /**
@@ -24,7 +34,7 @@ export function reducer(state, action) {
     case "launch": {
       if (state.phase !== "setup") return state;
       const sim = newGame(state.run, action.ai, action.start, action.diff);
-      return sim ? { ...state, phase: "play", sim } : state;
+      return sim ? { ...state, phase: "play", sim, history: [frameOf(sim)] } : state;
     }
     case "buy": {
       if (state.phase !== "play") return state;
@@ -39,7 +49,8 @@ export function reducer(state, action) {
     case "tick": {
       if (state.phase !== "play") return state;
       const sim = advance(state.run, state.sim);
-      return sim.over ? { ...state, sim, phase: "result", finishedAt: action.now } : { ...state, sim };
+      const history = [...state.history, frameOf(sim)];
+      return sim.over ? { ...state, sim, history, phase: "result", finishedAt: action.now } : { ...state, sim, history };
     }
     case "back":
       return initialState();
