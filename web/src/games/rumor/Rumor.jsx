@@ -3,7 +3,11 @@ import { currentStreak, kstDate, nextDailyRecord, scoreOn } from "../../lib/dail
 import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
 import DailyCard from "../_shared/DailyCard.jsx";
 import { hashSeed } from "../_shared/rng.js";
+import SoundButton from "../_shared/SoundButton.jsx";
+import { useAudio } from "../_shared/useAudio.js";
 import { useGameBack } from "../_shared/useGameBack.js";
+import { useMuted } from "../_shared/useMuted.js";
+import { createAudio } from "./audio.js";
 import { dailyRun, makeRun, PICKS, ROUNDS } from "./engine.js";
 import meta from "./meta.js";
 import Plan from "./Plan.jsx";
@@ -29,9 +33,22 @@ export default function Rumor() {
   const [today, setToday] = useState(() => kstDate(Date.now()));
   const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
   const [dailyResult, setDailyResult] = useState(null);
+  const [muted, toggleMuted] = useMuted();
+  const audio = useAudio(muted, createAudio);
 
   const round = state.rounds[state.round];
   const village = useMemo(() => (round ? makeVillage(round.seed) : null), [round]);
+
+  useEffect(() => {
+    audio.music("play");
+  }, [audio]);
+
+  useEffect(() => {
+    if (state.phase !== "play") return;
+    if (state.turn === 0) audio.sfx("start");
+    else if (state.turn < TURNS) audio.sfx("pop");
+    else audio.sfx(state.outcome.stars > 0 ? "good" : "fail");
+  }, [audio, state.phase, state.turn, state.outcome]);
 
   useEffect(() => {
     if (state.phase === "intro") setToday(kstDate(Date.now()));
@@ -75,8 +92,20 @@ export default function Rumor() {
     setToday(date);
     begin("daily", dailyRun(date));
   }, [begin]);
-  const pick = useCallback((person) => dispatch({ type: "pick", person }), []);
-  const setKind = useCallback((kind) => dispatch({ type: "kind", kind }), []);
+  const pick = useCallback(
+    (person) => {
+      audio.sfx("tick");
+      dispatch({ type: "pick", person });
+    },
+    [audio],
+  );
+  const setKind = useCallback(
+    (kind) => {
+      audio.sfx("tick");
+      dispatch({ type: "kind", kind });
+    },
+    [audio],
+  );
   const launch = useCallback(() => dispatch({ type: "launch" }), []);
   const skip = useCallback(() => dispatch({ type: "skip" }), []);
   const next = useCallback(() => dispatch({ type: "next", now: Date.now() }), []);
@@ -86,6 +115,9 @@ export default function Rumor() {
 
   return (
     <section className="panel">
+      <div className="mb-2 flex justify-end">
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-primary text-primary hover:bg-indigo-50" />
+      </div>
       {state.phase === "intro" && (
         <div className="flex flex-col items-center gap-5 py-8 text-center">
           <h2 className="text-2xl font-extrabold">소문 한 마디로 마을을 움직여 보세요</h2>

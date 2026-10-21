@@ -3,7 +3,11 @@ import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
 import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
 import DailyCard from "../_shared/DailyCard.jsx";
 import { hashSeed } from "../_shared/rng.js";
+import SoundButton from "../_shared/SoundButton.jsx";
+import { useAudio } from "../_shared/useAudio.js";
 import { useGameBack } from "../_shared/useGameBack.js";
+import { useMuted } from "../_shared/useMuted.js";
+import { createAudio } from "./audio.js";
 import { createState, dailyRules, drop, HEIGHT, step, WIDTH } from "./engine.js";
 import meta from "./meta.js";
 import { mergeResult } from "./record.js";
@@ -27,7 +31,13 @@ export default function StackTower() {
   const dropRef = useRef(null);
   const viewRef = useRef(null);
   const reduceRef = useRef(false);
+  const [muted, toggleMuted] = useMuted();
+  const audio = useAudio(muted, createAudio);
   useGameBack(phase === "intro" ? 0 : 1, () => setPhase("intro"));
+
+  useEffect(() => {
+    audio.music("play");
+  }, [audio]);
 
   const begin = useCallback((date) => {
     reduceRef.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -56,6 +66,7 @@ export default function StackTower() {
     }
     view.flash = next.perfect ? 1 : 0;
     setHud({ floors: next.floors, perfects: next.perfects });
+    audio.sfx(next.over ? "over" : next.perfect ? "perfect" : "drop");
     if (next.over) {
       const date = dailyRef.current;
       if (date) {
@@ -74,7 +85,7 @@ export default function StackTower() {
       return;
     }
     setMessage(next.perfect ? `완벽해요! ${next.floors}층` : `${next.floors}층`);
-  }, []);
+  }, [audio]);
 
   useEffect(() => {
     if (phase === "intro") return undefined;
@@ -115,6 +126,9 @@ export default function StackTower() {
 
   return (
     <section className="panel">
+      <div className="mb-2 flex justify-end">
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-primary text-primary hover:bg-indigo-50" />
+      </div>
       {phase === "intro" && (
         <div className="flex flex-col items-center gap-5 py-8 text-center">
           <h2 className="text-2xl font-extrabold">블록을 쌓아 탑을 높이세요</h2>

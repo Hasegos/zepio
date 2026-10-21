@@ -135,6 +135,26 @@ export function setHomePrefs(home) {
 }
 
 /**
+ * 소리를 끈 설정을 읽는다. 모든 게임이 함께 쓴다.
+ *
+ * @returns 껐으면 true
+ */
+export function getMuted() {
+  return loadRecords().prefs?.audio?.muted === true;
+}
+
+/**
+ * 소리를 끈 설정을 저장한다. 저장소에 쓸 수 없어도 오류를 내지 않는다.
+ *
+ * @param muted 끌지
+ * @returns 저장에 성공했는지
+ */
+export function setMuted(muted) {
+  const records = loadRecords();
+  return writeRecords({ ...records, prefs: { ...records.prefs, audio: { muted } } });
+}
+
+/**
  * 이 브라우저에 저장된 기록을 모두 지운다. 저장소를 쓸 수 없어도 오류를 내지 않는다.
  *
  * @returns 지웠으면 true, 지우지 못했으면 false

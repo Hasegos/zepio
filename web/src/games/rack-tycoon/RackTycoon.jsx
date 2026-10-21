@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
 import { getDaily, getGameData, saveDaily, saveGameData } from "../../lib/storage.js";
+import SoundButton from "../_shared/SoundButton.jsx";
+import { useAudio } from "../_shared/useAudio.js";
+import { useMuted } from "../_shared/useMuted.js";
+import { createAudio } from "./audio.js";
 import {
   accessibleTiles,
   analyze,
@@ -194,6 +198,12 @@ export default function RackTycoon() {
   const [noWebgl, setNoWebgl] = useState(false);
   const [follow, setFollow] = useState(false);
   const [coarse] = useState(() => window.matchMedia?.("(pointer: coarse)").matches ?? false);
+  const [muted, toggleMuted] = useMuted();
+  const audio = useAudio(muted, createAudio);
+
+  useEffect(() => {
+    audio.music(snap.event?.phase === "live" ? "alert" : "hall");
+  }, [audio, snap.event?.phase]);
 
   const refresh = useCallback(() => {
     const state = stateRef.current;
@@ -226,11 +236,15 @@ export default function RackTycoon() {
     if (stateRef.current && !challengeRef.current) saveGameData(meta.id, Date.now(), makeData(stateRef.current, lastRef.current));
   }, []);
 
-  const say = useCallback((text, tone = "bad") => {
-    setNotice({ text, tone });
-    clearTimeout(noticeTimer.current);
-    noticeTimer.current = setTimeout(() => setNotice({ text: "", tone }), NOTICE_MS);
-  }, []);
+  const say = useCallback(
+    (text, tone = "bad") => {
+      audio.sfx(tone === "good" ? "good" : "nope");
+      setNotice({ text, tone });
+      clearTimeout(noticeTimer.current);
+      noticeTimer.current = setTimeout(() => setNotice({ text: "", tone }), NOTICE_MS);
+    },
+    [audio],
+  );
 
   const act = useCallback(
     (action, ...args) => {
@@ -240,11 +254,12 @@ export default function RackTycoon() {
         return false;
       }
       stateRef.current = result.state;
+      audio.sfx(action === removeItem ? "remove" : action === placeItem || action === moveItem ? "place" : "select");
       refresh();
       save();
       return true;
     },
-    [refresh, save, say],
+    [audio, refresh, save, say],
   );
 
   const reset = useCallback(() => {
@@ -597,6 +612,9 @@ export default function RackTycoon() {
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-primary text-primary hover:bg-indigo-50" />
+      </div>
       {coarse && (
         <p className="rounded-xl bg-amber-100 px-4 py-3 text-sm font-semibold text-amber-900" role="note">
           Rack Tycoon은 PC에서 마우스와 키보드로 하기 좋게 만든 게임이에요. 터치 화면에서도 할 수 있지만 PC를 권장해요.

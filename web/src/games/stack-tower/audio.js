@@ -1,0 +1,37 @@
+import { bars, createSynth } from "../_shared/audio.js";
+
+export const TRACKS = {
+  play: {
+    bpm: 144,
+    lead: { wave: "sawtooth", gain: 0.025, notes: bars([
+      [["E5", 0.5], ["E5", 0.5], ["G5", 0.5], ["E5", 0.5], ["C5", 0.5], ["E5", 0.5], ["G5", 1]],
+      [["D5", 0.5], ["D5", 0.5], ["F5", 0.5], ["D5", 0.5], ["B4", 0.5], ["D5", 0.5], ["F5", 1]],
+      [["C5", 0.5], ["C5", 0.5], ["E5", 0.5], ["C5", 0.5], ["A4", 0.5], ["C5", 0.5], ["E5", 1]],
+      [["D5", 0.5], ["E5", 0.5], ["F5", 0.5], ["G5", 0.5], ["A5", 1], ["G5", 1]],
+      [["A5", 0.5], ["A5", 0.5], ["G5", 0.5], ["A5", 0.5], ["C6", 0.5], ["A5", 0.5], ["G5", 1]],
+      [["F5", 0.5], ["F5", 0.5], ["E5", 0.5], ["F5", 0.5], ["A5", 0.5], ["F5", 0.5], ["E5", 1]],
+      [["D5", 0.5], ["F5", 0.5], ["G5", 0.5], ["B5", 0.5], ["D6", 1], ["B5", 1]],
+      [["C6", 2], ["G5", 1], ["E5", 1]],
+    ]) },
+    bass: { wave: "triangle", gain: 0.06, notes: bars([
+      [["C3", 1], ["C3", 1], ["G2", 1], ["G2", 1]], [["G2", 1], ["G2", 1], ["D3", 1], ["D3", 1]], [["A2", 1], ["A2", 1], ["E3", 1], ["E3", 1]], [["F2", 1], ["F2", 1], ["G2", 1], ["G2", 1]],
+      [["F2", 1], ["F2", 1], ["C3", 1], ["C3", 1]], [["F2", 1], ["F2", 1], ["A2", 1], ["A2", 1]], [["G2", 1], ["G2", 1], ["D3", 1], ["D3", 1]], [["C3", 2], ["G2", 1], ["C3", 1]],
+    ]) },
+  },
+};
+
+export const SFX = {
+  drop: [{ wave: "triangle", from: 220, to: 110, dur: 0.09, gain: 0.07 }, { noise: true, dur: 0.05, gain: 0.03 }],
+  perfect: [{ wave: "square", from: 880, to: 1320, dur: 0.12, gain: 0.05 }, { wave: "square", from: 1760, to: 1760, dur: 0.14, gain: 0.04, at: 0.09 }],
+  over: [{ wave: "sawtooth", from: 330, to: 70, dur: 0.55, gain: 0.05 }, { noise: true, dur: 0.2, gain: 0.04 }],
+};
+
+/**
+ * Stack Tower의 곡과 효과음을 담은 소리 컨트롤러를 만든다.
+ *
+ * @param options createSynth 옵션(Context와 타이머를 바꿔 끼울 수 있다)
+ * @returns { unlock, setMuted, music, sfx, dispose }
+ */
+export function createAudio(options = {}) {
+  return createSynth({ tracks: TRACKS, sfx: SFX, ...options });
+}

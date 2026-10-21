@@ -170,14 +170,13 @@ function plain(obj, allowed) {
  * 저장소 값을 안전한 모양으로 다듬는다.
  *
  * @param raw 저장소에서 읽은 값
- * @returns { v, save, best, muted } save는 이어 할 진행(검증은 restore가 한다), best는 엔딩 기록, muted는 소리 끔 설정
+ * @returns { v, save, best } save는 이어 할 진행(검증은 restore가 한다), best는 엔딩 기록
  */
 export function readData(raw) {
   const valid = raw?.v === 1;
   const best = valid && raw.best && typeof raw.best === "object" ? raw.best : {};
   return {
     v: 1,
-    muted: valid && raw.muted === true,
     save: valid && raw.save && typeof raw.save === "object" ? raw.save : null,
     best: {
       endings: int(best.endings, 99999) ? best.endings : 0,
@@ -197,11 +196,10 @@ export function readData(raw) {
  * @returns 저장할 데이터
  */
 export function mergeEnding(prev, ending, save) {
-  const { best, muted } = readData(prev);
+  const { best } = readData(prev);
   const disasters = best.disasters === null ? ending.disasters : Math.min(best.disasters, ending.disasters);
   return {
     v: 1,
-    muted,
     save,
     best: {
       endings: best.endings + 1,

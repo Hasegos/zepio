@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
-import { getDaily, getGameData, saveDaily, saveGameData, saveResult } from "../../lib/storage.js";
+import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
+import SoundButton from "../_shared/SoundButton.jsx";
 import { useAudio } from "../_shared/useAudio.js";
+import { useMuted } from "../_shared/useMuted.js";
 import { useGameBack } from "../_shared/useGameBack.js";
 import { createAudio } from "./audio.js";
 import { dailyLevelId } from "./daily.js";
@@ -21,7 +23,7 @@ const SOUND = { open: "select", add: "select", remove: "tick", move: "tick", cle
  */
 export default function PromptFortress() {
   const [state, dispatch] = useReducer(reducer, undefined, () => initialState(readData(getGameData(meta.id)).stars));
-  const [muted, setMuted] = useState(() => readData(getGameData(meta.id)).muted);
+  const [muted, toggleMuted] = useMuted();
   const [saved, setSaved] = useState(null);
   const [today, setToday] = useState(() => kstDate(Date.now()));
   const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
@@ -43,12 +45,6 @@ export default function PromptFortress() {
     },
     [audio],
   );
-
-  const toggleMuted = useCallback(() => {
-    const next = !muted;
-    setMuted(next);
-    saveGameData(meta.id, Date.now(), { ...readData(getGameData(meta.id)), muted: next });
-  }, [muted]);
 
   useEffect(() => {
     audio.music(TRACK[state.phase]);
@@ -98,9 +94,7 @@ export default function PromptFortress() {
   return (
     <section ref={rootRef} className="scroll-mt-2 rounded-2xl bg-white p-3 shadow-sm sm:p-5">
       <div className="mb-2 flex justify-end">
-        <button type="button" aria-pressed={!muted} onClick={toggleMuted} className="rounded-md border-2 border-slate-800 px-2 py-0.5 text-xs font-bold text-slate-900 hover:bg-amber-50">
-          <span aria-hidden="true">{muted ? "🔇" : "🔊"} </span>소리
-        </button>
+        <SoundButton muted={muted} onToggle={toggleMuted} />
       </div>
       {state.phase === "menu" ? (
         <>

@@ -17,6 +17,19 @@ export function noteFreq(note) {
 
 export const bars = (list) => list.flat();
 
+/**
+ * 음 여러 개를 0.1초 간격으로 빠르게 이어 치는 효과음 조각을 만든다.
+ *
+ * @param notes 음 이름 목록
+ * @param last 마지막 음의 길이(초)
+ * @param wave 파형(기본 square)
+ * @param gain 음량(기본 0.05)
+ * @returns createSynth의 sfx 조각 목록
+ */
+export function arpeggio(notes, last, wave = "square", gain = 0.05) {
+  return notes.map((n, i) => ({ wave, from: noteFreq(n), to: noteFreq(n), dur: i === notes.length - 1 ? last : 0.1, gain, at: i * 0.1 }));
+}
+
 const LOOKAHEAD = 0.35;
 const TICK_MS = 90;
 

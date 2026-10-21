@@ -11,7 +11,13 @@ import { mergeBest, readData } from "./record.js";
 import { initialState, reducer } from "./reducer.js";
 import Result from "./Result.jsx";
 import { hashSeed } from "../_shared/rng.js";
+import SoundButton from "../_shared/SoundButton.jsx";
+import { useAudio } from "../_shared/useAudio.js";
 import { useGameBack } from "../_shared/useGameBack.js";
+import { useMuted } from "../_shared/useMuted.js";
+import { createAudio } from "./audio.js";
+
+const SOUND = { select: "tick", reroll: "select", demolishMode: "tick", cancel: "tick" };
 
 /**
  * 오늘의 섬으로 놀 때 쓰는 시드를 구한다.
@@ -41,6 +47,8 @@ export default function TinyIsle() {
   const [data, setData] = useState(() => readData(getGameData(meta.id)));
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   useGameBack(state.phase === "menu" ? 0 : 1, () => dispatch({ type: "menu" }));
+  const [muted, toggleMuted] = useMuted();
+  const audio = useAudio(muted, createAudio);
   const [record, setRecord] = useState(null);
   const savedFor = useRef(null);
   const [today, setToday] = useState(() => kstDate(Date.now()));
@@ -50,6 +58,26 @@ export default function TinyIsle() {
     const run = restoreRun(data.run);
     return run && (!run.island.daily || run.island.id === `daily:${today}`) ? run : null;
   }, [data, today]);
+
+  useEffect(() => {
+    audio.music("play");
+  }, [audio]);
+
+  useEffect(() => {
+    if (state.gain) audio.sfx(state.gain.delta >= 0 ? "build" : "lose");
+  }, [audio, state.gain]);
+
+  useEffect(() => {
+    if (state.phase === "result") audio.sfx("clear");
+  }, [audio, state.phase]);
+
+  const send = useCallback(
+    (action) => {
+      audio.sfx(SOUND[action.type]);
+      dispatch(action);
+    },
+    [audio],
+  );
 
   useEffect(() => {
     if (state.phase === "play") {
@@ -99,6 +127,9 @@ export default function TinyIsle() {
 
   return (
     <section className="panel">
+      <div className="mb-2 flex justify-end">
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-primary text-primary hover:bg-indigo-50" />
+      </div>
       {state.phase === "menu" && (
         <Menu
           data={data}
@@ -117,7 +148,7 @@ export default function TinyIsle() {
           onResume={resume}
         />
       )}
-      {state.phase === "play" && <Play state={state} dispatch={dispatch} onMenu={toMenu} />}
+      {state.phase === "play" && <Play state={state} dispatch={send} onMenu={toMenu} />}
       {state.phase === "result" && (
         <Result run={state.run} result={state.result} record={record} onRetry={again} onMenu={toMenu} />
       )}

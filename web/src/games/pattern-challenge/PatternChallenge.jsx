@@ -9,7 +9,11 @@ import { pickDaily, pickPuzzles, RUN_SLOTS } from "./pick-puzzles.js";
 import { PatternDefs } from "./PuzzleCell.jsx";
 import { mergeResult } from "./record.js";
 import { correctCount, initialState, reducer } from "./reducer.js";
+import SoundButton from "../_shared/SoundButton.jsx";
+import { useAudio } from "../_shared/useAudio.js";
 import { useGameBack } from "../_shared/useGameBack.js";
+import { useMuted } from "../_shared/useMuted.js";
+import { createAudio } from "./audio.js";
 
 /**
  * Pattern Challenge 한 판을 진행한다. 시작 화면, 5문제 풀이, 결과 화면을 오간다.
@@ -24,7 +28,17 @@ export default function PatternChallenge() {
   const [today, setToday] = useState(() => kstDate(Date.now()));
   const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
   const [dailyResult, setDailyResult] = useState(null);
+  const [muted, toggleMuted] = useMuted();
+  const audio = useAudio(muted, createAudio);
   const playing = state.phase === "playing";
+
+  useEffect(() => {
+    audio.music("play");
+  }, [audio]);
+
+  useEffect(() => {
+    if (state.revealed) audio.sfx(state.answers.at(-1).correct ? "correct" : "wrong");
+  }, [audio, state.revealed, state.answers]);
 
   useEffect(() => {
     if (!playing) return undefined;
@@ -64,9 +78,18 @@ export default function PatternChallenge() {
     setToday(date);
     begin("daily", pickDaily(pool, date));
   }, [begin]);
-  const select = useCallback((option) => dispatch({ type: "select", option }), []);
+  const select = useCallback(
+    (option) => {
+      audio.sfx("tick");
+      dispatch({ type: "select", option });
+    },
+    [audio],
+  );
   const submit = useCallback(() => dispatch({ type: "submit", now: Date.now() }), []);
-  const next = useCallback(() => dispatch({ type: "next", now: Date.now() }), []);
+  const next = useCallback(() => {
+    audio.sfx("select");
+    dispatch({ type: "next", now: Date.now() });
+  }, [audio]);
 
   const doneToday = dailyRecord?.last === today;
   const dailyOpen = !doneToday;
@@ -75,6 +98,9 @@ export default function PatternChallenge() {
   return (
     <section className="panel">
       <PatternDefs />
+      <div className="mb-2 flex justify-end">
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-primary text-primary hover:bg-indigo-50" />
+      </div>
       {state.phase === "intro" && (
         <div className="flex flex-col items-center gap-5 py-8 text-center">
           <h2 className="text-2xl font-extrabold">패턴을 찾아 빈칸을 채워 보세요</h2>

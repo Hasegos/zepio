@@ -2,8 +2,12 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
 import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
 import { hashSeed } from "../_shared/rng.js";
+import SoundButton from "../_shared/SoundButton.jsx";
 import { formatDuration } from "../_shared/time.js";
+import { useAudio } from "../_shared/useAudio.js";
 import { useGameBack } from "../_shared/useGameBack.js";
+import { useMuted } from "../_shared/useMuted.js";
+import { createAudio } from "./audio.js";
 import { bugsLeft, chord, dailyGame, FLAG, LEVEL_IDS, LEVELS, newGame, OPEN, reveal, toggleFlag } from "./engine.js";
 import meta from "./meta.js";
 import { mergeResult, readData } from "./record.js";
@@ -195,7 +199,13 @@ export default function BugSweeper() {
   const modeRef = useRef(mode);
   const timeRef = useRef({ start: null, end: null, hidden: 0, since: null });
   modeRef.current = mode;
+  const [muted, toggleMuted] = useMuted();
+  const audio = useAudio(muted, createAudio);
   useGameBack(view === "menu" ? 0 : 1, () => setView("menu"));
+
+  useEffect(() => {
+    audio.music("play");
+  }, [audio]);
 
   useEffect(() => {
     const onVisibility = () => {
@@ -251,11 +261,12 @@ export default function BugSweeper() {
   );
 
   const apply = useCallback(
-    (change) => {
+    (change, sound) => {
       const prev = gameRef.current;
       if (!prev) return;
       const next = change(prev);
       if (next === prev) return;
+      audio.sfx(next.phase === "lost" ? "boom" : next.phase === "won" ? "win" : sound);
       const t = timeRef.current;
       if (t.start === null) {
         t.start = performance.now();
@@ -266,19 +277,22 @@ export default function BugSweeper() {
       setGame(next);
       if (next.phase === "won" || next.phase === "lost") finish(next);
     },
-    [finish],
+    [audio, finish],
   );
 
   const onCellClick = useCallback(
     (i) =>
-      apply((g) => {
-        if (g.cells[i] === OPEN) return modeRef.current === "flag" ? g : chord(g, i);
-        if (modeRef.current === "flag") return toggleFlag(g, i);
-        return g.cells[i] === FLAG ? g : reveal(g, i);
-      }),
+      apply(
+        (g) => {
+          if (g.cells[i] === OPEN) return modeRef.current === "flag" ? g : chord(g, i);
+          if (modeRef.current === "flag") return toggleFlag(g, i);
+          return g.cells[i] === FLAG ? g : reveal(g, i);
+        },
+        modeRef.current === "flag" ? "flag" : "tick",
+      ),
     [apply],
   );
-  const onCellFlag = useCallback((i) => apply((g) => toggleFlag(g, i)), [apply]);
+  const onCellFlag = useCallback((i) => apply((g) => toggleFlag(g, i), "flag"), [apply]);
 
   const toMenu = useCallback(() => {
     setToday(kstDate(Date.now()));
@@ -293,6 +307,9 @@ export default function BugSweeper() {
     const streak = currentStreak(dailyRecord, today);
     return (
       <section className="panel">
+        <div className="mb-2 flex justify-end">
+          <SoundButton muted={muted} onToggle={toggleMuted} className="border-primary text-primary hover:bg-indigo-50" />
+        </div>
         <div className="flex flex-col gap-5 py-4">
           <div className="text-center">
             <h2 className="text-2xl font-extrabold">숨은 버그를 찾아 코드를 살려요</h2>
@@ -344,6 +361,9 @@ export default function BugSweeper() {
   const over = game.phase === "won" || game.phase === "lost";
   return (
     <section className="panel">
+      <div className="mb-2 flex justify-end">
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-primary text-primary hover:bg-indigo-50" />
+      </div>
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
           <span>🐛 남은 버그 {bugsLeft(game)}</span>

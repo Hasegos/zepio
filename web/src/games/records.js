@@ -11,4 +11,5 @@ export const recordLoaders = {
   "hidden-rule": () => import("./hidden-rule/record.js"),
   "bug-desk": () => import("./bug-desk/record.js"),
   rumor: () => import("./rumor/record.js"),
+  "rogue-model": () => import("./rogue-model/record.js"),
 };

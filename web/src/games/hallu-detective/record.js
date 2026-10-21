@@ -49,7 +49,7 @@ export function restore(raw) {
  * 저장소 값을 안전한 모양으로 다듬는다.
  *
  * @param raw 저장소에서 읽은 값
- * @returns { v, save, best, muted } save는 이어 할 진행(검증은 restore가 한다), best는 엔딩 기록, muted는 소리 끔 설정
+ * @returns { v, save, best } save는 이어 할 진행(검증은 restore가 한다), best는 엔딩 기록
  */
 export function readData(raw) {
   const valid = raw?.v === 1;
@@ -57,7 +57,6 @@ export function readData(raw) {
   return {
     v: 1,
     save: valid && isObject(raw.save) ? raw.save : null,
-    muted: valid && raw.muted === true,
     best: {
       endings: isInt(best.endings, 0, 99999) ? best.endings : 0,
       score: isInt(best.score, 0, BASE_SCORE * PUZZLES.length) ? best.score : 0,
@@ -74,8 +73,8 @@ export function readData(raw) {
  * @returns 저장할 데이터
  */
 export function mergeEnding(prev, solved, save) {
-  const { best, muted } = readData(prev);
-  return { v: 1, save, muted, best: { endings: best.endings + 1, score: Math.max(best.score, totalScore(solved)) } };
+  const { best } = readData(prev);
+  return { v: 1, save, best: { endings: best.endings + 1, score: Math.max(best.score, totalScore(solved)) } };
 }
 
 /**
