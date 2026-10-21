@@ -5,6 +5,16 @@ import { liveGames } from "../games/registry.js";
 
 const CATEGORY_LABELS = { puzzle: "퍼즐", arcade: "아케이드", casual: "캐주얼", simulation: "시뮬레이션" };
 const dailyGame = liveGames.find((game) => game.hasDaily);
+const SORTS = [
+  { id: "recommended", label: "추천순" },
+  { id: "newest", label: "신작순" },
+  { id: "plays", label: "많이 한 순", needsRecords: true },
+  { id: "recent", label: "최근 한 순", needsRecords: true },
+  { id: "short", label: "짧은 순" },
+];
+const categories = [...new Set(liveGames.map((game) => game.category))];
+const pill =
+  "rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white";
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -58,13 +68,39 @@ const jsonLd = {
   </section>
 
   <h2 id="games" class="mb-3 mt-8 scroll-mt-4 text-xl font-bold">추천 게임</h2>
-  <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  <div class="mb-4 flex flex-col gap-2" data-sort-bar>
+    <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="정렬">
+      <span class="mr-1 text-xs font-extrabold text-slate-600">정렬</span>
+      {
+        SORTS.map((sort) => (
+          <button type="button" data-sort={sort.id} data-needs-records={sort.needsRecords ? "" : undefined} aria-pressed={sort.id === "recommended" ? "true" : "false"} class={pill}>
+            {sort.label}
+          </button>
+        ))
+      }
+    </div>
+    <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="분류">
+      <span class="mr-1 text-xs font-extrabold text-slate-600">분류</span>
+      <button type="button" data-category-filter="all" aria-pressed="true" class={pill}>전체</button>
+      {
+        categories.map((category) => (
+          <button type="button" data-category-filter={category} aria-pressed="false" class={pill}>
+            {CATEGORY_LABELS[category] ?? category}
+          </button>
+        ))
+      }
+    </div>
+  </div>
+  <ul data-game-list class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {
       liveGames.map((game, index) => (
         <li
           data-game-card={game.id}
           data-slug={game.slug}
           data-name={game.name}
+          data-order={index}
+          data-category={game.category}
+          data-minutes={parseInt(game.estimatedPlayTime.match(/\d+/)?.[0] ?? "0", 10)}
           class="overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
         >
           <img
