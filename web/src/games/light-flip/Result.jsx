@@ -23,9 +23,10 @@ function headline(extra) {
  *
  * @param props.state 끝난 판의 상태
  * @param props.record 저장한 최고 기록과 새 기록 여부, 저장 전에는 null
+ * @param props.daily 오늘의 도전이면 { date, streak }, 아니면 null
  * @param props.onRetry 다시 도전하기를 눌렀을 때 호출
  */
-export default function Result({ state, record, onRetry }) {
+export default function Result({ state, record, daily, onRetry }) {
   const headingRef = useRef(null);
   const { moves, par, extra } = totals(state);
 
@@ -39,7 +40,9 @@ export default function Result({ state, record, onRetry }) {
         <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-extrabold outline-none">
           {headline(extra)}
         </h2>
-        <p className="mt-1 text-slate-600">Light Flip 완료</p>
+        <p className="mt-1 text-slate-600">
+          Light Flip{daily ? ` · 오늘의 도전 · 연속 ${daily.streak}일` : ""} 완료
+        </p>
       </div>
 
       <dl className="grid grid-cols-2 gap-3 text-center">
@@ -68,14 +71,14 @@ export default function Result({ state, record, onRetry }) {
         ))}
       </ol>
 
-      {record && (
+      {!daily && record && (
         <p className="text-center text-sm text-slate-600">
           {record.isNewBest && <strong className="mr-2 text-success-strong">새 기록!</strong>}내 최고 기록: 추가
           이동 {record.data.bestExtra}회 · {formatDuration(record.data.bestMs)}
         </p>
       )}
 
-      <ShareButton title="Zepio Light Flip" text={lightFlipShareText(state)} path={`/games/${meta.slug}/`} />
+      <ShareButton title="Zepio Light Flip" text={lightFlipShareText(state, daily?.date)} path={`/games/${meta.slug}/`} />
 
       <button
         type="button"
