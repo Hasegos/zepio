@@ -11,6 +11,7 @@ import {
   refundOf,
   SAFE_TEMP,
   upgradeCost,
+  VARIANTS,
   xyOf,
 } from "./engine.js";
 import { inLand, LANDS, TERMINAL_TILE } from "./layout.js";
@@ -25,6 +26,17 @@ import { traitOf } from "./sites.js";
 function signed(delta) {
   if (Math.abs(delta) < 0.005) return "0.0";
   return `${delta > 0 ? "+" : "-"}${formatRate(Math.abs(delta))}`;
+}
+
+/**
+ * 서버는 변종 이름을 앞에 붙여 부른다.
+ *
+ * @param cell 칸 내용
+ * @returns 이름
+ */
+export function nameOf(cell) {
+  const name = KINDS[cell.kind].levels[cell.level].name;
+  return cell.variant ? `${VARIANTS[cell.variant].name} ${name}` : name;
 }
 
 /**
@@ -61,6 +73,7 @@ export function worldOf(state, analysis, ui) {
             kind: cell.kind,
             level: cell.level,
             broken: cell.broken,
+            variant: cell.variant ?? null,
             heat: cell.kind === "server" ? Math.min(1, Math.max(0, (analysis.heat[tile] - SAFE_TEMP) / (LIMIT_TEMP - SAFE_TEMP))) : 0,
           }
         : null,
@@ -88,8 +101,9 @@ export function summaryOf(state, analysis, tile) {
   const cell = state.cells[tile];
   const spec = KINDS[cell.kind].levels[cell.level];
   if (cell.kind === "server") {
-    if (cell.broken) return `${spec.name} · 고장`;
-    return `${spec.name} · 초당 ${formatRate(analysis.outputs[tile])} · 온도 ${analysis.heat[tile].toFixed(1)}`;
+    const name = nameOf(cell);
+    if (cell.broken) return `${name} · 고장`;
+    return `${name} · 초당 ${formatRate(analysis.outputs[tile])} · 온도 ${analysis.heat[tile].toFixed(1)}`;
   }
   if (cell.kind === "cooler") return `${spec.name} · 반경 ${spec.reach}칸, 온도 -${spec.cool}`;
   if (cell.kind === "hub") {
@@ -109,9 +123,10 @@ export function summaryOf(state, analysis, tile) {
  * @param args.tool 고른 도구(select, server, cooler, hub, gen, remove, move)
  * @param args.tile 가리키는 칸 번호, 없으면 null
  * @param args.carried 옮기려고 집은 시설의 칸 번호, 없으면 null
+ * @param args.variant 서버를 놓을 때 고른 변종
  * @returns { ghost, text, tone } tone은 "ok", "poor", "bad" 중 하나
  */
-export function describeHover({ state, analysis, tool, tile, carried }) {
+export function describeHover({ state, analysis, tool, tile, carried, variant = "base" }) {
   const none = { ghost: null, text: "", tone: "ok" };
   if (tile === null) return none;
   const [x, y] = xyOf(tile);
@@ -138,7 +153,7 @@ export function describeHover({ state, analysis, tool, tile, carried }) {
       tone: delta < -0.05 ? "bad" : "ok",
     };
   }
-  const label = KINDS[tool].levels[1].name;
+  const label = tool === "server" && variant !== "base" ? `${VARIANTS[variant].name} ${KINDS[tool].levels[1].name}` : KINDS[tool].levels[1].name;
   if (cell) {
     if (cell.broken) return { ghost: null, text: "고장난 서버예요. 눌러서 로봇을 보내 고치세요.", tone: "bad" };
     const cost = cell.kind === tool ? upgradeCost(state, tile) : null;
@@ -147,7 +162,7 @@ export function describeHover({ state, analysis, tool, tile, carried }) {
     return { ghost: null, text: `${next.name}로 올리기 · ${formatNumber(cost)}코인`, tone: state.coins < cost ? "poor" : "ok" };
   }
   const cost = placeCost(state, tool);
-  const after = previewPlace(state, tile, tool);
+  const after = previewPlace(state, tile, tool, 1, variant);
   const delta = after.income - analysis.income;
   const warns = [];
   if (after.maxTemp >= LIMIT_TEMP && after.maxTemp > analysis.maxTemp) warns.push("과열 위험");

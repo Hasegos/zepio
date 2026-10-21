@@ -70,6 +70,7 @@ const BATTERY_COLOR = ["#86efac", "#86efac", "#22c55e", "#15803d"];
 const EXT_HEIGHT = [0, 0.45, 0.6, 0.8];
 const EXT_COLOR = ["#fca5a5", "#fca5a5", "#ef4444", "#b91c1c"];
 const GHOST_HEIGHT = { server: 1, cooler: 0.8, hub: 0.7, gen: 0.5, battery: 0.6, ext: 0.5 };
+const VARIANT_COLOR = { ai: "#a855f7", storage: "#0ea5e9", cache: "#f59e0b" };
 const GHOST_COLOR = { server: "#6366f1", cooler: "#22d3ee", hub: "#10b981", gen: "#f59e0b", battery: "#16a34a", ext: "#ef4444" };
 const MOODS = {
   none: { background: "#e8ecff", ambient: 1.7, sun: 1.6 },
@@ -143,7 +144,7 @@ function buildRobot() {
  * @param options.onHover 가리키는 칸이 바뀔 때 호출, 칸 번호나 null을 받는다
  * @param options.onInteract 로봇 앞에서 Space나 Enter를 눌렀을 때 호출, 칸 번호를 받는다
  * @param options.onCancel 오른쪽 클릭했을 때 호출
- * @returns { setWorld, walkTo, walkBeside, robotTile, stop, dispose } 또는 WebGL을 못 쓰면 null
+ * @returns { setWorld, walkTo, walkBeside, robotTile, stop, rotate, setSpeed, setFollow, fit, dispose } 또는 WebGL을 못 쓰면 null
  */
 export function createScene(
   container,
@@ -182,7 +183,15 @@ export function createScene(
     z: height / 2,
     targetX: width / 2,
     targetZ: height / 2,
+    homeX: width / 2,
+    homeZ: height / 2,
+    offX: 0,
+    offZ: 0,
+    follow: false,
+    landKey: "",
   };
+  const pan = { active: false, x: 0, y: 0 };
+  let speed = 1;
   const matrix = new Matrix4();
   const tint = new Color();
   const tintB = new Color();
@@ -371,7 +380,9 @@ export function createScene(
       place(batteryMesh, "battery", BATTERY_HEIGHT);
       place(extMesh, "ext", EXT_HEIGHT);
       if (item && item.kind === "server") {
-        rackColors[i].set(item.broken ? COLORS.broken : SERVER_COLOR[item.level]).lerp(tint.set(COLORS.hot), item.broken ? 0 : item.heat * 0.6);
+        rackColors[i].set(item.broken ? COLORS.broken : SERVER_COLOR[item.level]);
+        if (item.variant && !item.broken) rackColors[i].lerp(tint.set(VARIANT_COLOR[item.variant]), 0.55);
+        rackColors[i].lerp(tint.set(COLORS.hot), item.broken ? 0 : item.heat * 0.6);
         serverMesh.setColorAt(i, rackColors[i]);
         if (item.broken) brokenTiles.add(i);
       } else if (item && item.kind === "cooler") {
@@ -479,8 +490,14 @@ export function createScene(
     applyFloor();
     slab.scale.set(land.w + 0.7, 1, land.h + 0.7);
     slab.position.set(land.x + land.w / 2, -0.37, land.y + land.h / 2);
-    view.targetX = land.x + land.w / 2;
-    view.targetZ = land.y + land.h / 2;
+    view.homeX = land.x + land.w / 2;
+    view.homeZ = land.y + land.h / 2;
+    const landKey = `${land.x},${land.y},${land.w},${land.h}`;
+    if (landKey !== view.landKey) {
+      view.landKey = landKey;
+      view.offX = 0;
+      view.offZ = 0;
+    }
     view.targetSize = Math.max(MIN_VIEW, (land.w + land.h) * VIEW_PER_TILE);
     applyItems();
     applyFlames(Math.max(lastBlink, 0));
@@ -613,6 +630,20 @@ export function createScene(
   };
 
   const onPointerMove = (event) => {
+    if (pan.active) {
+      const scale = view.size / camera.zoom / Math.max(1, container.clientHeight);
+      const dx = event.clientX - pan.x;
+      const dy = event.clientY - pan.y;
+      const fx = -Math.cos(view.angle);
+      const fz = -Math.sin(view.angle);
+      const ground = scale / Math.sin(CAMERA_PITCH);
+      const limit = Math.max(width, height);
+      view.offX = MathUtils.clamp(view.offX - Math.sin(view.angle) * dx * scale + fx * dy * ground, -limit, limit);
+      view.offZ = MathUtils.clamp(view.offZ + Math.cos(view.angle) * dx * scale + fz * dy * ground, -limit, limit);
+      pan.x = event.clientX;
+      pan.y = event.clientY;
+      return;
+    }
     pointer.x = event.clientX;
     pointer.y = event.clientY;
     pointer.dirty = true;
@@ -624,6 +655,14 @@ export function createScene(
     pointer.hoverTile = -1;
   };
   const onPointerDown = (event) => {
+    if (event.button === 1 || (event.button === 0 && event.shiftKey)) {
+      event.preventDefault();
+      pan.active = true;
+      pan.x = event.clientX;
+      pan.y = event.clientY;
+      canvas.setPointerCapture?.(event.pointerId);
+      return;
+    }
     if (event.button !== 0) return;
     pointer.x = event.clientX;
     pointer.y = event.clientY;
@@ -636,6 +675,7 @@ export function createScene(
   };
   const onPointerUp = () => {
     pointer.dragging = false;
+    pan.active = false;
   };
   const onContextMenu = (event) => {
     event.preventDefault();
@@ -701,7 +741,7 @@ export function createScene(
     let dirZ = 0;
     if (vx !== 0 || vz !== 0) {
       if (player.path.length) stopPath();
-      slide(vx * WALK_SPEED * dt, vz * WALK_SPEED * dt);
+      slide(vx * WALK_SPEED * speed * dt, vz * WALK_SPEED * speed * dt);
       dirX = vx;
       dirZ = vz;
       moving = true;
@@ -710,7 +750,7 @@ export function createScene(
       const dx = tx + 0.5 - player.x;
       const dz = ty + 0.5 - player.z;
       const distance = Math.hypot(dx, dz);
-      const step = WALK_SPEED * dt;
+      const step = WALK_SPEED * speed * dt;
       if (distance <= step) {
         player.x = tx + 0.5;
         player.z = ty + 0.5;
@@ -743,6 +783,7 @@ export function createScene(
     robot.group.position.set(player.x, moving ? Math.abs(Math.sin(player.walk)) * 0.04 : 0, player.z);
     robot.group.rotation.y = player.facing;
 
+    syncTarget();
     const target = Math.PI / 4 + view.index * (Math.PI / 2);
     const gap = target - view.angle;
     const rotating = Math.abs(gap) > 0.001;
@@ -774,6 +815,11 @@ export function createScene(
     blink(now);
   };
 
+  const syncTarget = () => {
+    view.targetX = (view.follow ? player.x : view.homeX) + view.offX;
+    view.targetZ = (view.follow ? player.z : view.homeZ) + view.offZ;
+  };
+
   const loop = (now) => {
     if (disposed) return;
     raf = requestAnimationFrame(loop);
@@ -782,8 +828,10 @@ export function createScene(
       lastTick = now;
       return;
     }
+    syncTarget();
     const busy =
       keys.size > 0 ||
+      pan.active ||
       player.path.length > 0 ||
       Math.abs(Math.PI / 4 + view.index * (Math.PI / 2) - view.angle) > 0.001 ||
       Math.abs(view.targetSize - view.size) > 0.01 ||
@@ -815,8 +863,31 @@ export function createScene(
     robotTile() {
       return here();
     },
+    screenOf(tile) {
+      const x = tile % width;
+      camera.updateMatrixWorld();
+      const point = new Vector3(x + 0.5, 1, (tile - x) / width + 0.5).project(camera);
+      return { x: ((point.x + 1) / 2) * container.clientWidth, y: ((1 - point.y) / 2) * container.clientHeight };
+    },
     stop() {
       stopPath();
+    },
+    rotate(step) {
+      view.index += step;
+    },
+    setSpeed(multiplier) {
+      speed = multiplier;
+    },
+    setFollow(on) {
+      view.follow = on;
+      view.offX = 0;
+      view.offZ = 0;
+    },
+    fit() {
+      view.offX = 0;
+      view.offZ = 0;
+      view.zoom = 1;
+      resize();
     },
     dispose() {
       disposed = true;

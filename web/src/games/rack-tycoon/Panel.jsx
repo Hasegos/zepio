@@ -15,10 +15,14 @@ import {
   synergyNeighbors,
   upgradeCost,
   upgradeItem,
+  variantOf,
+  VARIANTS,
   xyOf,
 } from "./engine.js";
+import { nameOf } from "./hover.js";
 import { LANDS } from "./layout.js";
-import { traitOf } from "./sites.js";
+import { upgradeRobot } from "./campus.js";
+import { BRAND_BONUS, brandGain, REBRAND_MIN, robotCost, ROBOT_UPS, traitOf } from "./sites.js";
 
 /**
  * 코인이 드는 행동 버튼. 코인이 모자라면 눌러도 동작하지 않고 모자란다는 문구를 보여 준다.
@@ -97,11 +101,18 @@ function ItemBody({ tile, state, analysis, access, onAct, onRepair, onMove, onCl
   const linked = analysis.links.filter((link) => link.hub === tile).length;
   const net = analysis.net.get(tile);
   const neighbors = cell.kind === "server" && !cell.broken ? synergyNeighbors(state, tile) : 0;
+  const variant = variantOf(cell);
+  const round = (n) => Math.round(n * 10) / 10;
   return (
     <div className="flex flex-col gap-3">
       <dl className="grid grid-cols-2 gap-2 text-sm">
         {cell.kind === "server" && (
           <>
+            {cell.variant && (
+              <Stat label={VARIANTS[cell.variant].name} wide>
+                {VARIANTS[cell.variant].text}
+              </Stat>
+            )}
             <Stat label="수익">{cell.broken ? "0 (고장)" : `${formatRate(analysis.outputs[tile])}/초`}</Stat>
             <Stat label={`온도 ${analysis.heat[tile].toFixed(1)}`}>{cell.broken ? "꺼짐" : tempLabel(analysis.heat[tile])}</Stat>
             {!cell.broken && (
@@ -164,7 +175,7 @@ function ItemBody({ tile, state, analysis, access, onAct, onRepair, onMove, onCl
         <>
           <p className="text-xs text-slate-700">
             {next.name}
-            {cell.kind === "server" && `: 수익 ${formatRate(next.output)}/초, 열 ${next.heat}, 전력 ${next.power}, 대역폭 ${next.demand}`}
+            {cell.kind === "server" && `: 수익 ${formatRate(next.output * variant.output)}/초, 열 ${round(next.heat * variant.heat)}, 전력 ${next.power}, 대역폭 ${round(next.demand * variant.demand)}`}
             {cell.kind === "cooler" && `: 반경 ${next.reach}칸, 온도 -${next.cool}, 전력 ${next.power}`}
             {cell.kind === "hub" && `: 대역폭 ${next.cap}, 닿는 거리 ${next.reach}칸, 전력 ${next.power}`}
             {cell.kind === "gen" && `: 발전 +${next.cap}, 발열 ${next.heat}`}
@@ -214,9 +225,11 @@ function ItemBody({ tile, state, analysis, access, onAct, onRepair, onMove, onCl
  * @param props.onAct 행동 함수와 인자를 받아 실행한다
  * @param props.onReset 센터 초기화를 확정했을 때 호출
  * @param props.onDifficulty 난이도 id를 받아 바꾼다
+ * @param props.onRebrand 리브랜딩을 확정했을 때 호출
  */
-function TerminalBody({ state, analysis, issues, onAct, onReset, onDifficulty }) {
+function TerminalBody({ state, analysis, issues, onAct, onReset, onDifficulty, onRebrand }) {
   const [confirming, setConfirming] = useState(false);
+  const [rebranding, setRebranding] = useState(false);
   const grade = gradeOf(state.lifetime);
   const cost = expandCost(state);
   const next = LANDS[state.land + 1];
@@ -266,6 +279,50 @@ function TerminalBody({ state, analysis, issues, onAct, onReset, onDifficulty })
           재난 기록: 폭주 {state.stats.surge} · 정전 {state.stats.blackout} · 화재 {state.stats.fire} (피해 없이 막음 {state.stats.saved})
         </p>
       </div>
+      <div className="flex flex-col gap-2 rounded-xl border border-slate-200 px-3 py-2">
+        <p className="text-xs font-semibold text-slate-700">로봇과 정비 드론</p>
+        {Object.entries(ROBOT_UPS).map(([key, up]) => {
+          const level = state.robot[key];
+          return (
+            <div key={key} className="flex flex-col gap-1">
+              <p className="text-xs text-slate-700">
+                {up.name} {level}/{up.max} · {up.effect(level)}
+              </p>
+              {level < up.max ? (
+                <Action label={`${up.name} 올리기`} cost={robotCost(key, level)} coins={state.coins} onClick={() => onAct(upgradeRobot, key)} />
+              ) : (
+                <p className="text-xs font-bold text-success-strong">최대예요.</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex flex-col gap-1.5 rounded-xl border border-slate-200 px-3 py-2">
+        <p className="text-xs font-semibold text-slate-700">
+          리브랜딩 {state.brand.count}회 · 브랜드 {state.brand.points}P (수익 +{Math.round(state.brand.points * BRAND_BONUS * 100)}%)
+        </p>
+        {state.lifetime < REBRAND_MIN ? (
+          <p className="text-xs text-slate-600">누적 수익 {formatNumber(REBRAND_MIN)}부터 리브랜딩해 브랜드 포인트를 얻을 수 있어요.</p>
+        ) : rebranding ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold text-red-700">
+              코인, 건물, 시설, 연결, 누적 수익이 처음으로 돌아가요. 도감, 업적, 재난 기록, 난이도, 브랜드는 남아요. 브랜드 +{brandGain(state.lifetime)}P를 얻어요.
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={onRebrand} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white">
+                리브랜딩
+              </button>
+              <button type="button" onClick={() => setRebranding(false)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700">
+                취소
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setRebranding(true)} className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-white">
+            리브랜딩하기 (+{brandGain(state.lifetime)}P)
+          </button>
+        )}
+      </div>
       {issues.length > 0 && (
         <ul className="flex flex-col gap-1.5">
           {issues.map((issue) => (
@@ -312,8 +369,9 @@ function TerminalBody({ state, analysis, issues, onAct, onReset, onDifficulty })
  * @param props.onClose 닫기를 눌렀을 때 호출
  * @param props.onReset 센터 초기화를 확정했을 때 호출
  * @param props.onDifficulty 난이도 id를 받아 바꾼다
+ * @param props.onRebrand 리브랜딩을 확정했을 때 호출
  */
-export default function Panel({ target, state, analysis, access, issues, onAct, onRepair, onMove, onClose, onReset, onDifficulty }) {
+export default function Panel({ target, state, analysis, access, issues, onAct, onRepair, onMove, onClose, onReset, onDifficulty, onRebrand }) {
   const dialogRef = useRef(null);
   useEffect(() => {
     dialogRef.current?.focus({ preventScroll: true });
@@ -322,7 +380,7 @@ export default function Panel({ target, state, analysis, access, issues, onAct, 
   if (target.kind === "item") {
     const cell = state.cells[target.tile];
     const [x, y] = xyOf(target.tile);
-    title = cell ? `${KINDS[cell.kind].levels[cell.level].name} (${x + 1}, ${y + 1})` : "빈 칸";
+    title = cell ? `${nameOf(cell)} (${x + 1}, ${y + 1})` : "빈 칸";
   }
   return (
     <div
@@ -351,7 +409,7 @@ export default function Panel({ target, state, analysis, access, issues, onAct, 
           onClose={onClose}
         />
       ) : (
-        <TerminalBody state={state} analysis={analysis} issues={issues} onAct={onAct} onReset={onReset} onDifficulty={onDifficulty} />
+        <TerminalBody state={state} analysis={analysis} issues={issues} onAct={onAct} onReset={onReset} onDifficulty={onDifficulty} onRebrand={onRebrand} />
       )}
     </div>
   );

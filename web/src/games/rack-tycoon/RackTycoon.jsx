@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getGameData, saveGameData } from "../../lib/storage.js";
+import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
+import { getDaily, getGameData, saveDaily, saveGameData } from "../../lib/storage.js";
 import {
   accessibleTiles,
   analyze,
@@ -25,8 +26,15 @@ import {
   xyOf,
 } from "./engine.js";
 import { EventBanner, DifficultyChooser } from "./Banner.jsx";
-import { advanceAll, buySite, campusFx, eachSite, linkCost, linkSites, offlineAll, spreadEvents, switchSite, viewOf } from "./campus.js";
+import { advanceAll, buySite, campusFx, eachSite, linkCost, linkSites, offlineAll, rebrand, researchItem, spreadEvents, switchSite, viewOf } from "./campus.js";
 import Campus from "./Campus.jsx";
+import Challenge from "./Challenge.jsx";
+import { CHALLENGE_SECONDS, challengeOf, challengeState } from "./challenge.js";
+import Business from "./Business.jsx";
+import { acceptContract, declineContract, marketMul, newBusiness, stepBusiness } from "./business.js";
+import Collection from "./Collection.jsx";
+import Research from "./Research.jsx";
+import { BADGES, collect, PART_KEYS, setTitle } from "./collection.js";
 import { burningTiles, describeEvent, newDisasters, putOut, stepDisasters } from "./disaster.js";
 import { describeHover, nextGoal, worldOf } from "./hover.js";
 import { GRID_HEIGHT, GRID_WIDTH, inLand, START, TERMINAL, TERMINAL_TILE } from "./layout.js";
@@ -49,6 +57,9 @@ const PLACE_TOOLS = ["server", "cooler", "hub", "gen", "battery", "ext"];
 const LIVE_GAP = 5;
 const KEY_TOOLS = { Digit1: "server", Digit2: "cooler", Digit3: "hub", Digit4: "gen", Digit5: "battery", Digit6: "ext", KeyM: "move", KeyX: "remove" };
 const KEY_OVERLAYS = { KeyH: "heat", KeyN: "net" };
+const POP_MS = 2500;
+const POP_LIFE_MS = 1300;
+const POP_MAX = 3;
 const TONES = { ok: "text-slate-700", poor: "text-slate-500", bad: "text-red-700" };
 
 /**
@@ -76,15 +87,65 @@ function loadBoot() {
  * @param state 게임 상태
  * @param evs 건물별 재난 진행 상태
  * @param analysis 보고 있는 건물의 analyze 결과
+ * @param mul 시장 이벤트의 수익 배율
  * @returns { type, income, links, alert } 목록
  */
-function campusOf(state, evs, analysis) {
-  const fxs = campusFx(state, evs);
+function campusOf(state, evs, analysis, mul) {
+  const fxs = campusFx(state, evs, mul);
   return state.sites.map((_, i) => {
     const view = viewOf(state, i);
     const income = i === state.active ? analysis.income : analyze(view, fxs[i]).income;
     return { type: view.type, income, links: connectionsOf(state.links, view.type), alert: describeEvent(view, evs[i])?.title ?? null };
   });
+}
+
+/**
+ * 시장 이벤트와 계약 판정에 쓸 값을 모은다.
+ *
+ * @param state 게임 상태
+ * @param evs 건물별 재난 진행 상태
+ * @param mul 시장 이벤트의 수익 배율
+ * @returns { income, broken } 모든 건물의 초당 수익 합과 고장난 서버 수
+ */
+function businessContext(state, evs, mul) {
+  const fxs = campusFx(state, evs, mul);
+  let income = 0;
+  let broken = 0;
+  state.sites.forEach((_, i) => {
+    const view = viewOf(state, i);
+    income += analyze(view, fxs[i]).income;
+    for (const cell of view.cells) if (cell && cell.kind === "server" && cell.broken) broken += 1;
+  });
+  return { income, broken };
+}
+
+/**
+ * 떠오르는 수익 글자를 위로 올리며 사라지게 한다. 요소가 생길 때 한 번만 실행된다.
+ *
+ * @param el 글자 요소
+ */
+function floatUp(el) {
+  el?.animate(
+    [
+      { transform: "translate(-50%, 0)", opacity: 1 },
+      { transform: "translate(-50%, -30px)", opacity: 0 },
+    ],
+    { duration: POP_LIFE_MS - 100, easing: "ease-out", fill: "forwards" },
+  );
+}
+
+/**
+ * 오늘의 도전이 끝났을 때 점수를 일일 기록에 남기고 결과 상태를 만든다. 같은 날 첫 판만 기록에 남는다.
+ *
+ * @param ch 도전 상태
+ * @param state 도전 중인 게임 상태
+ * @returns { daily, challenge } 새 일일 기록과 끝난 도전 상태
+ */
+function finishChallenge(ch, state) {
+  const score = Math.floor(state.lifetime);
+  const daily = nextDailyRecord(getDaily(meta.id), ch.date, score);
+  saveDaily(meta.id, daily);
+  return { daily, challenge: { ...ch, left: 0, done: true, score, record: daily.history[ch.date] ?? score, streak: daily.streak } };
 }
 
 /**
@@ -101,8 +162,17 @@ export default function RackTycoon() {
   const stateRef = useRef(boot.state);
   const evsRef = useRef(null);
   evsRef.current ??= boot.state.sites.map((_, i) => newDisasters(Date.now() + i * 977));
+  const bizRef = useRef(null);
+  bizRef.current ??= newBusiness();
+  const challengeRef = useRef(null);
+  const outputsRef = useRef([]);
+  const popId = useRef(0);
+  const [pops, setPops] = useState([]);
+  const mainRef = useRef(null);
+  const [today] = useState(() => kstDate(Date.now()));
+  const [dailyRec, setDailyRec] = useState(() => getDaily(meta.id));
   const lastRef = useRef(boot.now);
-  const uiRef = useRef({ tool: "select", overlay: "none", hoverTile: null, panel: null, carried: null });
+  const uiRef = useRef({ tool: "select", variant: "base", overlay: "none", hoverTile: null, panel: null, carried: null, codex: false, research: false });
   const [ui, setUi] = useState(uiRef.current);
   const [snap, setSnap] = useState(() => {
     const analysis = analyze(boot.state);
@@ -114,12 +184,15 @@ export default function RackTycoon() {
       issues: diagnose(boot.state, analysis, access),
       hover: { ghost: null, text: "", tone: "ok" },
       event: null,
-      campus: campusOf(boot.state, evsRef.current, analysis),
+      campus: campusOf(boot.state, evsRef.current, analysis, 1),
+      biz: bizRef.current,
+      challenge: null,
     };
   });
   const [notice, setNotice] = useState({ text: "", tone: "bad" });
   const [welcome, setWelcome] = useState(boot.welcome);
   const [noWebgl, setNoWebgl] = useState(false);
+  const [follow, setFollow] = useState(false);
   const [coarse] = useState(() => window.matchMedia?.("(pointer: coarse)").matches ?? false);
 
   const refresh = useCallback(() => {
@@ -127,13 +200,16 @@ export default function RackTycoon() {
     const u = uiRef.current;
     const robot = sceneRef.current?.robotTile() ?? START;
     const ev = evsRef.current[state.active];
-    const analysis = analyze(state, campusFx(state, evsRef.current)[state.active]);
+    const mul = marketMul(bizRef.current);
+    const analysis = analyze(state, campusFx(state, evsRef.current, mul)[state.active]);
     const access = accessibleTiles(state, robot);
-    const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried });
+    outputsRef.current = analysis.outputs;
+    const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried, variant: u.variant });
     const event = describeEvent(state, ev);
-    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event, campus: campusOf(state, evsRef.current, analysis) });
+    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event, campus: campusOf(state, evsRef.current, analysis, mul), biz: bizRef.current, challenge: challengeRef.current });
     const selected = u.carried ?? (u.panel?.kind === "item" ? u.panel.tile : null);
     const mood = event && event.phase === "live" && event.kind !== "fire" ? event.kind : "none";
+    sceneRef.current?.setSpeed(1 + 0.25 * state.robot.speed);
     sceneRef.current?.setWorld(worldOf(state, analysis, { overlay: u.overlay, ghost: hover.ghost, selected, burning: burningTiles(ev), mood }));
   }, []);
 
@@ -147,7 +223,7 @@ export default function RackTycoon() {
   );
 
   const save = useCallback(() => {
-    if (stateRef.current) saveGameData(meta.id, Date.now(), makeData(stateRef.current, lastRef.current));
+    if (stateRef.current && !challengeRef.current) saveGameData(meta.id, Date.now(), makeData(stateRef.current, lastRef.current));
   }, []);
 
   const say = useCallback((text, tone = "bad") => {
@@ -174,11 +250,49 @@ export default function RackTycoon() {
   const reset = useCallback(() => {
     stateRef.current = newState();
     evsRef.current = [newDisasters()];
+    bizRef.current = newBusiness();
     lastRef.current = Date.now();
     setWelcome(null);
     update({ panel: null, carried: null, tool: "select" });
     save();
     document.activeElement?.blur?.();
+  }, [save, update]);
+
+  const doRebrand = useCallback(() => {
+    sceneRef.current?.stop();
+    if (!act(rebrand)) return;
+    evsRef.current = [newDisasters()];
+    bizRef.current = newBusiness();
+    update({ panel: null, carried: null, tool: "select" });
+    say("리브랜딩했어요! 브랜드 포인트로 영구히 더 벌어요.", "good");
+  }, [act, say, update]);
+
+  const startChallenge = useCallback(() => {
+    save();
+    mainRef.current ??= { state: stateRef.current, evs: evsRef.current, biz: bizRef.current };
+    const date = kstDate(Date.now());
+    const { seed, type } = challengeOf(date);
+    challengeRef.current = { date, type, left: CHALLENGE_SECONDS, done: false, score: 0, record: 0, streak: 0 };
+    stateRef.current = challengeState(date);
+    evsRef.current = [newDisasters(seed)];
+    bizRef.current = newBusiness();
+    lastRef.current = Date.now();
+    sceneRef.current?.stop();
+    update({ panel: null, carried: null, tool: "select", research: false, codex: false });
+  }, [save, update]);
+
+  const quitChallenge = useCallback(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    challengeRef.current = null;
+    mainRef.current = null;
+    stateRef.current = main.state;
+    evsRef.current = main.evs;
+    bizRef.current = main.biz;
+    lastRef.current = Date.now();
+    sceneRef.current?.stop();
+    update({ panel: null, carried: null, tool: "select", research: false, codex: false });
+    save();
   }, [save, update]);
 
   const closePanel = useCallback(() => {
@@ -313,7 +427,7 @@ export default function RackTycoon() {
         }
         else say("아직 넓히지 않은 땅이에요. 단말기에서 부지를 넓히세요.");
       } else if (PLACE_TOOLS.includes(u.tool)) {
-        if (!cell) act(placeItem, tile, u.tool);
+        if (!cell) act(placeItem, tile, u.tool, u.variant);
         else if (!drag && cell.kind === u.tool) act(upgradeItem, tile);
         else if (!drag) say("이미 시설이 있어요.");
       } else if (u.tool === "remove") {
@@ -362,6 +476,8 @@ export default function RackTycoon() {
       let dt = (at - lastRef.current) / 1000;
       lastRef.current = at;
       if (dt <= 0) return;
+      const ch = challengeRef.current;
+      if (ch && (ch.done || document.hidden || dt > LIVE_GAP)) return;
       let current = stateRef.current;
       if (dt > OFFLINE_THRESHOLD) {
         const settled = offlineAll(current, dt);
@@ -369,13 +485,16 @@ export default function RackTycoon() {
         if (settled.gain > 0) setWelcome({ gain: settled.gain, seconds: settled.seconds });
       } else {
         let broken = 0;
+        let fixed = 0;
+        const total = dt;
         const live = !document.hidden && dt <= LIVE_GAP;
         while (dt > 1e-6) {
           const step = Math.min(MAX_STEP, dt);
-          const fxs = live ? campusFx(current, evsRef.current) : null;
+          const fxs = live ? campusFx(current, evsRef.current, marketMul(bizRef.current)) : null;
           const out = advanceAll(current, step, (view, i) => fxs?.[i] ?? NO_FX);
           current = out.state;
           broken += out.breaks;
+          fixed += out.fixed;
           if (live) {
             const before = evsRef.current;
             const evs = [...before];
@@ -390,11 +509,50 @@ export default function RackTycoon() {
           }
           dt -= step;
         }
+        if (live && !ch) {
+          const mul = marketMul(bizRef.current);
+          const result = stepBusiness(current, bizRef.current, total, businessContext(current, evsRef.current, mul));
+          current = result.state;
+          bizRef.current = result.biz;
+          for (const note of result.notes) say(note.text, note.tone);
+        }
+        if (ch) {
+          const left = ch.left - total;
+          if (left > 0) challengeRef.current = { ...ch, left };
+          else {
+            const end = finishChallenge(ch, current);
+            challengeRef.current = end.challenge;
+            setDailyRec(end.daily);
+          }
+        }
         if (broken) say(`서버 ${broken}대가 과열로 고장났어요. 로봇을 보내 고쳐 주세요.`);
+        else if (fixed) say(`정비 드론이 서버 ${fixed}대를 고쳤어요.`, "good");
+      }
+      const got = ch ? { fresh: [] } : collect(current);
+      if (got.fresh.length) {
+        current = got.state;
+        say(got.fresh.length > 3 ? `도감과 업적을 ${got.fresh.length}개 새로 얻었어요!` : `새로 얻었어요: ${got.fresh.join(", ")}`, "good");
       }
       stateRef.current = current;
       refresh();
     }, TICK_MS);
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const popper = setInterval(() => {
+      if (reduce || document.hidden || challengeRef.current?.done) return;
+      const lit = [];
+      outputsRef.current.forEach((out, tile) => {
+        if (out > 0) lit.push(tile);
+      });
+      const born = [];
+      for (let n = 0; n < Math.min(POP_MAX, lit.length); n += 1) {
+        const tile = lit.splice(Math.floor(Math.random() * lit.length), 1)[0];
+        const at = sceneRef.current?.screenOf(tile);
+        if (at) born.push({ id: (popId.current += 1), x: at.x, y: at.y, text: formatRate(outputsRef.current[tile] * (POP_MS / 1000)) });
+      }
+      if (!born.length) return;
+      setPops((list) => [...list, ...born]);
+      setTimeout(() => setPops((list) => list.filter((pop) => !born.includes(pop))), POP_LIFE_MS);
+    }, POP_MS);
     const autosave = setInterval(save, SAVE_MS);
     const onHide = () => {
       if (document.hidden) save();
@@ -417,6 +575,7 @@ export default function RackTycoon() {
       save();
       clearInterval(tick);
       clearInterval(autosave);
+      clearInterval(popper);
       clearTimeout(noticeTimer.current);
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", save);
@@ -426,7 +585,7 @@ export default function RackTycoon() {
     };
   }, [refresh, save, say, update, cancel, pickTool, handleTile]);
 
-  const { state, analysis, access, issues, hover, event, campus } = snap;
+  const { state, analysis, access, issues, hover, event, campus, biz, challenge } = snap;
   const totalIncome = campus.reduce((sum, site) => sum + site.income, 0);
   const grade = gradeOf(state.lifetime);
   const floor = GRADES[grade.index].min;
@@ -480,6 +639,8 @@ export default function RackTycoon() {
       <div>
         <p className="text-xs font-semibold text-slate-700">
           {grade.name}
+          {state.title && ` · ${BADGES.find((badge) => badge.id === state.title)?.name}`}
+          {state.brand.points > 0 && ` · 브랜드 ${state.brand.points}P`}
           {grade.next !== null && ` · 다음 등급까지 ${formatNumber(grade.next - state.lifetime)}`}
         </p>
         <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-200" role="presentation">
@@ -487,13 +648,21 @@ export default function RackTycoon() {
         </div>
       </div>
 
+      <Challenge
+        challenge={challenge}
+        info={{ date: today, type: challengeOf(today).type, record: dailyRec?.history?.[today] ?? null, streak: currentStreak(dailyRec, today) }}
+        lifetime={state.lifetime}
+        onStart={startChallenge}
+        onQuit={quitChallenge}
+      />
+
       <Campus
         sites={campus}
         active={state.active}
         coins={state.coins}
         links={state.links}
         linkCost={linkCost(state)}
-        showBuy={state.lifetime >= 20000 || state.sites.length > 1}
+        showBuy={!challenge && (state.lifetime >= 20000 || state.sites.length > 1)}
         onSwitch={switchTo}
         onBuy={buy}
         onLink={link}
@@ -501,7 +670,37 @@ export default function RackTycoon() {
 
       {event && <EventBanner event={event} onExtinguish={extinguishNearest} />}
 
-      {!noWebgl && <Toolbar tool={ui.tool} onTool={pickTool} overlay={ui.overlay} onOverlay={(overlay) => update({ overlay })} state={state} onExpand={() => act(expandLand)} />}
+      <Business
+        biz={biz}
+        onAccept={() => {
+          bizRef.current = acceptContract(bizRef.current, stateRef.current.lifetime);
+          refresh();
+        }}
+        onDecline={() => {
+          bizRef.current = declineContract(bizRef.current);
+          refresh();
+        }}
+      />
+
+      {!noWebgl && (
+        <Toolbar
+          tool={ui.tool}
+          onTool={pickTool}
+          variant={ui.variant}
+          onVariant={(variant) => update({ variant })}
+          overlay={ui.overlay}
+          onOverlay={(overlay) => update({ overlay })}
+          state={state}
+          onExpand={() => act(expandLand)}
+          codexOpen={ui.codex}
+          onCodex={() => update({ codex: !uiRef.current.codex })}
+          codexCount={`${state.codex.length + state.badges.length}/${PART_KEYS.size + BADGES.length}`}
+          researchOpen={ui.research}
+          onResearch={() => update({ research: !uiRef.current.research })}
+        />
+      )}
+      {ui.research && <Research state={state} onResearch={(key) => act(researchItem, key)} onClose={() => update({ research: false })} />}
+      {ui.codex && <Collection state={state} onTitle={(id) => act(setTitle, id)} onClose={() => update({ codex: false })} />}
 
       <p className={`min-h-5 text-sm font-semibold ${TONES[hover.text ? hover.tone : "ok"]}`}>{carriedName || hint}</p>
       <div className="min-h-6" role="status">
@@ -518,13 +717,71 @@ export default function RackTycoon() {
 
       <div className="relative">
         <div ref={stageRef} className="h-[62vh] max-h-[680px] min-h-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-indigo-100" />
+        {!noWebgl && (
+          <div className="absolute bottom-3 left-3 z-10 flex gap-1.5" role="group" aria-label="화면 회전">
+            {[
+              { label: "왼쪽으로 돌리기 (Q)", step: -1, icon: "↺" },
+              { label: "오른쪽으로 돌리기 (E)", step: 1, icon: "↻" },
+            ].map(({ label, step, icon }) => (
+              <button
+                key={step}
+                type="button"
+                aria-label={label}
+                title={label}
+                onClick={(event) => {
+                  sceneRef.current?.rotate(step);
+                  if (event.detail > 0) event.currentTarget.blur();
+                }}
+                className="h-10 w-10 rounded-full border border-slate-300 bg-white/90 text-xl font-bold text-slate-700 shadow hover:bg-white"
+              >
+                {icon}
+              </button>
+            ))}
+            <button
+              type="button"
+              aria-pressed={follow}
+              onClick={(event) => {
+                const next = !follow;
+                setFollow(next);
+                sceneRef.current?.setFollow(next);
+                if (event.detail > 0) event.currentTarget.blur();
+              }}
+              className="h-10 rounded-full border border-slate-300 bg-white/90 px-3 text-xs font-bold text-slate-700 shadow hover:bg-white aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white"
+            >
+              로봇 따라가기
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                setFollow(false);
+                sceneRef.current?.setFollow(false);
+                sceneRef.current?.fit();
+                if (event.detail > 0) event.currentTarget.blur();
+              }}
+              className="h-10 rounded-full border border-slate-300 bg-white/90 px-3 text-xs font-bold text-slate-700 shadow hover:bg-white"
+            >
+              전체 보기
+            </button>
+          </div>
+        )}
+        {pops.map((pop) => (
+          <span
+            key={pop.id}
+            ref={floatUp}
+            style={{ left: pop.x, top: pop.y }}
+            className="pointer-events-none absolute z-10 text-xs font-extrabold text-amber-600 [text-shadow:0_1px_0_#fff]"
+            aria-hidden="true"
+          >
+            +{pop.text}
+          </span>
+        ))}
         {noWebgl && (
           <p className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm font-semibold text-slate-700">
             이 브라우저에서는 3D 화면을 쓸 수 없어요. 아래 목록에서 좌표로 시설을 설치하고 관리할 수 있어요.
           </p>
         )}
         {state.difficulty === null && <DifficultyChooser onPick={pickDifficulty} />}
-        {ui.panel && (
+        {ui.panel && !(challenge && ui.panel.kind === "terminal") && (
           <Panel
             target={ui.panel}
             state={state}
@@ -537,11 +794,12 @@ export default function RackTycoon() {
             onClose={closePanel}
             onReset={reset}
             onDifficulty={pickDifficulty}
+            onRebrand={doRebrand}
           />
         )}
       </div>
       <p className="text-xs text-slate-600">
-        바닥을 누르면 로봇이 걸어가요. 도구(1~6)를 고르면 빈 칸에 설치하고, 끌면서 여러 칸에 놓을 수 있어요. H는 열지도, N은 네트워크, M은 옮기기, X는 철거, Esc나 오른쪽 클릭은 취소예요. WASD로 직접 움직이고 Q/E로 돌리고 휠로 확대해요.
+        바닥을 누르면 로봇이 걸어가요. 도구(1~6)를 고르면 빈 칸에 설치하고, 끌면서 여러 칸에 놓을 수 있어요. H는 열지도, N은 네트워크, M은 옮기기, X는 철거, Esc나 오른쪽 클릭은 취소예요. WASD로 직접 움직이고 휠로 확대해요. Shift를 누른 채 끌거나 휠 버튼으로 끌면 화면을 옮기고, 시설에 가려 안 보이는 칸은 화면 왼쪽 아래 버튼이나 Q/E로 돌려서 보세요.
       </p>
 
       <Lists

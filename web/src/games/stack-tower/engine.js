@@ -1,3 +1,5 @@
+import { makeRng } from "../_shared/rng.js";
+
 export const WIDTH = 320;
 export const HEIGHT = 420;
 export const BLOCK_H = 22;
@@ -20,27 +22,42 @@ export function speedFor(floors) {
 }
 
 /**
+ * 날짜 시드로 오늘의 도전 규칙을 정한다. 속도 배율과 처음 들어오는 쪽이 달라서 날마다 느낌이 다르다.
+ *
+ * @param seed 정수 시드
+ * @returns { speedMul, flip } 속도 배율(0.85~1.2)과, 들어오는 쪽을 뒤집을지
+ */
+export function dailyRules(seed) {
+  const random = makeRng(seed);
+  return { speedMul: 0.85 + Math.floor(random() * 36) / 100, flip: random() < 0.5 };
+}
+
+/**
  * 층수에 맞춰 양쪽 끝에서 번갈아 들어오는 새 블록을 만든다.
  *
  * @param w 블록 폭
  * @param floors 지금까지 쌓은 층수
+ * @param flip 들어오는 쪽을 뒤집을지
  * @returns 움직이는 블록
  */
-function startBlock(w, floors) {
-  const fromLeft = floors % 2 === 0;
+function startBlock(w, floors, flip) {
+  const fromLeft = (floors % 2 === 0) !== flip;
   return { x: fromLeft ? 0 : WIDTH - w, w, dir: fromLeft ? 1 : -1 };
 }
 
 /**
  * 첫 판 상태를 만든다. 가운데 놓인 바닥 블록 하나와 움직이는 블록 하나로 시작한다.
  *
+ * @param rules 오늘의 도전 규칙(dailyRules), 일반 판이면 비워 둔다
  * @returns 게임 상태
  */
-export function createState() {
+export function createState(rules = { speedMul: 1, flip: false }) {
   const base = { x: (WIDTH - BASE_W) / 2, w: BASE_W };
   return {
     blocks: [base],
-    moving: startBlock(BASE_W, 0),
+    moving: startBlock(BASE_W, 0, rules.flip),
+    speedMul: rules.speedMul,
+    flip: rules.flip,
     floors: 0,
     perfects: 0,
     combo: 0,
@@ -62,7 +79,7 @@ export function step(state, ms) {
   const { moving } = state;
   const max = WIDTH - moving.w;
   const dt = Math.min(ms, MAX_STEP_MS) / 1000;
-  let x = moving.x + moving.dir * speedFor(state.floors) * dt;
+  let x = moving.x + moving.dir * speedFor(state.floors) * state.speedMul * dt;
   let dir = moving.dir;
   if (x < 0) {
     x = -x;
@@ -89,7 +106,7 @@ function place(state, block, cut, combo, perfect) {
   return {
     ...state,
     blocks: [...state.blocks, block],
-    moving: startBlock(block.w, floors),
+    moving: startBlock(block.w, floors, state.flip),
     floors,
     perfects: state.perfects + (perfect ? 1 : 0),
     combo,

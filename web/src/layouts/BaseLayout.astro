@@ -12,7 +12,10 @@ const {
   type = "website",
   noindex = false,
   jsonLd = [],
+  size = "text",
 } = Astro.props;
+const WIDTHS = { text: "max-w-3xl", home: "max-w-6xl" };
+
 const indexable = import.meta.env.PUBLIC_SITE_ENV === "production";
 const canonical = indexable && !noindex ? canonicalUrl(Astro.site, Astro.url.pathname) : null;
 const adsense = indexable ? adsenseClient(import.meta.env.PUBLIC_ADSENSE_CLIENT) : null;
@@ -82,7 +85,7 @@ const imageUrl = indexable ? new URL(image, Astro.site).href : null;
       본문으로 건너뛰기
     </a>
     <Header />
-    <main id="main" class="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
+    <main id="main" class:list={["mx-auto w-full flex-1 px-4 py-6", WIDTHS[size]]}>
       <slot />
     </main>
     <Footer />

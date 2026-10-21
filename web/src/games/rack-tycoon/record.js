@@ -1,8 +1,9 @@
 import { isInt, isObject } from "../_shared/validate.js";
-import { analyze, DIFFICULTIES, formatRate, gradeOf, KINDS, newState, xyOf } from "./engine.js";
+import { analyze, DIFFICULTIES, formatRate, gradeOf, KINDS, newState, VARIANTS, xyOf } from "./engine.js";
 import { snapshot, viewOf } from "./campus.js";
 import { AREA, GRID_HEIGHT, GRID_WIDTH, inLand, LANDS, TERMINAL_TILE } from "./layout.js";
-import { MAX_SITES, SITE_TYPES } from "./sites.js";
+import { BADGE_IDS, PART_KEYS } from "./collection.js";
+import { MAX_SITES, RESEARCH, ROBOT_UPS, SITE_TYPES } from "./sites.js";
 
 const MAX_VALUE = 1e18;
 const VERSION = 3;
@@ -40,7 +41,9 @@ function readCell(cell, tile, inside) {
   if (!isInt(cell.level, 1, KINDS[cell.kind].levels.length - 1) || typeof cell.broken !== "boolean") return undefined;
   if (typeof cell.stress !== "number" || !(cell.stress >= 0 && cell.stress < 1)) return undefined;
   if (cell.kind !== "server" && (cell.broken || cell.stress !== 0)) return undefined;
-  return { kind: cell.kind, level: cell.level, stress: cell.stress, broken: cell.broken };
+  const clean = { kind: cell.kind, level: cell.level, stress: cell.stress, broken: cell.broken };
+  if (cell.kind === "server" && typeof cell.variant === "string" && cell.variant !== "base" && Object.hasOwn(VARIANTS, cell.variant)) clean.variant = cell.variant;
+  return clean;
 }
 
 /**
@@ -65,11 +68,11 @@ function readCells(cells, inside) {
  * 저장된 재난 기록을 안전한 모양으로 다듬는다. 없거나 깨진 값은 0으로 본다.
  *
  * @param raw 저장소에서 읽은 기록
- * @returns { surge, blackout, fire, saved }
+ * @returns { surge, blackout, fire, saved, contracts }
  */
 function readStats(raw) {
   const clean = {};
-  for (const key of ["surge", "blackout", "fire", "saved"]) clean[key] = isObject(raw) && isInt(raw[key], 0, 1e9) ? raw[key] : 0;
+  for (const key of ["surge", "blackout", "fire", "saved", "contracts"]) clean[key] = isObject(raw) && isInt(raw[key], 0, 1e9) ? raw[key] : 0;
   return clean;
 }
 
@@ -108,9 +111,55 @@ function readLinks(raw, sites) {
 }
 
 /**
+ * 저장된 도감, 업적, 칭호를 안전한 모양으로 다듬는다. 모르는 항목은 버리고 겹치는 항목은 하나로 합친다.
+ *
+ * @param raw 저장소에서 읽은 센터 상태
+ * @returns { codex, badges, title }
+ */
+function readCollection(raw) {
+  const pick = (list, known) => (Array.isArray(list) ? [...new Set(list.filter((key) => typeof key === "string" && known.has(key)))] : []);
+  const badges = pick(raw.badges, BADGE_IDS);
+  return { codex: pick(raw.codex, PART_KEYS), badges, title: typeof raw.title === "string" && badges.includes(raw.title) ? raw.title : null };
+}
+
+/**
+ * 저장된 브랜드 기록을 안전한 모양으로 다듬는다. 없거나 깨진 값은 0으로 본다.
+ *
+ * @param raw 저장소에서 읽은 기록
+ * @returns { points, count }
+ */
+function readBrand(raw) {
+  return { points: isObject(raw) && isInt(raw.points, 0, 1e6) ? raw.points : 0, count: isObject(raw) && isInt(raw.count, 0, 1e6) ? raw.count : 0 };
+}
+
+/**
+ * 저장된 로봇 강화 단계를 안전한 모양으로 다듬는다. 없거나 범위를 벗어난 값은 0으로 본다.
+ *
+ * @param raw 저장소에서 읽은 기록
+ * @returns { speed, discount, drone }
+ */
+function readRobot(raw) {
+  const clean = {};
+  for (const [key, up] of Object.entries(ROBOT_UPS)) clean[key] = isObject(raw) && isInt(raw[key], 0, up.max) ? raw[key] : 0;
+  return clean;
+}
+
+/**
+ * 저장된 연구 단계를 안전한 모양으로 다듬는다. 없거나 범위를 벗어난 값은 0으로 본다.
+ *
+ * @param raw 저장소에서 읽은 기록
+ * @returns 연구 종류별 단계
+ */
+function readResearch(raw) {
+  const clean = {};
+  for (const [key, item] of Object.entries(RESEARCH)) clean[key] = isObject(raw) && isInt(raw[key], 0, item.max) ? raw[key] : 0;
+  return clean;
+}
+
+/**
  * 건물 목록과 보고 있는 건물로 게임 상태를 만든다.
  *
- * @param base { coins, lifetime, time, difficulty, stats, links }
+ * @param base { coins, lifetime, time, difficulty, stats, links, brand, robot, research, codex, badges, title }
  * @param sites 건물 목록
  * @param active 보고 있는 건물 번호
  * @returns 게임 상태
@@ -135,7 +184,7 @@ export function readState(raw) {
   const clean = sites.map(readSite);
   if (clean.some((site) => site === null) || new Set(clean.map((site) => site.type)).size !== clean.length) return null;
   const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
-  return build({ coins, lifetime, time, difficulty, stats: readStats(raw.stats), links: readLinks(raw.links, clean) }, clean, active);
+  return build({ coins, lifetime, time, difficulty, stats: readStats(raw.stats), links: readLinks(raw.links, clean), brand: readBrand(raw.brand), robot: readRobot(raw.robot), research: readResearch(raw.research), ...readCollection(raw) }, clean, active);
 }
 
 /**
@@ -163,7 +212,7 @@ function migrateV2(raw) {
     return null;
   });
   const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
-  const base = { coins: Math.min(MAX_VALUE, coins + refund), lifetime, time, difficulty, stats: readStats(raw.stats), links: [] };
+  const base = { coins: Math.min(MAX_VALUE, coins + refund), lifetime, time, difficulty, stats: readStats(raw.stats), links: [], brand: readBrand(raw.brand), robot: readRobot(raw.robot), research: readResearch(raw.research), ...readCollection(raw) };
   return build(base, [{ type: "basement", land: nextLand, cells: kept }], 0);
 }
 
