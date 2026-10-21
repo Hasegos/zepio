@@ -10,4 +10,5 @@ export const recordLoaders = {
   "rack-tycoon": () => import("./rack-tycoon/record.js"),
   "hidden-rule": () => import("./hidden-rule/record.js"),
   "bug-desk": () => import("./bug-desk/record.js"),
+  rumor: () => import("./rumor/record.js"),
 };
