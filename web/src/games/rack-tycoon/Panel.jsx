@@ -15,8 +15,11 @@ import {
   synergyNeighbors,
   upgradeCost,
   upgradeItem,
+  variantOf,
+  VARIANTS,
   xyOf,
 } from "./engine.js";
+import { nameOf } from "./hover.js";
 import { LANDS } from "./layout.js";
 import { upgradeRobot } from "./campus.js";
 import { BRAND_BONUS, brandGain, REBRAND_MIN, robotCost, ROBOT_UPS, traitOf } from "./sites.js";
@@ -98,11 +101,18 @@ function ItemBody({ tile, state, analysis, access, onAct, onRepair, onMove, onCl
   const linked = analysis.links.filter((link) => link.hub === tile).length;
   const net = analysis.net.get(tile);
   const neighbors = cell.kind === "server" && !cell.broken ? synergyNeighbors(state, tile) : 0;
+  const variant = variantOf(cell);
+  const round = (n) => Math.round(n * 10) / 10;
   return (
     <div className="flex flex-col gap-3">
       <dl className="grid grid-cols-2 gap-2 text-sm">
         {cell.kind === "server" && (
           <>
+            {cell.variant && (
+              <Stat label={VARIANTS[cell.variant].name} wide>
+                {VARIANTS[cell.variant].text}
+              </Stat>
+            )}
             <Stat label="수익">{cell.broken ? "0 (고장)" : `${formatRate(analysis.outputs[tile])}/초`}</Stat>
             <Stat label={`온도 ${analysis.heat[tile].toFixed(1)}`}>{cell.broken ? "꺼짐" : tempLabel(analysis.heat[tile])}</Stat>
             {!cell.broken && (
@@ -165,7 +175,7 @@ function ItemBody({ tile, state, analysis, access, onAct, onRepair, onMove, onCl
         <>
           <p className="text-xs text-slate-700">
             {next.name}
-            {cell.kind === "server" && `: 수익 ${formatRate(next.output)}/초, 열 ${next.heat}, 전력 ${next.power}, 대역폭 ${next.demand}`}
+            {cell.kind === "server" && `: 수익 ${formatRate(next.output * variant.output)}/초, 열 ${round(next.heat * variant.heat)}, 전력 ${next.power}, 대역폭 ${round(next.demand * variant.demand)}`}
             {cell.kind === "cooler" && `: 반경 ${next.reach}칸, 온도 -${next.cool}, 전력 ${next.power}`}
             {cell.kind === "hub" && `: 대역폭 ${next.cap}, 닿는 거리 ${next.reach}칸, 전력 ${next.power}`}
             {cell.kind === "gen" && `: 발전 +${next.cap}, 발열 ${next.heat}`}
@@ -370,7 +380,7 @@ export default function Panel({ target, state, analysis, access, issues, onAct, 
   if (target.kind === "item") {
     const cell = state.cells[target.tile];
     const [x, y] = xyOf(target.tile);
-    title = cell ? `${KINDS[cell.kind].levels[cell.level].name} (${x + 1}, ${y + 1})` : "빈 칸";
+    title = cell ? `${nameOf(cell)} (${x + 1}, ${y + 1})` : "빈 칸";
   }
   return (
     <div

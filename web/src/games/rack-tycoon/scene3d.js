@@ -70,6 +70,7 @@ const BATTERY_COLOR = ["#86efac", "#86efac", "#22c55e", "#15803d"];
 const EXT_HEIGHT = [0, 0.45, 0.6, 0.8];
 const EXT_COLOR = ["#fca5a5", "#fca5a5", "#ef4444", "#b91c1c"];
 const GHOST_HEIGHT = { server: 1, cooler: 0.8, hub: 0.7, gen: 0.5, battery: 0.6, ext: 0.5 };
+const VARIANT_COLOR = { ai: "#a855f7", storage: "#0ea5e9", cache: "#f59e0b" };
 const GHOST_COLOR = { server: "#6366f1", cooler: "#22d3ee", hub: "#10b981", gen: "#f59e0b", battery: "#16a34a", ext: "#ef4444" };
 const MOODS = {
   none: { background: "#e8ecff", ambient: 1.7, sun: 1.6 },
@@ -379,7 +380,9 @@ export function createScene(
       place(batteryMesh, "battery", BATTERY_HEIGHT);
       place(extMesh, "ext", EXT_HEIGHT);
       if (item && item.kind === "server") {
-        rackColors[i].set(item.broken ? COLORS.broken : SERVER_COLOR[item.level]).lerp(tint.set(COLORS.hot), item.broken ? 0 : item.heat * 0.6);
+        rackColors[i].set(item.broken ? COLORS.broken : SERVER_COLOR[item.level]);
+        if (item.variant && !item.broken) rackColors[i].lerp(tint.set(VARIANT_COLOR[item.variant]), 0.55);
+        rackColors[i].lerp(tint.set(COLORS.hot), item.broken ? 0 : item.heat * 0.6);
         serverMesh.setColorAt(i, rackColors[i]);
         if (item.broken) brokenTiles.add(i);
       } else if (item && item.kind === "cooler") {
