@@ -863,6 +863,12 @@ export function createScene(
     robotTile() {
       return here();
     },
+    screenOf(tile) {
+      const x = tile % width;
+      camera.updateMatrixWorld();
+      const point = new Vector3(x + 0.5, 1, (tile - x) / width + 0.5).project(camera);
+      return { x: ((point.x + 1) / 2) * container.clientWidth, y: ((1 - point.y) / 2) * container.clientHeight };
+    },
     stop() {
       stopPath();
     },

@@ -57,6 +57,9 @@ const PLACE_TOOLS = ["server", "cooler", "hub", "gen", "battery", "ext"];
 const LIVE_GAP = 5;
 const KEY_TOOLS = { Digit1: "server", Digit2: "cooler", Digit3: "hub", Digit4: "gen", Digit5: "battery", Digit6: "ext", KeyM: "move", KeyX: "remove" };
 const KEY_OVERLAYS = { KeyH: "heat", KeyN: "net" };
+const POP_MS = 2500;
+const POP_LIFE_MS = 1300;
+const POP_MAX = 3;
 const TONES = { ok: "text-slate-700", poor: "text-slate-500", bad: "text-red-700" };
 
 /**
@@ -117,6 +120,21 @@ function businessContext(state, evs, mul) {
 }
 
 /**
+ * 떠오르는 수익 글자를 위로 올리며 사라지게 한다. 요소가 생길 때 한 번만 실행된다.
+ *
+ * @param el 글자 요소
+ */
+function floatUp(el) {
+  el?.animate(
+    [
+      { transform: "translate(-50%, 0)", opacity: 1 },
+      { transform: "translate(-50%, -30px)", opacity: 0 },
+    ],
+    { duration: POP_LIFE_MS - 100, easing: "ease-out", fill: "forwards" },
+  );
+}
+
+/**
  * 오늘의 도전이 끝났을 때 점수를 일일 기록에 남기고 결과 상태를 만든다. 같은 날 첫 판만 기록에 남는다.
  *
  * @param ch 도전 상태
@@ -147,6 +165,9 @@ export default function RackTycoon() {
   const bizRef = useRef(null);
   bizRef.current ??= newBusiness();
   const challengeRef = useRef(null);
+  const outputsRef = useRef([]);
+  const popId = useRef(0);
+  const [pops, setPops] = useState([]);
   const mainRef = useRef(null);
   const [today] = useState(() => kstDate(Date.now()));
   const [dailyRec, setDailyRec] = useState(() => getDaily(meta.id));
@@ -182,6 +203,7 @@ export default function RackTycoon() {
     const mul = marketMul(bizRef.current);
     const analysis = analyze(state, campusFx(state, evsRef.current, mul)[state.active]);
     const access = accessibleTiles(state, robot);
+    outputsRef.current = analysis.outputs;
     const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried, variant: u.variant });
     const event = describeEvent(state, ev);
     setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event, campus: campusOf(state, evsRef.current, analysis, mul), biz: bizRef.current, challenge: challengeRef.current });
@@ -514,6 +536,23 @@ export default function RackTycoon() {
       stateRef.current = current;
       refresh();
     }, TICK_MS);
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const popper = setInterval(() => {
+      if (reduce || document.hidden || challengeRef.current?.done) return;
+      const lit = [];
+      outputsRef.current.forEach((out, tile) => {
+        if (out > 0) lit.push(tile);
+      });
+      const born = [];
+      for (let n = 0; n < Math.min(POP_MAX, lit.length); n += 1) {
+        const tile = lit.splice(Math.floor(Math.random() * lit.length), 1)[0];
+        const at = sceneRef.current?.screenOf(tile);
+        if (at) born.push({ id: (popId.current += 1), x: at.x, y: at.y, text: formatRate(outputsRef.current[tile] * (POP_MS / 1000)) });
+      }
+      if (!born.length) return;
+      setPops((list) => [...list, ...born]);
+      setTimeout(() => setPops((list) => list.filter((pop) => !born.includes(pop))), POP_LIFE_MS);
+    }, POP_MS);
     const autosave = setInterval(save, SAVE_MS);
     const onHide = () => {
       if (document.hidden) save();
@@ -536,6 +575,7 @@ export default function RackTycoon() {
       save();
       clearInterval(tick);
       clearInterval(autosave);
+      clearInterval(popper);
       clearTimeout(noticeTimer.current);
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", save);
@@ -724,6 +764,17 @@ export default function RackTycoon() {
             </button>
           </div>
         )}
+        {pops.map((pop) => (
+          <span
+            key={pop.id}
+            ref={floatUp}
+            style={{ left: pop.x, top: pop.y }}
+            className="pointer-events-none absolute z-10 text-xs font-extrabold text-amber-600 [text-shadow:0_1px_0_#fff]"
+            aria-hidden="true"
+          >
+            +{pop.text}
+          </span>
+        ))}
         {noWebgl && (
           <p className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm font-semibold text-slate-700">
             이 브라우저에서는 3D 화면을 쓸 수 없어요. 아래 목록에서 좌표로 시설을 설치하고 관리할 수 있어요.
