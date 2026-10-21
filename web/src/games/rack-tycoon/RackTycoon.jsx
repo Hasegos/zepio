@@ -122,6 +122,7 @@ export default function RackTycoon() {
   const [notice, setNotice] = useState({ text: "", tone: "bad" });
   const [welcome, setWelcome] = useState(boot.welcome);
   const [noWebgl, setNoWebgl] = useState(false);
+  const [follow, setFollow] = useState(false);
   const [coarse] = useState(() => window.matchMedia?.("(pointer: coarse)").matches ?? false);
 
   const refresh = useCallback(() => {
@@ -568,6 +569,31 @@ export default function RackTycoon() {
                 {icon}
               </button>
             ))}
+            <button
+              type="button"
+              aria-pressed={follow}
+              onClick={(event) => {
+                const next = !follow;
+                setFollow(next);
+                sceneRef.current?.setFollow(next);
+                if (event.detail > 0) event.currentTarget.blur();
+              }}
+              className="h-10 rounded-full border border-slate-300 bg-white/90 px-3 text-xs font-bold text-slate-700 shadow hover:bg-white aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white"
+            >
+              로봇 따라가기
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                setFollow(false);
+                sceneRef.current?.setFollow(false);
+                sceneRef.current?.fit();
+                if (event.detail > 0) event.currentTarget.blur();
+              }}
+              className="h-10 rounded-full border border-slate-300 bg-white/90 px-3 text-xs font-bold text-slate-700 shadow hover:bg-white"
+            >
+              전체 보기
+            </button>
           </div>
         )}
         {noWebgl && (
@@ -594,7 +620,7 @@ export default function RackTycoon() {
         )}
       </div>
       <p className="text-xs text-slate-600">
-        바닥을 누르면 로봇이 걸어가요. 도구(1~6)를 고르면 빈 칸에 설치하고, 끌면서 여러 칸에 놓을 수 있어요. H는 열지도, N은 네트워크, M은 옮기기, X는 철거, Esc나 오른쪽 클릭은 취소예요. WASD로 직접 움직이고 휠로 확대해요. 시설에 가려 안 보이는 칸은 화면 왼쪽 아래 버튼이나 Q/E로 돌려서 보세요.
+        바닥을 누르면 로봇이 걸어가요. 도구(1~6)를 고르면 빈 칸에 설치하고, 끌면서 여러 칸에 놓을 수 있어요. H는 열지도, N은 네트워크, M은 옮기기, X는 철거, Esc나 오른쪽 클릭은 취소예요. WASD로 직접 움직이고 휠로 확대해요. Shift를 누른 채 끌거나 휠 버튼으로 끌면 화면을 옮기고, 시설에 가려 안 보이는 칸은 화면 왼쪽 아래 버튼이나 Q/E로 돌려서 보세요.
       </p>
 
       <Lists

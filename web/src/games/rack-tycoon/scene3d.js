@@ -143,7 +143,7 @@ function buildRobot() {
  * @param options.onHover 가리키는 칸이 바뀔 때 호출, 칸 번호나 null을 받는다
  * @param options.onInteract 로봇 앞에서 Space나 Enter를 눌렀을 때 호출, 칸 번호를 받는다
  * @param options.onCancel 오른쪽 클릭했을 때 호출
- * @returns { setWorld, walkTo, walkBeside, robotTile, stop, rotate, dispose } 또는 WebGL을 못 쓰면 null
+ * @returns { setWorld, walkTo, walkBeside, robotTile, stop, rotate, setFollow, fit, dispose } 또는 WebGL을 못 쓰면 null
  */
 export function createScene(
   container,
@@ -182,7 +182,14 @@ export function createScene(
     z: height / 2,
     targetX: width / 2,
     targetZ: height / 2,
+    homeX: width / 2,
+    homeZ: height / 2,
+    offX: 0,
+    offZ: 0,
+    follow: false,
+    landKey: "",
   };
+  const pan = { active: false, x: 0, y: 0 };
   const matrix = new Matrix4();
   const tint = new Color();
   const tintB = new Color();
@@ -479,8 +486,14 @@ export function createScene(
     applyFloor();
     slab.scale.set(land.w + 0.7, 1, land.h + 0.7);
     slab.position.set(land.x + land.w / 2, -0.37, land.y + land.h / 2);
-    view.targetX = land.x + land.w / 2;
-    view.targetZ = land.y + land.h / 2;
+    view.homeX = land.x + land.w / 2;
+    view.homeZ = land.y + land.h / 2;
+    const landKey = `${land.x},${land.y},${land.w},${land.h}`;
+    if (landKey !== view.landKey) {
+      view.landKey = landKey;
+      view.offX = 0;
+      view.offZ = 0;
+    }
     view.targetSize = Math.max(MIN_VIEW, (land.w + land.h) * VIEW_PER_TILE);
     applyItems();
     applyFlames(Math.max(lastBlink, 0));
@@ -613,6 +626,20 @@ export function createScene(
   };
 
   const onPointerMove = (event) => {
+    if (pan.active) {
+      const scale = view.size / camera.zoom / Math.max(1, container.clientHeight);
+      const dx = event.clientX - pan.x;
+      const dy = event.clientY - pan.y;
+      const fx = -Math.cos(view.angle);
+      const fz = -Math.sin(view.angle);
+      const ground = scale / Math.sin(CAMERA_PITCH);
+      const limit = Math.max(width, height);
+      view.offX = MathUtils.clamp(view.offX - Math.sin(view.angle) * dx * scale + fx * dy * ground, -limit, limit);
+      view.offZ = MathUtils.clamp(view.offZ + Math.cos(view.angle) * dx * scale + fz * dy * ground, -limit, limit);
+      pan.x = event.clientX;
+      pan.y = event.clientY;
+      return;
+    }
     pointer.x = event.clientX;
     pointer.y = event.clientY;
     pointer.dirty = true;
@@ -624,6 +651,14 @@ export function createScene(
     pointer.hoverTile = -1;
   };
   const onPointerDown = (event) => {
+    if (event.button === 1 || (event.button === 0 && event.shiftKey)) {
+      event.preventDefault();
+      pan.active = true;
+      pan.x = event.clientX;
+      pan.y = event.clientY;
+      canvas.setPointerCapture?.(event.pointerId);
+      return;
+    }
     if (event.button !== 0) return;
     pointer.x = event.clientX;
     pointer.y = event.clientY;
@@ -636,6 +671,7 @@ export function createScene(
   };
   const onPointerUp = () => {
     pointer.dragging = false;
+    pan.active = false;
   };
   const onContextMenu = (event) => {
     event.preventDefault();
@@ -743,6 +779,7 @@ export function createScene(
     robot.group.position.set(player.x, moving ? Math.abs(Math.sin(player.walk)) * 0.04 : 0, player.z);
     robot.group.rotation.y = player.facing;
 
+    syncTarget();
     const target = Math.PI / 4 + view.index * (Math.PI / 2);
     const gap = target - view.angle;
     const rotating = Math.abs(gap) > 0.001;
@@ -774,6 +811,11 @@ export function createScene(
     blink(now);
   };
 
+  const syncTarget = () => {
+    view.targetX = (view.follow ? player.x : view.homeX) + view.offX;
+    view.targetZ = (view.follow ? player.z : view.homeZ) + view.offZ;
+  };
+
   const loop = (now) => {
     if (disposed) return;
     raf = requestAnimationFrame(loop);
@@ -782,8 +824,10 @@ export function createScene(
       lastTick = now;
       return;
     }
+    syncTarget();
     const busy =
       keys.size > 0 ||
+      pan.active ||
       player.path.length > 0 ||
       Math.abs(Math.PI / 4 + view.index * (Math.PI / 2) - view.angle) > 0.001 ||
       Math.abs(view.targetSize - view.size) > 0.01 ||
@@ -820,6 +864,17 @@ export function createScene(
     },
     rotate(step) {
       view.index += step;
+    },
+    setFollow(on) {
+      view.follow = on;
+      view.offX = 0;
+      view.offZ = 0;
+    },
+    fit() {
+      view.offX = 0;
+      view.offZ = 0;
+      view.zoom = 1;
+      resize();
     },
     dispose() {
       disposed = true;
