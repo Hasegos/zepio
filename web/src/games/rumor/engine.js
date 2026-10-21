@@ -180,3 +180,20 @@ export function evaluate(round, plan) {
   const value = sim.counts[round.type === "spread" ? SPREAD_TURNS : TURNS];
   return { sim, value, stars: starsOf(round, value) };
 }
+const ENDINGS = [
+  { min: 8, title: "소문의 지배자", text: "퍼뜨릴 땐 번개처럼, 막을 땐 방화벽처럼. 마을의 입과 귀를 모두 쥐었어요." },
+  { min: 6, title: "동네 소식통", text: "누가 어디서 얼마나 떠들지 훤히 보이네요. 한두 걸음만 더 가면 완벽해요." },
+  { min: 4, title: "입소문 견습생", text: "감은 잡았어요. 수다쟁이와 다리 역할을 하는 사람을 더 눈여겨보세요." },
+  { min: 2, title: "수군거림 구경꾼", text: "소문은 생각보다 영리하게 퍼져요. 이웃 연결선을 따라가 보세요." },
+  { min: 0, title: "조용한 마을", text: "아직 마을이 당신의 말을 듣지 않네요. 사람 유형부터 다시 살펴보세요." },
+];
+
+/**
+ * 별 합계에 맞는 결말을 고른다.
+ *
+ * @param stars 별 개수의 합(0~MAX_STARS)
+ * @returns { title, text }
+ */
+export function endingOf(stars) {
+  return ENDINGS.find((ending) => stars >= ending.min);
+}
