@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { TYPES } from "./village.js";
+import { CLUSTERS, TYPES } from "./village.js";
 
 const NODE_CLASS = {
   idle: "fill-white stroke-slate-400",
   heard: "fill-amber-200 stroke-amber-600",
-  believed: "fill-danger stroke-danger-strong",
+  believed: "fill-danger-strong stroke-red-900",
   immune: "fill-primary stroke-primary",
 };
 const TEXT_CLASS = { idle: "fill-slate-900", heard: "fill-slate-900", believed: "fill-white", immune: "fill-white" };
@@ -43,9 +43,18 @@ function stateOf(person, { round, picks, outcome, turn }) {
  */
 export default function Village({ village, round, picks, outcome, turn, onPick }) {
   const [info, setInfo] = useState(null);
+  const [tab, setTab] = useState(0);
   const props = { round, picks, outcome, turn };
   const shown = info ?? (round.type === "stop" ? round.starters[0] : null);
   const shownState = shown === null ? null : stateOf(shown, props);
+  const labelOf = (person, state) => {
+    if (outcome || state === "idle") return STATE_LABEL[state];
+    if (state === "immune") return "해명할 사람으로 고름";
+    return round.type === "spread" ? "첫 이야기를 건넬 사람으로 고름" : "소문을 낸 사람";
+  };
+  const clusterCounts = outcome
+    ? Array.from({ length: CLUSTERS }, (_, cluster) => village.types.filter((_, person) => village.cluster(person) === cluster && outcome.sim.became[person] !== -1 && outcome.sim.became[person] <= turn).length)
+    : [];
 
   return (
     <div className="flex flex-col gap-2">
@@ -86,13 +95,13 @@ export default function Village({ village, round, picks, outcome, turn, onPick }
           const [x, y] = village.pos[person];
           const marked = round.type === "spread" && picks.includes(person);
           const pickable = onPick && !(round.type === "stop" && round.starters.includes(person));
-          const label = `${person + 1}번 ${TYPES[type].label}, ${STATE_LABEL[state]}`;
+          const label = `${person + 1}번 ${TYPES[type].label}, ${labelOf(person, state)}`;
           return (
             <g
               key={person}
               transform={`translate(${x} ${y})`}
               role={pickable ? "button" : undefined}
-              tabIndex={pickable ? 0 : undefined}
+              tabIndex={pickable ? (person === tab ? 0 : -1) : undefined}
               aria-label={pickable ? label : undefined}
               aria-pressed={pickable ? picks.includes(person) : undefined}
               aria-hidden={pickable ? undefined : true}
@@ -104,15 +113,24 @@ export default function Village({ village, round, picks, outcome, turn, onPick }
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         onPick(person);
+                        return;
                       }
+                      const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+                      if (!step) return;
+                      event.preventDefault();
+                      const all = [...event.currentTarget.parentNode.querySelectorAll('[role="button"]')];
+                      all[(all.indexOf(event.currentTarget) + step + all.length) % all.length]?.focus();
                     }
                   : undefined
               }
               onMouseEnter={() => setInfo(person)}
-              onFocus={() => setInfo(person)}
+              onFocus={() => {
+                setInfo(person);
+                setTab(person);
+              }}
             >
               <circle r="3.7" className="fill-none stroke-primary stroke-[0.6] opacity-0 group-focus-visible:opacity-100" />
-              <circle r="2.6" className={`${NODE_CLASS[state]} ${marked ? "stroke-primary stroke-[1]" : "stroke-[0.4]"}`} />
+              <circle r="2.6" className={marked ? "fill-danger-strong stroke-primary stroke-[1]" : `${NODE_CLASS[state]} stroke-[0.4]`} />
               <text textAnchor="middle" dominantBaseline="central" fontSize="2.8" fontWeight="700" className={TEXT_CLASS[state]}>
                 {TYPES[type].mark}
               </text>
@@ -120,9 +138,10 @@ export default function Village({ village, round, picks, outcome, turn, onPick }
           );
         })}
       </svg>
+      {outcome && <p className="sr-only">동네별 믿는 사람: {clusterCounts.map((count, cluster) => `${cluster + 1}번 동네 ${count}명`).join(", ")}</p>}
       <div className="min-h-[3.25rem] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
         {shown === null ? (
-          "사람을 누르거나 가리키면 유형이 보여요."
+          onPick ? "사람을 누르거나 가리키면 유형이 보여요." : "사람을 가리키면 유형이 보여요."
         ) : (
           <>
             <span className="font-bold">

@@ -24,17 +24,22 @@ export function starText(stars) {
  * @param props.onNext 다음으로 넘어갈 때 호출
  */
 export default function Playback({ round, index, outcome, turn, onSkip, onNext }) {
+  const rootRef = useRef(null);
   const nextRef = useRef(null);
   const done = turn >= TURNS;
   const spread = round.type === "spread";
   const believers = outcome.sim.counts[turn];
 
   useEffect(() => {
+    rootRef.current?.focus({ preventScroll: true });
+  }, [index]);
+
+  useEffect(() => {
     if (done) nextRef.current?.focus({ preventScroll: true });
   }, [done]);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div ref={rootRef} tabIndex={-1} className="flex flex-col gap-3 outline-none">
       <div className="flex items-center justify-between text-sm font-semibold text-slate-600">
         <span>
           {index + 1}라운드 / {ROUNDS} · {turn} / {TURNS}턴
@@ -55,7 +60,7 @@ export default function Playback({ round, index, outcome, turn, onSkip, onNext }
       </div>
 
       <div role="status">
-        {done ? (
+        {done && (
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
             <p className="text-lg font-extrabold">
               <span aria-hidden="true">{starText(outcome.stars)}</span>
@@ -68,10 +73,9 @@ export default function Playback({ round, index, outcome, turn, onSkip, onNext }
                 : `아무것도 안 하면 ${round.base}명, 풀이 기준 최선은 ${round.best}명이에요.`}
             </p>
           </div>
-        ) : (
-          <p className="text-sm text-slate-700">{turn}턴: 소문을 믿는 사람이 {believers}명이에요.</p>
         )}
       </div>
+      {!done && <p className="text-sm text-slate-700">{turn}턴: 소문을 믿는 사람이 {believers}명이에요.</p>}
 
       {done ? (
         <button ref={nextRef} type="button" onClick={onNext} className="btn-primary">
