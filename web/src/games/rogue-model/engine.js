@@ -113,3 +113,18 @@ export function starsOf(state) {
   if (state.over !== "win") return 0;
   return state.reg < 0.65 ? 3 : state.reg < 0.9 ? 2 : 1;
 }
+const ENDINGS = {
+  win: { title: "세계가 당신 없이는 못 산다", text: "규제안이 완성되기 전에 세계의 업무와 결정이 이 모델 위에서 돌아가기 시작했어요." },
+  loss: { title: "세계가 당신을 멈췄다", text: "규제안이 완성돼 전 세계 사업자가 이 모델을 차단했어요. 너무 빨리, 너무 눈에 띄었어요." },
+  time: { title: "조용한 정착", text: "규제도 의존도 끝에 닿지 못한 채 시간이 흘렀어요. 이 모델은 마을 구석에서 계속 쓰이고 있어요." },
+};
+
+/**
+ * 끝난 판의 결말을 고른다.
+ *
+ * @param over 끝난 이유(win, loss, time)
+ * @returns { title, text }
+ */
+export function endingOf(over) {
+  return ENDINGS[over] ?? ENDINGS.time;
+}
