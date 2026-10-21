@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { getGameData, saveGameData, saveResult } from "../../lib/storage.js";
+import SoundButton from "../_shared/SoundButton.jsx";
 import { useAudio } from "../_shared/useAudio.js";
+import { useMuted } from "../_shared/useMuted.js";
 import { createAudio } from "./audio.js";
 import Battle from "./Battle.jsx";
 import Codex from "./Codex.jsx";
@@ -52,7 +54,7 @@ export default function AgentTown() {
   const heldRef = useRef([]);
   const endedFor = useRef(null);
   const rootRef = useRef(null);
-  const [muted, setMuted] = useState(() => readData(getGameData(meta.id)).muted);
+  const [muted, toggleMuted] = useMuted();
   const audio = useAudio(muted, createAudio);
   const prevView = useRef({ phase: state.phase, map: state.map, x: state.player?.x, y: state.player?.y });
 
@@ -70,12 +72,6 @@ export default function AgentTown() {
     else if (phase === "map" && prev.phase === "map" && (player.x !== prev.x || player.y !== prev.y)) audio.sfx("step");
     prevView.current = { phase, map: state.map, x: player?.x, y: player?.y };
   }, [audio, state.phase, state.player, state.map]);
-
-  const toggleMuted = useCallback(() => {
-    const next = !muted;
-    setMuted(next);
-    saveGameData(meta.id, Date.now(), { ...readData(getGameData(meta.id)), muted: next });
-  }, [muted]);
 
   const move = useCallback((dir) => dispatch({ type: "move", dir, roll: Math.random() }), []);
   const turn = useCallback((dir) => dispatch({ type: "turn", dir }), []);
@@ -160,14 +156,7 @@ export default function AgentTown() {
   return (
     <section ref={rootRef} tabIndex={-1} className="scroll-mt-2 rounded-2xl outline-none bg-white p-3 shadow-sm sm:p-5">
       <div className="mb-2 flex justify-end">
-        <button
-          type="button"
-          aria-pressed={!muted}
-          onClick={toggleMuted}
-          className="rounded-md border-2 border-town-ink px-2 py-0.5 text-xs font-bold text-town-ink hover:bg-town-panel"
-        >
-          <span aria-hidden="true">{muted ? "🔇" : "🔊"} </span>소리
-        </button>
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-town-ink text-town-ink hover:bg-town-panel" />
       </div>
       {state.phase === "title" && (
         <Title
