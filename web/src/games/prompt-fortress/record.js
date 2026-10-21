@@ -6,7 +6,7 @@ import { isObject } from "../_shared/validate.js";
  * 저장소 값을 안전한 모양으로 다듬는다. 모르는 방과 범위를 벗어난 별은 버린다.
  *
  * @param raw 저장소에서 읽은 값
- * @returns { v, stars, muted } stars는 방 id별 최고 별(1~3), muted는 소리 끔 설정
+ * @returns { v, stars } stars는 방 id별 최고 별(1~3)
  */
 export function readData(raw) {
   const valid = raw?.v === 1;
@@ -17,7 +17,7 @@ export function readData(raw) {
       if (Number.isInteger(n) && n >= 1 && n <= 3) stars[level.id] = n;
     }
   }
-  return { v: 1, stars, muted: valid && raw.muted === true };
+  return { v: 1, stars };
 }
 
 /**
@@ -31,7 +31,7 @@ export function mergeStars(prev, stars) {
   const old = readData(prev);
   const merged = { ...old.stars };
   for (const [id, n] of Object.entries(stars)) if (n >= 1 && n > (merged[id] ?? 0)) merged[id] = n;
-  return readData({ v: 1, stars: merged, muted: old.muted });
+  return readData({ v: 1, stars: merged });
 }
 
 /**

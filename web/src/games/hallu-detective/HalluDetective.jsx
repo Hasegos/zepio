@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useAudio } from "../_shared/useAudio.js";
+import { useMuted } from "../_shared/useMuted.js";
 import ShareButton from "../_shared/ShareButton.jsx";
+import SoundButton from "../_shared/SoundButton.jsx";
 import { createAudio } from "./audio.js";
 import { titleFor } from "./logic.js";
 import meta from "./meta.js";
@@ -63,7 +65,7 @@ export default function HalluDetective() {
   latest.current = state;
   const rootRef = useRef(null);
   const endedRef = useRef(false);
-  const [muted, setMuted] = useState(() => readData(getGameData(meta.id)).muted);
+  const [muted, toggleMuted] = useMuted();
   const audio = useAudio(muted, createAudio);
   useGameBack(state.phase === "office" ? 0 : 1, () => dispatch({ type: state.phase === "ending" ? "resume" : "leave" }));
   const hintTotal = Object.values(state.hints).reduce((sum, n) => sum + n, 0);
@@ -92,12 +94,6 @@ export default function HalluDetective() {
     [audio],
   );
 
-  const toggleMuted = useCallback(() => {
-    const next = !muted;
-    setMuted(next);
-    saveGameData(meta.id, Date.now(), { ...readData(getGameData(meta.id)), muted: next });
-  }, [muted]);
-
   useEffect(() => {
     if (!state.saveTick) return;
     const prev = readData(getGameData(meta.id));
@@ -119,14 +115,7 @@ export default function HalluDetective() {
   return (
     <section ref={rootRef} tabIndex={-1} className="scroll-mt-2 rounded-2xl outline-none bg-white p-3 shadow-sm sm:p-5">
       <div className="mb-2 flex justify-end">
-        <button
-          type="button"
-          aria-pressed={!muted}
-          onClick={toggleMuted}
-          className="rounded-md border-2 border-det-ink px-2 py-0.5 text-xs font-bold text-det-ink hover:bg-det-paper"
-        >
-          <span aria-hidden="true">{muted ? "🔇" : "🔊"} </span>소리
-        </button>
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-det-ink text-det-ink hover:bg-det-paper" />
       </div>
       {state.phase === "office" && (
         <>
