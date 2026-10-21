@@ -49,6 +49,12 @@ export const KINDS = {
   battery: { label: "배터리", levels: BATTERIES, growth: 1.12 },
   ext: { label: "소화기", levels: EXTS, growth: 1.1 },
 };
+export const VARIANTS = {
+  base: { name: "기본", output: 1, heat: 1, demand: 1, color: null, text: "무난한 서버예요." },
+  ai: { name: "AI 서버", output: 1.5, heat: 1.8, demand: 1.5, color: "#a855f7", text: "수익 ×1.5. 열 ×1.8, 대역폭 ×1.5라 냉각과 허브가 받쳐 줘야 해요." },
+  storage: { name: "스토리지 서버", output: 0.85, heat: 0.5, demand: 0.5, color: "#0ea5e9", text: "수익 ×0.85. 열 ×0.5, 대역폭 ×0.5라 좁고 더운 곳에 좋아요." },
+  cache: { name: "캐시 서버", output: 0.9, heat: 1, demand: 0.4, color: "#f59e0b", text: "수익 ×0.9. 대역폭을 ×0.4만 써서 허브가 멀어도 버텨요." },
+};
 export const DIFFICULTIES = {
   calm: { name: "평화", bonus: 1, text: "재난이 없어요. 느긋하게 키우는 방치형이에요." },
   normal: { name: "보통", bonus: 1.2, text: "몇 분에 한 번 재난이 와요. 수익 ×1.2" },
@@ -86,14 +92,27 @@ const STRAIGHT = [
 ];
 
 /**
+ * 서버 칸의 변종 배율을 구한다.
+ *
+ * @param cell 칸 내용
+ * @returns VARIANTS의 항목, 변종이 없으면 기본
+ */
+export function variantOf(cell) {
+  return VARIANTS[cell.variant] ?? VARIANTS.base;
+}
+
+/**
  * 새 시설 한 칸을 만든다.
  *
  * @param kind 시설 종류(server, cooler, hub, gen, battery, ext)
  * @param level 단계
+ * @param variant 서버 변종(ai, storage, cache), 기본이면 비운다
  * @returns 칸 내용
  */
-function makeCell(kind, level) {
-  return { kind, level, stress: 0, broken: false };
+function makeCell(kind, level, variant) {
+  const cell = { kind, level, stress: 0, broken: false };
+  if (kind === "server" && variant !== "base" && Object.hasOwn(VARIANTS, variant)) cell.variant = variant;
+  return cell;
 }
 
 /**
@@ -296,9 +315,10 @@ export function analyze(state, fx = NO_FX) {
     const spec = KINDS[cell.kind].levels[cell.level];
     if (cell.kind === "server") {
       if (fx.burning.has(tile)) return;
-      servers.push({ tile, demand: spec.demand * fx.demandMul, spec, level: cell.level });
+      const v = variantOf(cell);
+      servers.push({ tile, demand: spec.demand * v.demand * fx.demandMul, spec: { ...spec, output: spec.output * v.output }, level: cell.level });
       usage += spec.power;
-      addHeat(heat, tile, spec.heat * fx.heatMul * trait.heatMul);
+      addHeat(heat, tile, spec.heat * v.heat * fx.heatMul * trait.heatMul);
     } else if (cell.kind === "cooler") {
       usage += spec.power;
       addCool(heat, tile, { ...spec, cool: spec.cool * (1 + 0.1 * (rs.cooling ?? 0)) });
@@ -535,11 +555,12 @@ export function diagnose(state, analysis, access) {
  * @param tile 칸 번호
  * @param kind 시설 종류
  * @param level 단계
+ * @param variant 서버 변종
  * @returns analyze 결과
  */
-export function previewPlace(state, tile, kind, level = 1) {
+export function previewPlace(state, tile, kind, level = 1, variant = "base") {
   const cells = [...state.cells];
-  cells[tile] = makeCell(kind, level);
+  cells[tile] = makeCell(kind, level, variant);
   return analyze({ ...state, cells });
 }
 
@@ -549,9 +570,10 @@ export function previewPlace(state, tile, kind, level = 1) {
  * @param state 게임 상태
  * @param tile 칸 번호
  * @param kind 시설 종류
+ * @param variant 서버 변종(base, ai, storage, cache), 서버가 아니면 쓰지 않는다
  * @returns { state, error }
  */
-export function placeItem(state, tile, kind) {
+export function placeItem(state, tile, kind, variant = "base") {
   if (!Number.isInteger(tile) || tile < 0 || tile >= AREA) return { state, error: "잘못된 칸이에요." };
   const [x, y] = xyOf(tile);
   if (!inLand(state.land, x, y)) return { state, error: "아직 넓히지 않은 땅이에요." };
@@ -560,7 +582,7 @@ export function placeItem(state, tile, kind) {
   const cost = placeCost(state, kind);
   if (state.coins < cost) return { state, error: "코인이 부족해요." };
   const cells = [...state.cells];
-  cells[tile] = makeCell(kind, 1);
+  cells[tile] = makeCell(kind, 1, variant);
   return { state: { ...state, coins: state.coins - cost, cells }, error: null };
 }
 
