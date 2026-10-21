@@ -1,7 +1,7 @@
 import { makeRng } from "../_shared/rng.js";
 import { DISASTERS, effectsOf } from "./disaster.js";
-import { advance, analyze, newState, OFFLINE_CAP_SECONDS, starterCells } from "./engine.js";
-import { brandGain, MAX_SITES, REBRAND_MIN, SITE_TYPES, traitOf } from "./sites.js";
+import { advance, analyze, newState, OFFLINE_CAP_SECONDS, repairCost, starterCells } from "./engine.js";
+import { brandGain, droneInterval, MAX_SITES, REBRAND_MIN, robotCost, ROBOT_UPS, SITE_TYPES, traitOf } from "./sites.js";
 
 export const LINK_COST = 100000;
 const LINK_GROWTH = 2.5;
@@ -60,12 +60,42 @@ export function siteList(state) {
 }
 
 /**
- * 모든 건물에 시간을 흘려보낸다. 코인은 건물 전체가 합쳐서 번다.
+ * 정비 드론이 일할 때가 되면 고장난 서버 하나를 고친다. 싼 것부터 고치고, 코인이 모자라면 기다린다. 길이 막혀 있어도 고친다.
+ *
+ * @param state 게임 상태
+ * @param seconds 흘린 시간(초)
+ * @returns { state, fixed } fixed는 이번에 고친 서버 수(0 또는 1)
+ */
+function droneStep(state, seconds) {
+  const level = state.robot?.drone ?? 0;
+  if (!level) return { state, fixed: 0 };
+  const interval = droneInterval(level);
+  const clock = (state.droneClock ?? 0) + seconds;
+  if (clock < interval) return { state: { ...state, droneClock: clock }, fixed: 0 };
+  let best = null;
+  for (let i = 0; i < state.sites.length; i += 1) {
+    const view = viewOf(state, i);
+    view.cells.forEach((cell, tile) => {
+      if (!cell || cell.kind !== "server" || !cell.broken) return;
+      const cost = repairCost(view, tile);
+      if (cost <= state.coins && (!best || cost < best.cost)) best = { i, tile, cost };
+    });
+  }
+  if (!best) return { state: { ...state, droneClock: interval }, fixed: 0 };
+  const view = viewOf(state, best.i);
+  const cells = [...view.cells];
+  cells[best.tile] = { ...cells[best.tile], broken: false, stress: 0 };
+  const next = storeView(state, best.i, { ...view, cells, coins: state.coins - best.cost });
+  return { state: { ...next, droneClock: clock - interval }, fixed: 1 };
+}
+
+/**
+ * 모든 건물에 시간을 흘려보낸다. 코인은 건물 전체가 합쳐서 번다. 정비 드론도 함께 일한다.
  *
  * @param state 게임 상태
  * @param seconds 흘릴 시간(초), MAX_STEP 이하
  * @param fxOf (view, index)를 받아 재난 효과를 돌려주는 함수
- * @returns { state, breaks } breaks는 이번에 고장난 칸의 수
+ * @returns { state, breaks, fixed } breaks는 이번에 고장난 칸의 수, fixed는 드론이 고친 서버 수
  */
 export function advanceAll(state, seconds, fxOf) {
   let breaks = 0;
@@ -74,7 +104,24 @@ export function advanceAll(state, seconds, fxOf) {
     breaks += out.breaks.length;
     return out.state;
   });
-  return { state: { ...next, time: state.time + seconds }, breaks };
+  const drone = droneStep({ ...next, time: state.time + seconds }, seconds);
+  return { state: drone.state, breaks, fixed: drone.fixed };
+}
+
+/**
+ * 로봇 강화(이동 속도, 수리 할인, 정비 드론)를 한 단계 올린다.
+ *
+ * @param state 게임 상태
+ * @param key 강화 종류
+ * @returns { state, error }
+ */
+export function upgradeRobot(state, key) {
+  if (!Object.hasOwn(ROBOT_UPS, key)) return { state, error: "알 수 없는 강화예요." };
+  const level = state.robot[key];
+  if (level >= ROBOT_UPS[key].max) return { state, error: "더 올릴 수 없어요." };
+  const cost = robotCost(key, level);
+  if (state.coins < cost) return { state, error: "코인이 부족해요." };
+  return { state: { ...state, coins: state.coins - cost, robot: { ...state.robot, [key]: level + 1 } } };
 }
 
 /**
@@ -225,11 +272,11 @@ export function spreadEvents(state, before, after) {
  * 저장할 모양으로 정리한다. 보고 있는 건물의 내용을 sites에 맞춘다.
  *
  * @param state 게임 상태
- * @returns { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, sites }
+ * @returns { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, robot, sites }
  */
 export function snapshot(state) {
-  const { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand } = state;
-  return { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, sites: siteList(state) };
+  const { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, robot } = state;
+  return { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, robot, sites: siteList(state) };
 }
 /**
  * 리브랜딩한다. 코인, 건물, 시설, 연결, 누적 수익을 처음으로 돌리고, 도감, 업적, 칭호, 재난 기록, 난이도는 남긴다.

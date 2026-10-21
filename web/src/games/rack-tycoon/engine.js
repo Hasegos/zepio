@@ -131,6 +131,7 @@ export function newState() {
     badges: [],
     title: null,
     brand: { points: 0, count: 0 },
+    robot: { speed: 0, discount: 0, drone: 0 },
     sites: [{ type: "basement", land: 0, cells }],
   };
 }
@@ -423,7 +424,8 @@ export function upgradeCost(state, tile) {
  */
 export function repairCost(state, tile) {
   const cell = state.cells[tile];
-  return Math.ceil(KINDS[cell.kind].levels[cell.level].cost * REPAIR_RATE * traitOf(state.type).repairMul);
+  const discount = 1 - 0.12 * (state.robot?.discount ?? 0);
+  return Math.ceil(KINDS[cell.kind].levels[cell.level].cost * REPAIR_RATE * traitOf(state.type).repairMul * discount);
 }
 
 /**
