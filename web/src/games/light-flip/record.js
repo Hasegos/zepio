@@ -1,3 +1,8 @@
+import { isInt, isNum } from "../_shared/validate.js";
+
+const MAX_EXTRA = 99999;
+const MAX_MS = 86400000;
+
 /**
  * 한 판의 결과를 저장된 최고 기록과 합친다. 최소 이동보다 더 누른 횟수(extra)가 적을수록, 같으면 시간이 짧을수록 좋은 기록이다.
  * 저장된 값이 깨졌으면 기록이 없는 것으로 본다.
@@ -7,7 +12,7 @@
  * @returns 저장할 데이터와, 이전 기록을 넘어섰는지(isNewBest)
  */
 export function mergeResult(prev, result) {
-  const hasPrev = Number.isInteger(prev?.bestExtra) && Number.isFinite(prev?.bestMs);
+  const hasPrev = isInt(prev?.bestExtra, 0, MAX_EXTRA) && isNum(prev?.bestMs, 0, MAX_MS);
   const better =
     !hasPrev ||
     result.extra < prev.bestExtra ||
@@ -26,6 +31,6 @@ export function mergeResult(prev, result) {
  * @returns 요약 문구, 데이터가 깨졌으면 빈 문자열
  */
 export function summarize(data, plays) {
-  if (!Number.isInteger(data?.bestExtra)) return "";
+  if (!isInt(data?.bestExtra, 0, MAX_EXTRA)) return "";
   return `최고 추가 이동 ${data.bestExtra}회 · ${plays}회 플레이`;
 }

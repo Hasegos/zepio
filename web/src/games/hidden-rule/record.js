@@ -1,3 +1,4 @@
+import { isInt } from "../_shared/validate.js";
 import { BASE_SCORE, RUN_LEVELS } from "./engine.js";
 
 export const MAX_SCORE = BASE_SCORE * RUN_LEVELS.length;
@@ -11,7 +12,7 @@ export const MAX_SCORE = BASE_SCORE * RUN_LEVELS.length;
  * @returns 저장할 데이터와, 이전 기록을 넘어섰는지(isNewBest)
  */
 export function mergeResult(prev, result) {
-  const hasPrev = Number.isInteger(prev?.bestScore);
+  const hasPrev = isInt(prev?.bestScore, 0, MAX_SCORE);
   const better = !hasPrev || result.score > prev.bestScore;
   return {
     data: better ? { bestScore: result.score } : prev,
@@ -27,6 +28,6 @@ export function mergeResult(prev, result) {
  * @returns 요약 문구, 데이터가 깨졌으면 빈 문자열
  */
 export function summarize(data, plays) {
-  if (!Number.isInteger(data?.bestScore)) return "";
+  if (!isInt(data?.bestScore, 0, MAX_SCORE)) return "";
   return `최고 ${data.bestScore} / ${MAX_SCORE}점 · ${plays}회 플레이`;
 }
