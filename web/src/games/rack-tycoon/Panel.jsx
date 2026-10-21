@@ -18,7 +18,8 @@ import {
   xyOf,
 } from "./engine.js";
 import { LANDS } from "./layout.js";
-import { BRAND_BONUS, brandGain, REBRAND_MIN, traitOf } from "./sites.js";
+import { upgradeRobot } from "./campus.js";
+import { BRAND_BONUS, brandGain, REBRAND_MIN, robotCost, ROBOT_UPS, traitOf } from "./sites.js";
 
 /**
  * 코인이 드는 행동 버튼. 코인이 모자라면 눌러도 동작하지 않고 모자란다는 문구를 보여 준다.
@@ -267,6 +268,24 @@ function TerminalBody({ state, analysis, issues, onAct, onReset, onDifficulty, o
         <p className="text-xs text-slate-600">
           재난 기록: 폭주 {state.stats.surge} · 정전 {state.stats.blackout} · 화재 {state.stats.fire} (피해 없이 막음 {state.stats.saved})
         </p>
+      </div>
+      <div className="flex flex-col gap-2 rounded-xl border border-slate-200 px-3 py-2">
+        <p className="text-xs font-semibold text-slate-700">로봇과 정비 드론</p>
+        {Object.entries(ROBOT_UPS).map(([key, up]) => {
+          const level = state.robot[key];
+          return (
+            <div key={key} className="flex flex-col gap-1">
+              <p className="text-xs text-slate-700">
+                {up.name} {level}/{up.max} · {up.effect(level)}
+              </p>
+              {level < up.max ? (
+                <Action label={`${up.name} 올리기`} cost={robotCost(key, level)} coins={state.coins} onClick={() => onAct(upgradeRobot, key)} />
+              ) : (
+                <p className="text-xs font-bold text-success-strong">최대예요.</p>
+              )}
+            </div>
+          );
+        })}
       </div>
       <div className="flex flex-col gap-1.5 rounded-xl border border-slate-200 px-3 py-2">
         <p className="text-xs font-semibold text-slate-700">

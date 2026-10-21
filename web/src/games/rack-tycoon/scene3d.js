@@ -143,7 +143,7 @@ function buildRobot() {
  * @param options.onHover 가리키는 칸이 바뀔 때 호출, 칸 번호나 null을 받는다
  * @param options.onInteract 로봇 앞에서 Space나 Enter를 눌렀을 때 호출, 칸 번호를 받는다
  * @param options.onCancel 오른쪽 클릭했을 때 호출
- * @returns { setWorld, walkTo, walkBeside, robotTile, stop, rotate, setFollow, fit, dispose } 또는 WebGL을 못 쓰면 null
+ * @returns { setWorld, walkTo, walkBeside, robotTile, stop, rotate, setSpeed, setFollow, fit, dispose } 또는 WebGL을 못 쓰면 null
  */
 export function createScene(
   container,
@@ -190,6 +190,7 @@ export function createScene(
     landKey: "",
   };
   const pan = { active: false, x: 0, y: 0 };
+  let speed = 1;
   const matrix = new Matrix4();
   const tint = new Color();
   const tintB = new Color();
@@ -737,7 +738,7 @@ export function createScene(
     let dirZ = 0;
     if (vx !== 0 || vz !== 0) {
       if (player.path.length) stopPath();
-      slide(vx * WALK_SPEED * dt, vz * WALK_SPEED * dt);
+      slide(vx * WALK_SPEED * speed * dt, vz * WALK_SPEED * speed * dt);
       dirX = vx;
       dirZ = vz;
       moving = true;
@@ -746,7 +747,7 @@ export function createScene(
       const dx = tx + 0.5 - player.x;
       const dz = ty + 0.5 - player.z;
       const distance = Math.hypot(dx, dz);
-      const step = WALK_SPEED * dt;
+      const step = WALK_SPEED * speed * dt;
       if (distance <= step) {
         player.x = tx + 0.5;
         player.z = ty + 0.5;
@@ -864,6 +865,9 @@ export function createScene(
     },
     rotate(step) {
       view.index += step;
+    },
+    setSpeed(multiplier) {
+      speed = multiplier;
     },
     setFollow(on) {
       view.follow = on;
