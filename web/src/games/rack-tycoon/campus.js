@@ -233,17 +233,19 @@ export function linkSites(state, a, b) {
  *
  * @param state 게임 상태
  * @param evs 건물별 재난 진행 상태
+ * @param mul 시장 이벤트가 모든 수익에 곱하는 배율, 기본 1
  * @returns 건물 순서대로 analyze에 넘길 효과 목록
  */
-export function campusFx(state, evs) {
+export function campusFx(state, evs, mul = 1) {
   const live = (j, kind) => evs[j].event?.kind === kind && evs[j].event.phase === "live";
-  return state.sites.map((_, i) => {
+  const fxs = state.sites.map((_, i) => {
     const fx = effectsOf(viewOf(state, i), evs[i]);
     if (!live(i, "blackout") && !live(i, "surge")) return fx;
     const peers = peersOf(state, i);
     if (live(i, "blackout")) return { ...fx, capMul: Math.min(1, fx.capMul + AID * peers.filter((j) => !live(j, "blackout")).length) };
     return { ...fx, demandMul: 1 + (fx.demandMul - 1) / (1 + SHARE * peers.filter((j) => !live(j, "surge")).length) };
   });
+  return mul === 1 ? fxs : fxs.map((fx) => ({ ...fx, outputMul: fx.outputMul * mul }));
 }
 
 /**

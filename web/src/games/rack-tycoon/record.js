@@ -66,11 +66,11 @@ function readCells(cells, inside) {
  * 저장된 재난 기록을 안전한 모양으로 다듬는다. 없거나 깨진 값은 0으로 본다.
  *
  * @param raw 저장소에서 읽은 기록
- * @returns { surge, blackout, fire, saved }
+ * @returns { surge, blackout, fire, saved, contracts }
  */
 function readStats(raw) {
   const clean = {};
-  for (const key of ["surge", "blackout", "fire", "saved"]) clean[key] = isObject(raw) && isInt(raw[key], 0, 1e9) ? raw[key] : 0;
+  for (const key of ["surge", "blackout", "fire", "saved", "contracts"]) clean[key] = isObject(raw) && isInt(raw[key], 0, 1e9) ? raw[key] : 0;
   return clean;
 }
 

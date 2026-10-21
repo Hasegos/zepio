@@ -121,7 +121,7 @@ export function newState() {
     lifetime: 0,
     time: 0,
     difficulty: null,
-    stats: { surge: 0, blackout: 0, fire: 0, saved: 0 },
+    stats: { surge: 0, blackout: 0, fire: 0, saved: 0, contracts: 0 },
     type: "basement",
     land: 0,
     cells,
