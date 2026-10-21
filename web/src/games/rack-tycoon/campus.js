@@ -1,7 +1,7 @@
 import { makeRng } from "../_shared/rng.js";
 import { DISASTERS, effectsOf } from "./disaster.js";
 import { advance, analyze, newState, OFFLINE_CAP_SECONDS, repairCost, starterCells } from "./engine.js";
-import { brandGain, droneInterval, MAX_SITES, REBRAND_MIN, robotCost, ROBOT_UPS, SITE_TYPES, traitOf } from "./sites.js";
+import { brandGain, droneInterval, MAX_SITES, REBRAND_MIN, researchCost, RESEARCH, robotCost, ROBOT_UPS, SITE_TYPES, traitOf } from "./sites.js";
 
 export const LINK_COST = 100000;
 const LINK_GROWTH = 2.5;
@@ -272,14 +272,14 @@ export function spreadEvents(state, before, after) {
  * 저장할 모양으로 정리한다. 보고 있는 건물의 내용을 sites에 맞춘다.
  *
  * @param state 게임 상태
- * @returns { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, robot, sites }
+ * @returns { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, robot, research, sites }
  */
 export function snapshot(state) {
-  const { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, robot } = state;
-  return { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, robot, sites: siteList(state) };
+  const { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, robot, research } = state;
+  return { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, robot, research, sites: siteList(state) };
 }
 /**
- * 리브랜딩한다. 코인, 건물, 시설, 연결, 누적 수익을 처음으로 돌리고, 도감, 업적, 칭호, 재난 기록, 난이도는 남긴다.
+ * 리브랜딩한다. 코인, 건물, 시설, 연결, 누적 수익, 로봇 강화를 처음으로 돌리고, 도감, 업적, 칭호, 재난 기록, 난이도, 연구는 남긴다.
  * 누적 수익에 따라 브랜드 포인트를 얻고, 포인트 하나당 수익이 영구히 5% 늘어난다.
  *
  * @param state 게임 상태
@@ -287,7 +287,23 @@ export function snapshot(state) {
  */
 export function rebrand(state) {
   if (state.lifetime < REBRAND_MIN) return { state, error: "아직 리브랜딩할 수 없어요." };
-  const { difficulty, stats, codex, badges, title, brand } = state;
+  const { difficulty, stats, codex, badges, title, brand, research } = state;
   const next = { points: brand.points + brandGain(state.lifetime), count: brand.count + 1 };
-  return { state: { ...newState(), difficulty, stats, codex, badges, title, brand: next } };
+  return { state: { ...newState(), difficulty, stats, codex, badges, title, brand: next, research } };
+}
+
+/**
+ * 연구를 한 단계 올린다. 연구는 리브랜딩해도 남는다.
+ *
+ * @param state 게임 상태
+ * @param key 연구 종류
+ * @returns { state, error }
+ */
+export function researchItem(state, key) {
+  if (!Object.hasOwn(RESEARCH, key)) return { state, error: "알 수 없는 연구예요." };
+  const level = state.research[key];
+  if (level >= RESEARCH[key].max) return { state, error: "더 연구할 수 없어요." };
+  const cost = researchCost(key, level);
+  if (state.coins < cost) return { state, error: "코인이 부족해요." };
+  return { state: { ...state, coins: state.coins - cost, research: { ...state.research, [key]: level + 1 } } };
 }

@@ -25,9 +25,10 @@ import {
   xyOf,
 } from "./engine.js";
 import { EventBanner, DifficultyChooser } from "./Banner.jsx";
-import { advanceAll, buySite, campusFx, eachSite, linkCost, linkSites, offlineAll, rebrand, spreadEvents, switchSite, viewOf } from "./campus.js";
+import { advanceAll, buySite, campusFx, eachSite, linkCost, linkSites, offlineAll, rebrand, researchItem, spreadEvents, switchSite, viewOf } from "./campus.js";
 import Campus from "./Campus.jsx";
 import Collection from "./Collection.jsx";
+import Research from "./Research.jsx";
 import { BADGES, collect, PART_KEYS, setTitle } from "./collection.js";
 import { burningTiles, describeEvent, newDisasters, putOut, stepDisasters } from "./disaster.js";
 import { describeHover, nextGoal, worldOf } from "./hover.js";
@@ -104,7 +105,7 @@ export default function RackTycoon() {
   const evsRef = useRef(null);
   evsRef.current ??= boot.state.sites.map((_, i) => newDisasters(Date.now() + i * 977));
   const lastRef = useRef(boot.now);
-  const uiRef = useRef({ tool: "select", overlay: "none", hoverTile: null, panel: null, carried: null, codex: false });
+  const uiRef = useRef({ tool: "select", overlay: "none", hoverTile: null, panel: null, carried: null, codex: false, research: false });
   const [ui, setUi] = useState(uiRef.current);
   const [snap, setSnap] = useState(() => {
     const analysis = analyze(boot.state);
@@ -534,8 +535,11 @@ export default function RackTycoon() {
           codexOpen={ui.codex}
           onCodex={() => update({ codex: !uiRef.current.codex })}
           codexCount={`${state.codex.length + state.badges.length}/${PART_KEYS.size + BADGES.length}`}
+          researchOpen={ui.research}
+          onResearch={() => update({ research: !uiRef.current.research })}
         />
       )}
+      {ui.research && <Research state={state} onResearch={(key) => act(researchItem, key)} onClose={() => update({ research: false })} />}
       {ui.codex && <Collection state={state} onTitle={(id) => act(setTitle, id)} onClose={() => update({ codex: false })} />}
 
       <p className={`min-h-5 text-sm font-semibold ${TONES[hover.text ? hover.tone : "ok"]}`}>{carriedName || hint}</p>

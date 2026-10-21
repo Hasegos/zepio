@@ -29,8 +29,10 @@ export const OVERLAYS = [
  * @param props.codexOpen 도감 창이 열려 있는지
  * @param props.onCodex 도감 창을 여닫을 때 호출
  * @param props.codexCount 도감과 업적을 얻은 수와 전체 수 문구
+ * @param props.researchOpen 연구 창이 열려 있는지
+ * @param props.onResearch 연구 창을 여닫을 때 호출
  */
-export default function Toolbar({ tool, onTool, overlay, onOverlay, state, onExpand, codexOpen, onCodex, codexCount }) {
+export default function Toolbar({ tool, onTool, overlay, onOverlay, state, onExpand, codexOpen, onCodex, codexCount, researchOpen, onResearch }) {
   const cost = expandCost(state);
   const poor = cost !== null && state.coins < cost;
   const pill = "rounded-lg border px-3 py-2 text-xs font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white border-slate-300 bg-white text-slate-700";
@@ -82,6 +84,17 @@ export default function Toolbar({ tool, onTool, overlay, onOverlay, state, onExp
         >
           도감·업적
           <span className="ml-1 font-semibold opacity-70">{codexCount}</span>
+        </button>
+        <button
+          type="button"
+          aria-pressed={researchOpen}
+          onClick={(event) => {
+            onResearch();
+            if (event.detail > 0) event.currentTarget.blur();
+          }}
+          className={pill}
+        >
+          연구
         </button>
         {cost !== null && (
           <button

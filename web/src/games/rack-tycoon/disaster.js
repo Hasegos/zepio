@@ -156,7 +156,7 @@ function burn(state, e, level, seconds, roll) {
   for (const key of Object.keys(e.burning)) e.burning[key] += seconds;
   state.cells.forEach((cell, tile) => {
     if (!cell || cell.kind !== "ext") return;
-    const { reach } = EXTS[cell.level];
+    const reach = EXTS[cell.level].reach + (state.research?.fire ?? 0);
     const [x, y] = xyOf(tile);
     for (const key of Object.keys(e.burning)) {
       const [kx, ky] = xyOf(Number(key));
@@ -212,7 +212,7 @@ export function stepDisasters(state, ev, seconds) {
     next.wait -= seconds;
     if (next.wait <= 0) {
       const kind = pickKind(state, roll);
-      next.event = { kind, phase: "warn", left: DISASTERS[kind].warn, burning: {}, damage: 0 };
+      next.event = { kind, phase: "warn", left: DISASTERS[kind].warn + 5 * (state.research?.warn ?? 0), burning: {}, damage: 0 };
       next.wait = null;
       notes.push({ tone: "bad", text: WARN_TEXT[kind] });
     }

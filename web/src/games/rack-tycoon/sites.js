@@ -121,3 +121,24 @@ export function droneInterval(level) {
 export function robotCost(key, level) {
   return Math.ceil(ROBOT_UPS[key].base * ROBOT_UPS[key].growth ** level);
 }
+
+export const RESEARCH = {
+  cooling: { name: "냉각 효율", branch: "인프라", max: 3, base: 20000, growth: 4, effect: (lv) => `냉각기 효과 +${lv * 10}%` },
+  hub: { name: "허브 증폭", branch: "인프라", max: 2, base: 50000, growth: 6, effect: (lv) => `허브 범위 +${lv}칸` },
+  power: { name: "발전 효율", branch: "인프라", max: 3, base: 30000, growth: 4, effect: (lv) => `발전기 출력 +${lv * 10}%` },
+  warn: { name: "조기 경보", branch: "안전", max: 2, base: 40000, growth: 5, effect: (lv) => `재난 경고 시간 +${lv * 5}초` },
+  battery: { name: "배터리 개선", branch: "안전", max: 3, base: 25000, growth: 4, effect: (lv) => `배터리 용량 +${lv * 25}%` },
+  fire: { name: "소화 개량", branch: "안전", max: 2, base: 60000, growth: 6, effect: (lv) => `소화기 범위 +${lv}칸` },
+  profit: { name: "알고리즘 최적화", branch: "경영", max: 4, base: 100000, growth: 5, effect: (lv) => `전체 수익 +${lv * 5}%` },
+};
+
+/**
+ * 연구를 한 단계 올리는 값을 구한다.
+ *
+ * @param key 연구 종류
+ * @param level 지금 단계
+ * @returns 코인
+ */
+export function researchCost(key, level) {
+  return Math.ceil(RESEARCH[key].base * RESEARCH[key].growth ** level);
+}
