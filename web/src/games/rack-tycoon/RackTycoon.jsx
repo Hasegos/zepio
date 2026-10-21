@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getGameData, saveGameData } from "../../lib/storage.js";
+import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
+import { getDaily, getGameData, saveDaily, saveGameData } from "../../lib/storage.js";
 import {
   accessibleTiles,
   analyze,
@@ -27,6 +28,8 @@ import {
 import { EventBanner, DifficultyChooser } from "./Banner.jsx";
 import { advanceAll, buySite, campusFx, eachSite, linkCost, linkSites, offlineAll, rebrand, researchItem, spreadEvents, switchSite, viewOf } from "./campus.js";
 import Campus from "./Campus.jsx";
+import Challenge from "./Challenge.jsx";
+import { CHALLENGE_SECONDS, challengeOf, challengeState } from "./challenge.js";
 import Business from "./Business.jsx";
 import { acceptContract, declineContract, marketMul, newBusiness, stepBusiness } from "./business.js";
 import Collection from "./Collection.jsx";
@@ -114,6 +117,20 @@ function businessContext(state, evs, mul) {
 }
 
 /**
+ * 오늘의 도전이 끝났을 때 점수를 일일 기록에 남기고 결과 상태를 만든다. 같은 날 첫 판만 기록에 남는다.
+ *
+ * @param ch 도전 상태
+ * @param state 도전 중인 게임 상태
+ * @returns { daily, challenge } 새 일일 기록과 끝난 도전 상태
+ */
+function finishChallenge(ch, state) {
+  const score = Math.floor(state.lifetime);
+  const daily = nextDailyRecord(getDaily(meta.id), ch.date, score);
+  saveDaily(meta.id, daily);
+  return { daily, challenge: { ...ch, left: 0, done: true, score, record: daily.history[ch.date] ?? score, streak: daily.streak } };
+}
+
+/**
  * Rack Tycoon 화면. 빈 부지에 서버, 냉각기, 허브, 발전기를 마음대로 놓아 데이터센터를 키운다.
  * 3D 장면 위에 도구 모음, 상태 표시줄, 작업 창을 얹고, 200ms마다 시간을 흘려보내며 10초마다 자동 저장한다.
  * WebGL을 쓸 수 없어도 목록으로 같은 작업을 할 수 있다.
@@ -129,6 +146,10 @@ export default function RackTycoon() {
   evsRef.current ??= boot.state.sites.map((_, i) => newDisasters(Date.now() + i * 977));
   const bizRef = useRef(null);
   bizRef.current ??= newBusiness();
+  const challengeRef = useRef(null);
+  const mainRef = useRef(null);
+  const [today] = useState(() => kstDate(Date.now()));
+  const [dailyRec, setDailyRec] = useState(() => getDaily(meta.id));
   const lastRef = useRef(boot.now);
   const uiRef = useRef({ tool: "select", variant: "base", overlay: "none", hoverTile: null, panel: null, carried: null, codex: false, research: false });
   const [ui, setUi] = useState(uiRef.current);
@@ -144,6 +165,7 @@ export default function RackTycoon() {
       event: null,
       campus: campusOf(boot.state, evsRef.current, analysis, 1),
       biz: bizRef.current,
+      challenge: null,
     };
   });
   const [notice, setNotice] = useState({ text: "", tone: "bad" });
@@ -162,7 +184,7 @@ export default function RackTycoon() {
     const access = accessibleTiles(state, robot);
     const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried, variant: u.variant });
     const event = describeEvent(state, ev);
-    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event, campus: campusOf(state, evsRef.current, analysis, mul), biz: bizRef.current });
+    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event, campus: campusOf(state, evsRef.current, analysis, mul), biz: bizRef.current, challenge: challengeRef.current });
     const selected = u.carried ?? (u.panel?.kind === "item" ? u.panel.tile : null);
     const mood = event && event.phase === "live" && event.kind !== "fire" ? event.kind : "none";
     sceneRef.current?.setSpeed(1 + 0.25 * state.robot.speed);
@@ -179,7 +201,7 @@ export default function RackTycoon() {
   );
 
   const save = useCallback(() => {
-    if (stateRef.current) saveGameData(meta.id, Date.now(), makeData(stateRef.current, lastRef.current));
+    if (stateRef.current && !challengeRef.current) saveGameData(meta.id, Date.now(), makeData(stateRef.current, lastRef.current));
   }, []);
 
   const say = useCallback((text, tone = "bad") => {
@@ -222,6 +244,34 @@ export default function RackTycoon() {
     update({ panel: null, carried: null, tool: "select" });
     say("리브랜딩했어요! 브랜드 포인트로 영구히 더 벌어요.", "good");
   }, [act, say, update]);
+
+  const startChallenge = useCallback(() => {
+    save();
+    mainRef.current ??= { state: stateRef.current, evs: evsRef.current, biz: bizRef.current };
+    const date = kstDate(Date.now());
+    const { seed, type } = challengeOf(date);
+    challengeRef.current = { date, type, left: CHALLENGE_SECONDS, done: false, score: 0, record: 0, streak: 0 };
+    stateRef.current = challengeState(date);
+    evsRef.current = [newDisasters(seed)];
+    bizRef.current = newBusiness();
+    lastRef.current = Date.now();
+    sceneRef.current?.stop();
+    update({ panel: null, carried: null, tool: "select", research: false, codex: false });
+  }, [save, update]);
+
+  const quitChallenge = useCallback(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    challengeRef.current = null;
+    mainRef.current = null;
+    stateRef.current = main.state;
+    evsRef.current = main.evs;
+    bizRef.current = main.biz;
+    lastRef.current = Date.now();
+    sceneRef.current?.stop();
+    update({ panel: null, carried: null, tool: "select", research: false, codex: false });
+    save();
+  }, [save, update]);
 
   const closePanel = useCallback(() => {
     update({ panel: null });
@@ -404,6 +454,8 @@ export default function RackTycoon() {
       let dt = (at - lastRef.current) / 1000;
       lastRef.current = at;
       if (dt <= 0) return;
+      const ch = challengeRef.current;
+      if (ch && (ch.done || document.hidden || dt > LIVE_GAP)) return;
       let current = stateRef.current;
       if (dt > OFFLINE_THRESHOLD) {
         const settled = offlineAll(current, dt);
@@ -435,17 +487,26 @@ export default function RackTycoon() {
           }
           dt -= step;
         }
-        if (live) {
+        if (live && !ch) {
           const mul = marketMul(bizRef.current);
           const result = stepBusiness(current, bizRef.current, total, businessContext(current, evsRef.current, mul));
           current = result.state;
           bizRef.current = result.biz;
           for (const note of result.notes) say(note.text, note.tone);
         }
+        if (ch) {
+          const left = ch.left - total;
+          if (left > 0) challengeRef.current = { ...ch, left };
+          else {
+            const end = finishChallenge(ch, current);
+            challengeRef.current = end.challenge;
+            setDailyRec(end.daily);
+          }
+        }
         if (broken) say(`서버 ${broken}대가 과열로 고장났어요. 로봇을 보내 고쳐 주세요.`);
         else if (fixed) say(`정비 드론이 서버 ${fixed}대를 고쳤어요.`, "good");
       }
-      const got = collect(current);
+      const got = ch ? { fresh: [] } : collect(current);
       if (got.fresh.length) {
         current = got.state;
         say(got.fresh.length > 3 ? `도감과 업적을 ${got.fresh.length}개 새로 얻었어요!` : `새로 얻었어요: ${got.fresh.join(", ")}`, "good");
@@ -484,7 +545,7 @@ export default function RackTycoon() {
     };
   }, [refresh, save, say, update, cancel, pickTool, handleTile]);
 
-  const { state, analysis, access, issues, hover, event, campus, biz } = snap;
+  const { state, analysis, access, issues, hover, event, campus, biz, challenge } = snap;
   const totalIncome = campus.reduce((sum, site) => sum + site.income, 0);
   const grade = gradeOf(state.lifetime);
   const floor = GRADES[grade.index].min;
@@ -547,13 +608,21 @@ export default function RackTycoon() {
         </div>
       </div>
 
+      <Challenge
+        challenge={challenge}
+        info={{ date: today, type: challengeOf(today).type, record: dailyRec?.history?.[today] ?? null, streak: currentStreak(dailyRec, today) }}
+        lifetime={state.lifetime}
+        onStart={startChallenge}
+        onQuit={quitChallenge}
+      />
+
       <Campus
         sites={campus}
         active={state.active}
         coins={state.coins}
         links={state.links}
         linkCost={linkCost(state)}
-        showBuy={state.lifetime >= 20000 || state.sites.length > 1}
+        showBuy={!challenge && (state.lifetime >= 20000 || state.sites.length > 1)}
         onSwitch={switchTo}
         onBuy={buy}
         onLink={link}
@@ -661,7 +730,7 @@ export default function RackTycoon() {
           </p>
         )}
         {state.difficulty === null && <DifficultyChooser onPick={pickDifficulty} />}
-        {ui.panel && (
+        {ui.panel && !(challenge && ui.panel.kind === "terminal") && (
           <Panel
             target={ui.panel}
             state={state}
