@@ -38,8 +38,8 @@ export default function LightFlip() {
   const isLast = playing && state.index === state.stages.length - 1;
 
   useEffect(() => {
-    audio.music(playing ? "play" : "menu");
-  }, [audio, playing]);
+    audio.music("play");
+  }, [audio]);
 
   useEffect(() => {
     if (state.solved) audio.sfx("clear");

@@ -35,8 +35,8 @@ export default function BugDesk() {
   const audio = useAudio(muted, createAudio);
 
   useEffect(() => {
-    audio.music(state.phase === "playing" ? "play" : "menu");
-  }, [audio, state.phase]);
+    audio.music("play");
+  }, [audio]);
 
   useEffect(() => {
     if (state.chosen !== null) audio.sfx(state.results.at(-1).ok ? "correct" : "wrong");

@@ -60,8 +60,8 @@ export default function TinyIsle() {
   }, [data, today]);
 
   useEffect(() => {
-    audio.music(state.phase === "play" ? "play" : "menu");
-  }, [audio, state.phase]);
+    audio.music("play");
+  }, [audio]);
 
   useEffect(() => {
     if (state.gain) audio.sfx(state.gain.delta >= 0 ? "build" : "lose");

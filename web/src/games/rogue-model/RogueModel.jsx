@@ -57,8 +57,8 @@ export default function RogueModel() {
   const banner = state.phase === "play" && sim.turn > 0 ? sim.news.filter((item) => item.turn === sim.turn && item.key).at(-1) : null;
 
   useEffect(() => {
-    audio.music(state.phase === "play" ? "play" : "menu");
-  }, [audio, state.phase]);
+    audio.music("play");
+  }, [audio]);
 
   useEffect(() => {
     if (state.phase !== "play") {
