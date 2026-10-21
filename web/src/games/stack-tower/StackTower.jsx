@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getGameData, saveResult } from "../../lib/storage.js";
+import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
+import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
+import DailyCard from "../_shared/DailyCard.jsx";
+import { hashSeed } from "../_shared/rng.js";
 import { useGameBack } from "../_shared/useGameBack.js";
-import { createState, drop, HEIGHT, step, WIDTH } from "./engine.js";
+import { createState, dailyRules, drop, HEIGHT, step, WIDTH } from "./engine.js";
 import meta from "./meta.js";
 import { mergeResult } from "./record.js";
 import { addPiece, advance, createView, draw, SCALE } from "./render.js";
@@ -16,20 +19,32 @@ export default function StackTower() {
   const [hud, setHud] = useState({ floors: 0, perfects: 0 });
   const [message, setMessage] = useState("");
   const [record, setRecord] = useState(null);
+  const [today, setToday] = useState(() => kstDate(Date.now()));
+  const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
+  const [dailyResult, setDailyResult] = useState(null);
+  const dailyRef = useRef(null);
   const canvasRef = useRef(null);
   const dropRef = useRef(null);
   const viewRef = useRef(null);
   const reduceRef = useRef(false);
   useGameBack(phase === "intro" ? 0 : 1, () => setPhase("intro"));
 
-  const start = useCallback(() => {
+  const begin = useCallback((date) => {
     reduceRef.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    viewRef.current = createView(createState());
+    dailyRef.current = date;
+    viewRef.current = createView(createState(date ? dailyRules(hashSeed(`${meta.id}:${date}`)) : undefined));
     setHud({ floors: 0, perfects: 0 });
     setMessage("");
     setRecord(null);
+    setDailyResult(null);
     setPhase("playing");
   }, []);
+  const start = useCallback(() => begin(null), [begin]);
+  const startDaily = useCallback(() => {
+    const date = kstDate(Date.now());
+    setToday(date);
+    begin(date);
+  }, [begin]);
 
   const place = useCallback(() => {
     const view = viewRef.current;
@@ -42,9 +57,18 @@ export default function StackTower() {
     view.flash = next.perfect ? 1 : 0;
     setHud({ floors: next.floors, perfects: next.perfects });
     if (next.over) {
-      const outcome = mergeResult(getGameData(meta.id), { floors: next.floors, perfects: next.perfects });
-      saveResult(meta.id, Date.now(), outcome.data);
-      setRecord(outcome);
+      const date = dailyRef.current;
+      if (date) {
+        const daily = nextDailyRecord(getDaily(meta.id), date, next.floors);
+        saveDaily(meta.id, daily);
+        saveResult(meta.id, Date.now(), getGameData(meta.id));
+        setDailyRecord(daily);
+        setDailyResult({ date, streak: currentStreak(daily, date) });
+      } else {
+        const outcome = mergeResult(getGameData(meta.id), { floors: next.floors, perfects: next.perfects });
+        saveResult(meta.id, Date.now(), outcome.data);
+        setRecord(outcome);
+      }
       setMessage("");
       setPhase("over");
       return;
@@ -97,12 +121,24 @@ export default function StackTower() {
           <p className="text-slate-600">
             움직이는 블록을 탭해서 내려놓아요 · {meta.estimatedPlayTime}
           </p>
+          <DailyCard
+            date={today}
+            streak={currentStreak(dailyRecord, today)}
+            doneText={
+              dailyRecord?.last === today
+                ? `오늘 완료 · ${dailyRecord.history?.[today] ?? 0}층 · 연속 ${currentStreak(dailyRecord, today)}일. 내일 새로운 판이 열려요.`
+                : null
+            }
+            onStart={startDaily}
+          />
           <button
             type="button"
             onClick={start}
-            className="rounded-xl bg-primary px-8 py-3.5 text-lg font-bold text-white"
+            className={`w-full max-w-sm rounded-xl px-8 py-3.5 text-lg font-bold ${
+              dailyRecord?.last === today ? "bg-primary text-white" : "border-2 border-primary bg-white text-primary"
+            }`}
           >
-            시작하기
+            일반 모드로 시작하기
           </button>
         </div>
       )}
@@ -142,7 +178,7 @@ export default function StackTower() {
               </button>
             </>
           ) : (
-            <Result result={hud} record={record} onRetry={start} />
+            <Result result={hud} record={record} daily={dailyResult} onRetry={start} />
           )}
         </div>
       )}
