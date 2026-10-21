@@ -14,7 +14,7 @@ const {
   jsonLd = [],
   size = "text",
 } = Astro.props;
-const WIDTHS = { text: "max-w-3xl", home: "max-w-6xl" };
+const WIDTHS = { text: "max-w-3xl", home: "max-w-6xl", wide: "max-w-7xl" };
 
 const indexable = import.meta.env.PUBLIC_SITE_ENV === "production";
 const canonical = indexable && !noindex ? canonicalUrl(Astro.site, Astro.url.pathname) : null;
