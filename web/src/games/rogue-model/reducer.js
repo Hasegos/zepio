@@ -1,4 +1,4 @@
-import { advance, buy, newGame, starsOf } from "./engine.js";
+import { advance, buy, collect, newGame, starsOf } from "./engine.js";
 
 /**
  * 시작 전 상태를 만든다.
@@ -14,7 +14,7 @@ export function initialState() {
  * 상태에 맞지 않는 action은 같은 state를 그대로 돌려준다.
  *
  * @param state 현재 상태
- * @param action start(run, now), launch(ai, start), buy(id), tick(now), back 중 하나
+ * @param action start(run, now), launch(ai, start, diff), buy(id), collect(id), tick(now), back 중 하나
  * @returns 다음 상태
  */
 export function reducer(state, action) {
@@ -23,12 +23,17 @@ export function reducer(state, action) {
       return { ...initialState(), phase: "setup", run: action.run, startedAt: action.now };
     case "launch": {
       if (state.phase !== "setup") return state;
-      const sim = newGame(state.run, action.ai, action.start);
+      const sim = newGame(state.run, action.ai, action.start, action.diff);
       return sim ? { ...state, phase: "play", sim } : state;
     }
     case "buy": {
       if (state.phase !== "play") return state;
       const sim = buy(state.sim, action.id);
+      return sim === state.sim ? state : { ...state, sim };
+    }
+    case "collect": {
+      if (state.phase !== "play") return state;
+      const sim = collect(state.sim, action.id);
       return sim === state.sim ? state : { ...state, sim };
     }
     case "tick": {
