@@ -3,6 +3,15 @@ import { currentStreak, kstDate } from "../lib/daily.js";
 import { getHomePrefs, loadRecords, setHomePrefs } from "../lib/storage.js";
 
 const { games, recent, daily } = loadRecords();
+const PLAYS_MAX = 999999;
+
+/**
+ * 저장된 플레이 횟수를 읽는다. 정수가 아니거나 범위를 벗어난 값은 0으로 본다.
+ *
+ * @param entry 저장된 게임 항목
+ * @returns 플레이 횟수
+ */
+const playsOf = (entry) => (Number.isInteger(entry?.plays) && entry.plays >= 0 && entry.plays <= PLAYS_MAX ? entry.plays : 0);
 const cards = new Map(
   [...document.querySelectorAll("[data-game-card]")].map((card) => [card.dataset.gameCard, card]),
 );
@@ -11,7 +20,7 @@ for (const [id, card] of cards) {
   const entry = games[id];
   const line = card.querySelector("[data-record]");
   if (!entry || !line) continue;
-  const plays = Number.isInteger(entry.plays) ? entry.plays : 0;
+  const plays = playsOf(entry);
   recordLoaders[id]?.().then(({ summarize }) => {
     const text = summarize(entry.data, plays);
     if (text) {
@@ -75,7 +84,7 @@ if (gameList && sortButtons.length) {
     card,
     order: Number(card.dataset.order),
     minutes: Number(card.dataset.minutes),
-    plays: Number.isInteger(games[card.dataset.gameCard]?.plays) ? games[card.dataset.gameCard].plays : 0,
+    plays: playsOf(games[card.dataset.gameCard]),
     lastAt: Number.isFinite(games[card.dataset.gameCard]?.lastAt) ? games[card.dataset.gameCard].lastAt : 0,
   }));
 
