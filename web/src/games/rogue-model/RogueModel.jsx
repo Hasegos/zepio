@@ -282,7 +282,7 @@ export default function RogueModel() {
         </div>
       )}
       {state.phase === "result" && (
-        <Result state={state} record={record} daily={mode === "daily" ? dailyResult : null} onRetry={startNormal} />
+        <Result state={state} record={record} daily={mode === "daily" ? dailyResult : null} onRetry={startNormal} still={still} />
       )}
     </section>
   );

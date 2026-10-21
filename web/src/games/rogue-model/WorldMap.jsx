@@ -105,12 +105,13 @@ function Vehicle({ type, path, length, offset }) {
  * @param props.selected 고른 권역 번호 또는 null
  * @param props.running 턴이 흐르는 중인지
  * @param props.still 움직임을 줄여야 하는지
- * @param props.onSelect 권역을 눌렀을 때 번호를 받는다
+ * @param props.onSelect 권역을 눌렀을 때 번호를 받는다. 없으면 보기만 하는 지도가 된다
+ * @param props.label 지도의 스크린 리더용 이름
  * @param props.onCollect 보너스 버블을 눌렀을 때 버블 id를 받는다
  * @param props.rings 이번 턴에 새로 퍼진 권역의 파문 목록 { id, region }
  * @param props.glow 방금 올린 연결 능력 { type, n } 또는 null. 그 종류의 연결이 잠깐 굵게 번쩍인다
  */
-export default function WorldMap({ world, sim, selected, running, still, onSelect, onCollect, rings = [], glow = null }) {
+export default function WorldMap({ world, sim, selected, running, still, onSelect, onCollect, rings = [], glow = null, label: mapLabel = "세계 지도. 권역을 눌러 고릅니다" }) {
   const { regions, links } = world;
   const levels = sim?.levels ?? {};
   const P = useMemo(() => (sim ? derive(sim.levels, sim.ai) : null), [sim]);
@@ -118,7 +119,7 @@ export default function WorldMap({ world, sim, selected, running, still, onSelec
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-700 bg-slate-900">
-      <svg viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`} role="group" aria-label="세계 지도. 권역을 눌러 고릅니다" className="block w-full min-w-[680px]">
+      <svg viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`} role={onSelect ? "group" : "img"} aria-label={mapLabel} className="block w-full min-w-[680px]">
         <defs>
           <pattern id="rm-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <rect width="7" height="7" className="fill-amber-300/25" />
@@ -149,22 +150,24 @@ export default function WorldMap({ world, sim, selected, running, still, onSelec
           const w = sim?.w[i] ?? 0;
           const path = COUNTRY_PATHS[region.id];
           const label = `${region.name}${sim ? `, 채택 ${Math.round(a * 100)}%, 의존 ${Math.round(d * 100)}%, 경계 ${Math.round(w * 100)}%${sim.blocked[i] ? ", 해외 연결 차단 중" : ""}` : ""}`;
+          const buttonProps = onSelect
+            ? {
+                role: "button",
+                tabIndex: 0,
+                "aria-label": label,
+                "aria-pressed": selected === i,
+                className: "group cursor-pointer outline-none",
+                onClick: () => onSelect(i),
+                onKeyDown: (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelect(i);
+                  }
+                },
+              }
+            : { className: "group" };
           return (
-            <g
-              key={region.id}
-              role="button"
-              tabIndex={0}
-              aria-label={label}
-              aria-pressed={selected === i}
-              className="group cursor-pointer outline-none"
-              onClick={() => onSelect(i)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onSelect(i);
-                }
-              }}
-            >
+            <g key={region.id} {...buttonProps}>
               <path d={path} className="fill-slate-600 stroke-slate-400 stroke-[0.5]" />
               {a > 0 && <path d={path} className="fill-violet-400" fillOpacity={0.2 + 0.75 * a} />}
               {d > 0.02 && <path d={path} fill="url(#rm-hatch)" fillOpacity={Math.min(1, d * 1.2)} />}
