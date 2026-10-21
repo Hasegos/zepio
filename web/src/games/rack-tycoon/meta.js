@@ -10,7 +10,6 @@ export default {
   estimatedPlayTime: "약 20분",
   supportedDevices: ["desktop"],
   inputs: ["mouse", "keyboard"],
-  wide: true,
   status: "live",
   runtime: "module",
 };
