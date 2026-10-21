@@ -548,6 +548,28 @@ export default function RackTycoon() {
 
       <div className="relative">
         <div ref={stageRef} className="h-[62vh] max-h-[680px] min-h-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-indigo-100" />
+        {!noWebgl && (
+          <div className="absolute bottom-3 left-3 z-10 flex gap-1.5" role="group" aria-label="화면 회전">
+            {[
+              { label: "왼쪽으로 돌리기 (Q)", step: -1, icon: "↺" },
+              { label: "오른쪽으로 돌리기 (E)", step: 1, icon: "↻" },
+            ].map(({ label, step, icon }) => (
+              <button
+                key={step}
+                type="button"
+                aria-label={label}
+                title={label}
+                onClick={(event) => {
+                  sceneRef.current?.rotate(step);
+                  if (event.detail > 0) event.currentTarget.blur();
+                }}
+                className="h-10 w-10 rounded-full border border-slate-300 bg-white/90 text-xl font-bold text-slate-700 shadow hover:bg-white"
+              >
+                {icon}
+              </button>
+            ))}
+          </div>
+        )}
         {noWebgl && (
           <p className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm font-semibold text-slate-700">
             이 브라우저에서는 3D 화면을 쓸 수 없어요. 아래 목록에서 좌표로 시설을 설치하고 관리할 수 있어요.
@@ -572,7 +594,7 @@ export default function RackTycoon() {
         )}
       </div>
       <p className="text-xs text-slate-600">
-        바닥을 누르면 로봇이 걸어가요. 도구(1~6)를 고르면 빈 칸에 설치하고, 끌면서 여러 칸에 놓을 수 있어요. H는 열지도, N은 네트워크, M은 옮기기, X는 철거, Esc나 오른쪽 클릭은 취소예요. WASD로 직접 움직이고 Q/E로 돌리고 휠로 확대해요.
+        바닥을 누르면 로봇이 걸어가요. 도구(1~6)를 고르면 빈 칸에 설치하고, 끌면서 여러 칸에 놓을 수 있어요. H는 열지도, N은 네트워크, M은 옮기기, X는 철거, Esc나 오른쪽 클릭은 취소예요. WASD로 직접 움직이고 휠로 확대해요. 시설에 가려 안 보이는 칸은 화면 왼쪽 아래 버튼이나 Q/E로 돌려서 보세요.
       </p>
 
       <Lists
