@@ -100,11 +100,11 @@ export function makeVillage(seed) {
   const pos = [];
   for (let cluster = 0; cluster < CLUSTERS; cluster += 1) {
     const angle = (cluster / CLUSTERS) * Math.PI * 2 - Math.PI / 2;
-    const cx = 50 + Math.cos(angle) * 30;
-    const cy = 50 + Math.sin(angle) * 29;
+    const cx = 50 + Math.cos(angle) * 34;
+    const cy = 50 + Math.sin(angle) * 33;
     for (let i = 0; i < PER_CLUSTER; i += 1) {
-      const turn = (i / PER_CLUSTER) * Math.PI * 2 + random() * 0.5;
-      const radius = 8 + random() * 4;
+      const turn = (i / PER_CLUSTER) * Math.PI * 2 + (random() - 0.5) * 0.06;
+      const radius = 10.8 + random() * 0.5;
       pos.push([Math.round((cx + Math.cos(turn) * radius) * 10) / 10, Math.round((cy + Math.sin(turn) * radius) * 10) / 10]);
     }
   }
