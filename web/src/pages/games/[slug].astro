@@ -54,6 +54,7 @@ const jsonLd = [
   image={image}
   imageAlt={`${game.name} 게임 화면`}
   jsonLd={jsonLd}
+  size={game.wide ? "wide" : "text"}
 >
   <nav class="mb-3 text-sm text-slate-600" aria-label="경로">
     <a href="/" class="underline">홈</a> / {game.name}
@@ -62,6 +63,7 @@ const jsonLd = [
 
   <GameStage slug={game.slug} />
 
+  <div class:list={[game.wide && "max-w-3xl"]}>
   <section class="mt-8">
     <h2 class="mb-2 text-xl font-bold">게임 소개</h2>
     {content.intro.map((paragraph) => <p class="mb-2">{paragraph}</p>)}
@@ -100,4 +102,5 @@ const jsonLd = [
       ))}
     </dl>
   </section>
+  </div>
 </BaseLayout>
