@@ -7,6 +7,7 @@ import lightFlip from "./light-flip/meta.js";
 import patternChallenge from "./pattern-challenge/meta.js";
 import promptFortress from "./prompt-fortress/meta.js";
 import rackTycoon from "./rack-tycoon/meta.js";
+import rogueModel from "./rogue-model/meta.js";
 import rumor from "./rumor/meta.js";
 import stackTower from "./stack-tower/meta.js";
 import tinyIsle from "./tiny-isle/meta.js";
@@ -24,6 +25,7 @@ export const games = [
   { ...hiddenRule, load: () => import("./hidden-rule/index.jsx") },
   { ...bugDesk, load: () => import("./bug-desk/index.jsx") },
   { ...rumor, load: () => import("./rumor/index.jsx") },
+  { ...rogueModel, load: () => import("./rogue-model/index.jsx") },
 ];
 
 export const liveGames = games.filter((game) => game.status === "live");
