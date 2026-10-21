@@ -20,6 +20,7 @@ import TraitPanel from "./TraitPanel.jsx";
 import { AI_IDS } from "./traits.js";
 import WorldMap from "./WorldMap.jsx";
 
+const ROUTE_TRAITS = ["land", "cable", "cloud", "sat"];
 const SPEEDS = [
   { label: "일시정지", ms: 0 },
   { label: "1배속", ms: 1600 },
@@ -47,10 +48,13 @@ export default function RogueModel() {
   const [still, setStill] = useState(false);
   const [muted, toggleMuted] = useMuted();
   const audio = useAudio(muted, createAudio);
-  const reached = useRef(0);
+  const [fx, setFx] = useState({ rings: [], alarm: 0 });
+  const [glow, setGlow] = useState(null);
+  const seen = useRef(null);
 
   const world = useMemo(() => (state.run ? worldOf(state.run.seed) : null), [state.run]);
   const sim = state.sim;
+  const banner = state.phase === "play" && sim.turn > 0 ? sim.news.filter((item) => item.turn === sim.turn && item.key).at(-1) : null;
 
   useEffect(() => {
     audio.music(state.phase === "play" ? "play" : "menu");
@@ -58,12 +62,16 @@ export default function RogueModel() {
 
   useEffect(() => {
     if (state.phase !== "play") {
-      reached.current = 0;
+      seen.current = null;
+      setFx((f) => (f.rings.length || f.alarm ? { rings: [], alarm: 0 } : f));
       return;
     }
-    const count = sim.a.filter((value) => value > 0).length;
-    if (reached.current && count > reached.current) audio.sfx("adopt");
-    reached.current = count;
+    const prev = seen.current ?? { a: sim.a.map(() => 0), reg: 0 };
+    const rings = sim.a.flatMap((value, i) => (value > 0 && prev.a[i] === 0 ? [{ id: `${sim.turn}-${i}`, region: i }] : []));
+    const crossed = sim.reg < 1 && Math.floor(sim.reg * 4) > Math.floor(prev.reg * 4);
+    seen.current = { a: sim.a, reg: sim.reg };
+    setFx((f) => (rings.length || crossed || f.rings.length ? { rings, alarm: crossed ? f.alarm + 1 : f.alarm } : f));
+    if (sim.turn > 0 && rings.length) audio.sfx("adopt");
     if (sim.turn > 0 && sim.news.some((item) => item.turn === sim.turn && item.key)) audio.sfx("alert");
   }, [audio, state.phase, sim]);
 
@@ -111,6 +119,7 @@ export default function RogueModel() {
     setMode(nextMode);
     setPick(null);
     setSpeed(0);
+    setGlow(null);
     dispatch({ type: "start", run, now: Date.now() });
   }, []);
   const startNormal = useCallback(() => begin("normal", makeRun(hashSeed(`${meta.id}:${Date.now()}:${Math.random()}`))), [begin]);
@@ -133,6 +142,7 @@ export default function RogueModel() {
   const buy = useCallback(
     (id) => {
       audio.sfx("buy");
+      if (ROUTE_TRAITS.includes(id)) setGlow((g) => ({ type: id, n: (g?.n ?? 0) + 1 }));
       dispatch({ type: "buy", id });
     },
     [audio],
@@ -192,7 +202,7 @@ export default function RogueModel() {
       {state.phase === "play" && world && sim && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="flex min-w-0 flex-col gap-4">
-          <Hud world={world} sim={sim} />
+          <Hud world={world} sim={sim} alarm={fx.alarm} />
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="진행 속도">
             {SPEEDS.map((item, i) => (
               <button
@@ -213,7 +223,19 @@ export default function RogueModel() {
               중요한 소식에서 멈춤
             </label>
           </div>
-          <WorldMap world={world} sim={sim} selected={pick} running={speed !== 0} still={still} onSelect={setPick} onCollect={collect} />
+          <div className="relative">
+            <WorldMap world={world} sim={sim} selected={pick} running={speed !== 0} still={still} onSelect={setPick} onCollect={collect} rings={fx.rings} glow={glow} />
+            {banner && (
+              <div
+                key={`${banner.turn}-${banner.text}`}
+                aria-hidden="true"
+                className={`pointer-events-none absolute inset-x-0 top-3 z-10 mx-auto w-fit max-w-[92%] animate-rm-banner rounded-full px-4 py-2 text-center text-sm font-extrabold text-white shadow-lg motion-reduce:animate-none ${/규제/.test(banner.text) ? "bg-danger-strong" : "bg-slate-900/90"}`}
+              >
+                {banner.text}
+              </div>
+            )}
+            {fx.alarm > 0 && <div key={fx.alarm} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 rounded-xl animate-rm-flash motion-reduce:animate-none" />}
+          </div>
           {sim.bubbles.length > 0 && (
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label="보너스">
               <span className="text-sm font-bold">보너스</span>

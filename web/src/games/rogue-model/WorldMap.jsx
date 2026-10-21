@@ -9,6 +9,7 @@ const LINE_CLASS = {
   cloud: "stroke-violet-300 stroke-[0.9]",
 };
 const AIRPLANE = "M5 0 L-3.5 -3.2 L-1.8 0 L-3.5 3.2 Z";
+const RING_CLASS = "pointer-events-none animate-rm-ring origin-center [transform-box:fill-box] [vector-effect:non-scaling-stroke]";
 
 /**
  * 연결 하나를 그릴 길을 만든다. 해저 케이블과 클라우드 연결은 휘어서 바다와 하늘을 가로지르고,
@@ -106,8 +107,10 @@ function Vehicle({ type, path, length, offset }) {
  * @param props.still 움직임을 줄여야 하는지
  * @param props.onSelect 권역을 눌렀을 때 번호를 받는다
  * @param props.onCollect 보너스 버블을 눌렀을 때 버블 id를 받는다
+ * @param props.rings 이번 턴에 새로 퍼진 권역의 파문 목록 { id, region }
+ * @param props.glow 방금 올린 연결 능력 { type, n } 또는 null. 그 종류의 연결이 잠깐 굵게 번쩍인다
  */
-export default function WorldMap({ world, sim, selected, running, still, onSelect, onCollect }) {
+export default function WorldMap({ world, sim, selected, running, still, onSelect, onCollect, rings = [], glow = null }) {
   const { regions, links } = world;
   const levels = sim?.levels ?? {};
   const P = useMemo(() => (sim ? derive(sim.levels, sim.ai) : null), [sim]);
@@ -129,13 +132,14 @@ export default function WorldMap({ world, sim, selected, running, still, onSelec
           const cut = sim?.cut[index];
           const factor = P?.route[link.type] ?? 0;
           const active = sim && Math.max(sim.a[link.a], sim.a[link.b]) * link.cap * factor > 0.02 && !cut;
+          const lit = glow?.type === link.type && !cut;
           return (
             <path
-              key={index}
+              key={`${index}-${lit ? glow.n : 0}`}
               d={shapes[index].d}
               fill="none"
               strokeDasharray={link.type === "cable" ? "5 4" : link.type === "cloud" ? "2 5" : undefined}
-              className={`${LINE_CLASS[link.type]} ${cut ? "stroke-danger opacity-80" : active ? "opacity-90" : "opacity-40"}`}
+              className={`${LINE_CLASS[link.type]} ${cut ? "stroke-danger opacity-80" : active ? "opacity-90" : "opacity-40"} ${lit && !still ? "animate-rm-link" : ""}`}
             />
           );
         })}
@@ -199,6 +203,10 @@ export default function WorldMap({ world, sim, selected, running, still, onSelec
                 : [],
             );
           })}
+        {!still &&
+          rings.map((ring) => (
+            <circle key={ring.id} aria-hidden="true" cx={regions[ring.region].x} cy={regions[ring.region].y} r="6" fill="none" strokeWidth="2.5" className={`${RING_CLASS} stroke-white`} />
+          ))}
         {sim?.bubbles.map((bubble) => {
           const region = regions[bubble.region];
           const points = bubble.kind === "points";
@@ -218,9 +226,14 @@ export default function WorldMap({ world, sim, selected, running, still, onSelec
             if (!sim.cut[index]) return null;
             const [x, y] = shapes[index].mark;
             return (
-              <text key={`cut-${index}`} x={x} y={y + 5} textAnchor="middle" fontSize="16" fontWeight="900" className="fill-danger stroke-slate-900 stroke-[2] [paint-order:stroke]">
-                ✕
-              </text>
+              <g key={`cut-${index}`}>
+                {!still && (
+                  <circle aria-hidden="true" cx={x} cy={y} r="4" fill="none" strokeWidth="2.5" className={`${RING_CLASS} stroke-danger`} />
+                )}
+                <text x={x} y={y + 5} textAnchor="middle" fontSize="16" fontWeight="900" className="fill-danger stroke-slate-900 stroke-[2] [paint-order:stroke]">
+                  ✕
+                </text>
+              </g>
             );
           })}
       </svg>
