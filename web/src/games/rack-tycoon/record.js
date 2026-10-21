@@ -1,5 +1,5 @@
 import { isInt, isObject } from "../_shared/validate.js";
-import { analyze, DIFFICULTIES, formatRate, gradeOf, KINDS, newState, xyOf } from "./engine.js";
+import { analyze, DIFFICULTIES, formatRate, gradeOf, KINDS, newState, VARIANTS, xyOf } from "./engine.js";
 import { snapshot, viewOf } from "./campus.js";
 import { AREA, GRID_HEIGHT, GRID_WIDTH, inLand, LANDS, TERMINAL_TILE } from "./layout.js";
 import { BADGE_IDS, PART_KEYS } from "./collection.js";
@@ -41,7 +41,9 @@ function readCell(cell, tile, inside) {
   if (!isInt(cell.level, 1, KINDS[cell.kind].levels.length - 1) || typeof cell.broken !== "boolean") return undefined;
   if (typeof cell.stress !== "number" || !(cell.stress >= 0 && cell.stress < 1)) return undefined;
   if (cell.kind !== "server" && (cell.broken || cell.stress !== 0)) return undefined;
-  return { kind: cell.kind, level: cell.level, stress: cell.stress, broken: cell.broken };
+  const clean = { kind: cell.kind, level: cell.level, stress: cell.stress, broken: cell.broken };
+  if (cell.kind === "server" && typeof cell.variant === "string" && cell.variant !== "base" && Object.hasOwn(VARIANTS, cell.variant)) clean.variant = cell.variant;
+  return clean;
 }
 
 /**

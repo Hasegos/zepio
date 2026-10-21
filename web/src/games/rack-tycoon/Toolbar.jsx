@@ -1,4 +1,4 @@
-import { expandCost, formatNumber, KINDS, placeCost } from "./engine.js";
+import { expandCost, formatNumber, KINDS, placeCost, VARIANTS } from "./engine.js";
 import { LANDS } from "./layout.js";
 
 export const TOOLS = [
@@ -22,6 +22,8 @@ export const OVERLAYS = [
  *
  * @param props.tool 고른 도구
  * @param props.onTool 도구를 바꿀 때 호출
+ * @param props.variant 서버를 놓을 때 고른 변종(base, ai, storage, cache)
+ * @param props.onVariant 변종을 바꿀 때 호출
  * @param props.overlay 켜 둔 겹쳐 보기(none, heat, net)
  * @param props.onOverlay 겹쳐 보기를 바꿀 때 호출
  * @param props.state 게임 상태
@@ -32,7 +34,7 @@ export const OVERLAYS = [
  * @param props.researchOpen 연구 창이 열려 있는지
  * @param props.onResearch 연구 창을 여닫을 때 호출
  */
-export default function Toolbar({ tool, onTool, overlay, onOverlay, state, onExpand, codexOpen, onCodex, codexCount, researchOpen, onResearch }) {
+export default function Toolbar({ tool, onTool, variant, onVariant, overlay, onOverlay, state, onExpand, codexOpen, onCodex, codexCount, researchOpen, onResearch }) {
   const cost = expandCost(state);
   const poor = cost !== null && state.coins < cost;
   const pill = "rounded-lg border px-3 py-2 text-xs font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white border-slate-300 bg-white text-slate-700";
@@ -57,6 +59,27 @@ export default function Toolbar({ tool, onTool, overlay, onOverlay, state, onExp
           </button>
         ))}
       </div>
+      {tool === "server" && (
+        <div className="flex flex-col gap-1" role="group" aria-label="서버 종류">
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(VARIANTS).map(([id, info]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={variant === id}
+                onClick={(event) => {
+                  onVariant(id);
+                  if (event.detail > 0) event.currentTarget.blur();
+                }}
+                className={pill}
+              >
+                {info.name}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs font-semibold text-slate-700">{VARIANTS[variant].text}</p>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-1.5">
         {OVERLAYS.map((entry) => (
           <button

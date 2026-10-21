@@ -130,7 +130,7 @@ export default function RackTycoon() {
   const bizRef = useRef(null);
   bizRef.current ??= newBusiness();
   const lastRef = useRef(boot.now);
-  const uiRef = useRef({ tool: "select", overlay: "none", hoverTile: null, panel: null, carried: null, codex: false, research: false });
+  const uiRef = useRef({ tool: "select", variant: "base", overlay: "none", hoverTile: null, panel: null, carried: null, codex: false, research: false });
   const [ui, setUi] = useState(uiRef.current);
   const [snap, setSnap] = useState(() => {
     const analysis = analyze(boot.state);
@@ -160,7 +160,7 @@ export default function RackTycoon() {
     const mul = marketMul(bizRef.current);
     const analysis = analyze(state, campusFx(state, evsRef.current, mul)[state.active]);
     const access = accessibleTiles(state, robot);
-    const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried });
+    const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried, variant: u.variant });
     const event = describeEvent(state, ev);
     setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event, campus: campusOf(state, evsRef.current, analysis, mul), biz: bizRef.current });
     const selected = u.carried ?? (u.panel?.kind === "item" ? u.panel.tile : null);
@@ -355,7 +355,7 @@ export default function RackTycoon() {
         }
         else say("아직 넓히지 않은 땅이에요. 단말기에서 부지를 넓히세요.");
       } else if (PLACE_TOOLS.includes(u.tool)) {
-        if (!cell) act(placeItem, tile, u.tool);
+        if (!cell) act(placeItem, tile, u.tool, u.variant);
         else if (!drag && cell.kind === u.tool) act(upgradeItem, tile);
         else if (!drag) say("이미 시설이 있어요.");
       } else if (u.tool === "remove") {
@@ -577,6 +577,8 @@ export default function RackTycoon() {
         <Toolbar
           tool={ui.tool}
           onTool={pickTool}
+          variant={ui.variant}
+          onVariant={(variant) => update({ variant })}
           overlay={ui.overlay}
           onOverlay={(overlay) => update({ overlay })}
           state={state}
