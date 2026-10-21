@@ -15,6 +15,8 @@ export const BADGES = [
   { id: "sites3", name: "건물주", text: "건물 3개 보유", test: (s) => s.sites.length >= 3 },
   { id: "sites5", name: "캠퍼스 총괄", text: "건물 5개 모두 보유", test: (s) => s.sites.length >= 5 },
   { id: "links3", name: "네트워크 건축가", text: "건물 연결 3개", test: (s) => s.links.length >= 3 },
+  { id: "brand1", name: "새 간판", text: "리브랜딩 1번", test: (s) => s.brand.count >= 1 },
+  { id: "brand3", name: "브랜드 장인", text: "리브랜딩 3번", test: (s) => s.brand.count >= 3 },
   { id: "hard1m", name: "위험을 즐기는 사람", text: "위험 난이도로 누적 수익 100만 코인", test: (s) => s.difficulty === "hard" && s.lifetime >= 1e6 },
 ];
 export const BADGE_IDS = new Set(BADGES.map((badge) => badge.id));

@@ -82,3 +82,15 @@ export function connectionsOf(links, type) {
 }
 
 export const BADGE_BONUS = 0.01;
+export const BRAND_BONUS = 0.05;
+export const REBRAND_MIN = 40000000;
+
+/**
+ * 리브랜딩하면 얻는 브랜드 포인트를 구한다. 누적 수익 100만마다 제곱근으로 늘어난다.
+ *
+ * @param lifetime 누적 수익
+ * @returns 포인트
+ */
+export function brandGain(lifetime) {
+  return Math.floor(Math.sqrt(lifetime / 1000000));
+}

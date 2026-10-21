@@ -121,9 +121,19 @@ function readCollection(raw) {
 }
 
 /**
+ * 저장된 브랜드 기록을 안전한 모양으로 다듬는다. 없거나 깨진 값은 0으로 본다.
+ *
+ * @param raw 저장소에서 읽은 기록
+ * @returns { points, count }
+ */
+function readBrand(raw) {
+  return { points: isObject(raw) && isInt(raw.points, 0, 1e6) ? raw.points : 0, count: isObject(raw) && isInt(raw.count, 0, 1e6) ? raw.count : 0 };
+}
+
+/**
  * 건물 목록과 보고 있는 건물로 게임 상태를 만든다.
  *
- * @param base { coins, lifetime, time, difficulty, stats, links, codex, badges, title }
+ * @param base { coins, lifetime, time, difficulty, stats, links, brand, codex, badges, title }
  * @param sites 건물 목록
  * @param active 보고 있는 건물 번호
  * @returns 게임 상태
@@ -148,7 +158,7 @@ export function readState(raw) {
   const clean = sites.map(readSite);
   if (clean.some((site) => site === null) || new Set(clean.map((site) => site.type)).size !== clean.length) return null;
   const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
-  return build({ coins, lifetime, time, difficulty, stats: readStats(raw.stats), links: readLinks(raw.links, clean), ...readCollection(raw) }, clean, active);
+  return build({ coins, lifetime, time, difficulty, stats: readStats(raw.stats), links: readLinks(raw.links, clean), brand: readBrand(raw.brand), ...readCollection(raw) }, clean, active);
 }
 
 /**
@@ -176,7 +186,7 @@ function migrateV2(raw) {
     return null;
   });
   const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
-  const base = { coins: Math.min(MAX_VALUE, coins + refund), lifetime, time, difficulty, stats: readStats(raw.stats), links: [], ...readCollection(raw) };
+  const base = { coins: Math.min(MAX_VALUE, coins + refund), lifetime, time, difficulty, stats: readStats(raw.stats), links: [], brand: readBrand(raw.brand), ...readCollection(raw) };
   return build(base, [{ type: "basement", land: nextLand, cells: kept }], 0);
 }
 
