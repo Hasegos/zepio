@@ -15,7 +15,7 @@ const DOT_CLASS = { land: "fill-slate-600", cable: "fill-sky-700", cloud: "fill-
  * @param link { a, b, type }
  * @param regions 권역 목록
  * @param index 연결 번호(휘는 방향을 정하는 데 쓴다)
- * @returns { d, forward, backward } d는 선, forward와 backward는 알갱이가 달릴 길 목록
+ * @returns { d, forward, backward, mark } d는 선, forward와 backward는 알갱이가 달릴 길 목록, mark는 끊김 표시를 둘 좌표 [x, y]
  */
 function pathsOf(link, regions, index) {
   const a = regions[link.a];
@@ -26,11 +26,11 @@ function pathsOf(link, regions, index) {
     const out = [`M${left.x} ${left.y} L0 ${y}`, `M100 ${y} L${right.x} ${right.y}`];
     const back = [`M0 ${y} L${left.x} ${left.y}`, `M${right.x} ${right.y} L100 ${y}`];
     const aIsLeft = a === left;
-    return { d: out.join(" "), forward: aIsLeft ? out : back, backward: aIsLeft ? back : out };
+    return { d: out.join(" "), forward: aIsLeft ? out : back, backward: aIsLeft ? back : out, mark: [3, y] };
   }
   if (link.type === "land") {
     const line = (from, to) => `M${from.x} ${from.y} L${to.x} ${to.y}`;
-    return { d: line(a, b), forward: [line(a, b)], backward: [line(b, a)] };
+    return { d: line(a, b), forward: [line(a, b)], backward: [line(b, a)], mark: [(a.x + b.x) / 2, (a.y + b.y) / 2] };
   }
   const mx = (a.x + b.x) / 2;
   const my = (a.y + b.y) / 2;
@@ -39,7 +39,7 @@ function pathsOf(link, regions, index) {
   const cx = mx + (-(b.y - a.y) / length) * bend;
   const cy = my + ((b.x - a.x) / length) * bend;
   const curve = (from, to) => `M${from.x} ${from.y} Q${cx} ${cy} ${to.x} ${to.y}`;
-  return { d: curve(a, b), forward: [curve(a, b)], backward: [curve(b, a)] };
+  return { d: curve(a, b), forward: [curve(a, b)], backward: [curve(b, a)], mark: [0.25 * a.x + 0.5 * cx + 0.25 * b.x, 0.25 * a.y + 0.5 * cy + 0.25 * b.y] };
 }
 
 /**
@@ -146,10 +146,9 @@ export default function WorldMap({ world, sim, selected, running, still, onSelec
       {sim &&
         links.map((link, index) => {
           if (!sim.cut[index]) return null;
-          const a = regions[link.a];
-          const b = regions[link.b];
+          const [x, y] = shapes[index].mark;
           return (
-            <text key={`cut-${index}`} x={(a.x + b.x) / 2} y={(a.y + b.y) / 2} textAnchor="middle" fontSize="3" fontWeight="900" className="fill-danger-strong">
+            <text key={`cut-${index}`} x={x} y={y} textAnchor="middle" fontSize="3" fontWeight="900" className="fill-danger-strong">
               ✕
             </text>
           );

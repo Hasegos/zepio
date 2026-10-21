@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { AI_IDS, AI_TYPES } from "./traits.js";
 
 /**
- * 시작 전 선택 패널. AI 유형을 고르고, 지도에서 고른 시작 권역을 확인한 뒤 시작을 받는다.
+ * 시작 전 선택 패널로 AI 유형을 고르고, 지도에서 고른 시작 권역을 확인한 뒤 시작을 받는다.
  *
  * @param props.ai 고른 AI 유형 id
  * @param props.region 고른 시작 권역 또는 null

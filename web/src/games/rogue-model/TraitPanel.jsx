@@ -27,9 +27,12 @@ export default function TraitPanel({ sim, onBuy }) {
                   <span className="flex-1">
                     <span className="block text-sm font-bold">
                       {trait.name}{" "}
-                      <span aria-label={`${level} / ${max}단계`} className="text-xs font-semibold text-slate-500">
+                      <span aria-hidden="true" className="text-xs font-semibold text-slate-500">
                         {"●".repeat(level)}
                         {"○".repeat(max - level)}
+                      </span>
+                      <span className="sr-only">
+                        {level} / {max}단계
                       </span>
                     </span>
                     <span className="block text-xs text-slate-600">{trait.note}</span>
@@ -41,7 +44,7 @@ export default function TraitPanel({ sim, onBuy }) {
                       type="button"
                       disabled={!cost}
                       onClick={() => onBuy(trait.id)}
-                      aria-label={`${trait.name} ${level + 1}단계 올리기, ${next}포인트`}
+                      aria-label={`${trait.name} ${level + 1}단계 올리기, ${next}pt`}
                       className="rounded-lg bg-primary px-3 py-1.5 text-sm font-bold text-white disabled:bg-slate-200 disabled:text-slate-500"
                     >
                       {next}pt

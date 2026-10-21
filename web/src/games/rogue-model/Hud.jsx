@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { TURNS, WIN_DEPENDENCY, weighted } from "./sim.js";
 
 /**
@@ -25,15 +26,21 @@ function Bar({ label, value, tone, mark }) {
 }
 
 /**
- * 판 상황 표시줄. 턴, 채택률, 의존도(목표 눈금), 경계도, 규제안 진행을 보여 준다.
+ * 판 상황 표시줄로 턴, 채택률, 의존도(목표 눈금), 경계도, 규제안 진행을 보여 준다. 처음 나타날 때 포커스를 받는다.
  *
  * @param props.world 세계
  * @param props.sim 지금 상태
  */
 export default function Hud({ world, sim }) {
+  const turnRef = useRef(null);
+
+  useEffect(() => {
+    turnRef.current?.focus({ preventScroll: true });
+  }, []);
+
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm font-semibold text-slate-600">
+      <p ref={turnRef} tabIndex={-1} className="text-sm font-semibold text-slate-600 outline-none">
         {sim.turn} / {TURNS}턴{sim.detected ? " · 규제 논의 진행 중" : " · 아직 들키지 않았어요"}
       </p>
       <div className="flex flex-wrap gap-3">
