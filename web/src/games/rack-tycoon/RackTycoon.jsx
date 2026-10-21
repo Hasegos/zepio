@@ -27,6 +27,8 @@ import {
 import { EventBanner, DifficultyChooser } from "./Banner.jsx";
 import { advanceAll, buySite, campusFx, eachSite, linkCost, linkSites, offlineAll, rebrand, researchItem, spreadEvents, switchSite, viewOf } from "./campus.js";
 import Campus from "./Campus.jsx";
+import Business from "./Business.jsx";
+import { acceptContract, declineContract, marketMul, newBusiness, stepBusiness } from "./business.js";
 import Collection from "./Collection.jsx";
 import Research from "./Research.jsx";
 import { BADGES, collect, PART_KEYS, setTitle } from "./collection.js";
@@ -79,15 +81,36 @@ function loadBoot() {
  * @param state 게임 상태
  * @param evs 건물별 재난 진행 상태
  * @param analysis 보고 있는 건물의 analyze 결과
+ * @param mul 시장 이벤트의 수익 배율
  * @returns { type, income, links, alert } 목록
  */
-function campusOf(state, evs, analysis) {
-  const fxs = campusFx(state, evs);
+function campusOf(state, evs, analysis, mul) {
+  const fxs = campusFx(state, evs, mul);
   return state.sites.map((_, i) => {
     const view = viewOf(state, i);
     const income = i === state.active ? analysis.income : analyze(view, fxs[i]).income;
     return { type: view.type, income, links: connectionsOf(state.links, view.type), alert: describeEvent(view, evs[i])?.title ?? null };
   });
+}
+
+/**
+ * 시장 이벤트와 계약 판정에 쓸 값을 모은다.
+ *
+ * @param state 게임 상태
+ * @param evs 건물별 재난 진행 상태
+ * @param mul 시장 이벤트의 수익 배율
+ * @returns { income, broken } 모든 건물의 초당 수익 합과 고장난 서버 수
+ */
+function businessContext(state, evs, mul) {
+  const fxs = campusFx(state, evs, mul);
+  let income = 0;
+  let broken = 0;
+  state.sites.forEach((_, i) => {
+    const view = viewOf(state, i);
+    income += analyze(view, fxs[i]).income;
+    for (const cell of view.cells) if (cell && cell.kind === "server" && cell.broken) broken += 1;
+  });
+  return { income, broken };
 }
 
 /**
@@ -104,6 +127,8 @@ export default function RackTycoon() {
   const stateRef = useRef(boot.state);
   const evsRef = useRef(null);
   evsRef.current ??= boot.state.sites.map((_, i) => newDisasters(Date.now() + i * 977));
+  const bizRef = useRef(null);
+  bizRef.current ??= newBusiness();
   const lastRef = useRef(boot.now);
   const uiRef = useRef({ tool: "select", overlay: "none", hoverTile: null, panel: null, carried: null, codex: false, research: false });
   const [ui, setUi] = useState(uiRef.current);
@@ -117,7 +142,8 @@ export default function RackTycoon() {
       issues: diagnose(boot.state, analysis, access),
       hover: { ghost: null, text: "", tone: "ok" },
       event: null,
-      campus: campusOf(boot.state, evsRef.current, analysis),
+      campus: campusOf(boot.state, evsRef.current, analysis, 1),
+      biz: bizRef.current,
     };
   });
   const [notice, setNotice] = useState({ text: "", tone: "bad" });
@@ -131,11 +157,12 @@ export default function RackTycoon() {
     const u = uiRef.current;
     const robot = sceneRef.current?.robotTile() ?? START;
     const ev = evsRef.current[state.active];
-    const analysis = analyze(state, campusFx(state, evsRef.current)[state.active]);
+    const mul = marketMul(bizRef.current);
+    const analysis = analyze(state, campusFx(state, evsRef.current, mul)[state.active]);
     const access = accessibleTiles(state, robot);
     const hover = describeHover({ state, analysis, tool: u.tool, tile: u.hoverTile, carried: u.carried });
     const event = describeEvent(state, ev);
-    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event, campus: campusOf(state, evsRef.current, analysis) });
+    setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event, campus: campusOf(state, evsRef.current, analysis, mul), biz: bizRef.current });
     const selected = u.carried ?? (u.panel?.kind === "item" ? u.panel.tile : null);
     const mood = event && event.phase === "live" && event.kind !== "fire" ? event.kind : "none";
     sceneRef.current?.setSpeed(1 + 0.25 * state.robot.speed);
@@ -179,6 +206,7 @@ export default function RackTycoon() {
   const reset = useCallback(() => {
     stateRef.current = newState();
     evsRef.current = [newDisasters()];
+    bizRef.current = newBusiness();
     lastRef.current = Date.now();
     setWelcome(null);
     update({ panel: null, carried: null, tool: "select" });
@@ -190,6 +218,7 @@ export default function RackTycoon() {
     sceneRef.current?.stop();
     if (!act(rebrand)) return;
     evsRef.current = [newDisasters()];
+    bizRef.current = newBusiness();
     update({ panel: null, carried: null, tool: "select" });
     say("리브랜딩했어요! 브랜드 포인트로 영구히 더 벌어요.", "good");
   }, [act, say, update]);
@@ -383,10 +412,11 @@ export default function RackTycoon() {
       } else {
         let broken = 0;
         let fixed = 0;
+        const total = dt;
         const live = !document.hidden && dt <= LIVE_GAP;
         while (dt > 1e-6) {
           const step = Math.min(MAX_STEP, dt);
-          const fxs = live ? campusFx(current, evsRef.current) : null;
+          const fxs = live ? campusFx(current, evsRef.current, marketMul(bizRef.current)) : null;
           const out = advanceAll(current, step, (view, i) => fxs?.[i] ?? NO_FX);
           current = out.state;
           broken += out.breaks;
@@ -404,6 +434,13 @@ export default function RackTycoon() {
             evsRef.current = spreadEvents(current, before, evs);
           }
           dt -= step;
+        }
+        if (live) {
+          const mul = marketMul(bizRef.current);
+          const result = stepBusiness(current, bizRef.current, total, businessContext(current, evsRef.current, mul));
+          current = result.state;
+          bizRef.current = result.biz;
+          for (const note of result.notes) say(note.text, note.tone);
         }
         if (broken) say(`서버 ${broken}대가 과열로 고장났어요. 로봇을 보내 고쳐 주세요.`);
         else if (fixed) say(`정비 드론이 서버 ${fixed}대를 고쳤어요.`, "good");
@@ -447,7 +484,7 @@ export default function RackTycoon() {
     };
   }, [refresh, save, say, update, cancel, pickTool, handleTile]);
 
-  const { state, analysis, access, issues, hover, event, campus } = snap;
+  const { state, analysis, access, issues, hover, event, campus, biz } = snap;
   const totalIncome = campus.reduce((sum, site) => sum + site.income, 0);
   const grade = gradeOf(state.lifetime);
   const floor = GRADES[grade.index].min;
@@ -523,6 +560,18 @@ export default function RackTycoon() {
       />
 
       {event && <EventBanner event={event} onExtinguish={extinguishNearest} />}
+
+      <Business
+        biz={biz}
+        onAccept={() => {
+          bizRef.current = acceptContract(bizRef.current, stateRef.current.lifetime);
+          refresh();
+        }}
+        onDecline={() => {
+          bizRef.current = declineContract(bizRef.current);
+          refresh();
+        }}
+      />
 
       {!noWebgl && (
         <Toolbar

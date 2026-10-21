@@ -12,6 +12,7 @@ export const BADGES = [
   { id: "fire5", name: "소방관", text: "서버를 하나도 잃지 않고 화재 5번 진압", test: (s) => s.stats.saved >= 5 },
   { id: "survivor", name: "재난 생존자", text: "트래픽 폭주, 정전, 화재를 모두 겪기", test: (s) => s.stats.surge > 0 && s.stats.blackout > 0 && s.stats.fire > 0 },
   { id: "veteran", name: "재난 베테랑", text: "재난을 모두 합쳐 20번 겪기", test: (s) => s.stats.surge + s.stats.blackout + s.stats.fire >= 20 },
+  { id: "contracts5", name: "믿음직한 파트너", text: "고객 계약 5건 완료", test: (s) => s.stats.contracts >= 5 },
   { id: "sites3", name: "건물주", text: "건물 3개 보유", test: (s) => s.sites.length >= 3 },
   { id: "sites5", name: "캠퍼스 총괄", text: "건물 5개 모두 보유", test: (s) => s.sites.length >= 5 },
   { id: "links3", name: "네트워크 건축가", text: "건물 연결 3개", test: (s) => s.links.length >= 3 },
