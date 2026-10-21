@@ -3,6 +3,10 @@ import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
 import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
 import DailyCard from "../_shared/DailyCard.jsx";
 import { hashSeed, makeRng } from "../_shared/rng.js";
+import SoundButton from "../_shared/SoundButton.jsx";
+import { useAudio } from "../_shared/useAudio.js";
+import { useMuted } from "../_shared/useMuted.js";
+import { createAudio } from "./audio.js";
 import meta from "./meta.js";
 import Grid from "./Grid.jsx";
 import { makeStages, STAGE_RANGES } from "./puzzle.js";
@@ -27,9 +31,19 @@ export default function LightFlip() {
   const [dailyResult, setDailyResult] = useState(null);
   const headingRef = useRef(null);
   const nextRef = useRef(null);
+  const [muted, toggleMuted] = useMuted();
+  const audio = useAudio(muted, createAudio);
   const playing = state.phase === "playing";
   const stage = playing ? state.stages[state.index] : null;
   const isLast = playing && state.index === state.stages.length - 1;
+
+  useEffect(() => {
+    audio.music(playing ? "play" : "menu");
+  }, [audio, playing]);
+
+  useEffect(() => {
+    if (state.solved) audio.sfx("clear");
+  }, [audio, state.solved]);
 
   useEffect(() => {
     if (!playing) return undefined;
@@ -75,10 +89,26 @@ export default function LightFlip() {
     setToday(date);
     begin("daily", date);
   }, [begin]);
-  const press = useCallback((cell) => dispatch({ type: "press", cell }), []);
+  const press = useCallback(
+    (cell) => {
+      audio.sfx("flip");
+      dispatch({ type: "press", cell });
+    },
+    [audio],
+  );
+  const rewind = useCallback(
+    (type) => {
+      audio.sfx("undo");
+      dispatch({ type });
+    },
+    [audio],
+  );
 
   return (
     <section className="panel">
+      <div className="mb-2 flex justify-end">
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-primary text-primary hover:bg-indigo-50" />
+      </div>
       {state.phase === "intro" && (
         <div className="flex flex-col items-center gap-5 py-8 text-center">
           <h2 className="text-2xl font-extrabold">모든 불을 꺼 보세요</h2>
@@ -138,7 +168,7 @@ export default function LightFlip() {
               <button
                 type="button"
                 disabled={state.history.length === 0}
-                onClick={() => dispatch({ type: "undo" })}
+                onClick={() => rewind("undo")}
                 className="rounded-xl border-2 border-primary bg-white px-4 py-3 font-bold text-primary disabled:border-slate-200 disabled:text-slate-500"
               >
                 되돌리기
@@ -146,7 +176,7 @@ export default function LightFlip() {
               <button
                 type="button"
                 disabled={state.history.length === 0}
-                onClick={() => dispatch({ type: "restart" })}
+                onClick={() => rewind("restart")}
                 className="rounded-xl border-2 border-primary bg-white px-4 py-3 font-bold text-primary disabled:border-slate-200 disabled:text-slate-500"
               >
                 이 판 다시 시작
