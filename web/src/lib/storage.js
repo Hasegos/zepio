@@ -114,6 +114,27 @@ function writeRecords(records) {
   }
 }
 /**
+ * 홈의 게임 정렬과 분류 설정을 읽는다.
+ *
+ * @returns { sort, category } 고른 적이 없으면 빈 객체
+ */
+export function getHomePrefs() {
+  const home = loadRecords().prefs?.home;
+  return home !== null && typeof home === "object" ? home : {};
+}
+
+/**
+ * 홈의 게임 정렬과 분류 설정을 저장한다. 저장소에 쓸 수 없어도 오류를 내지 않는다.
+ *
+ * @param home { sort, category }
+ * @returns 저장에 성공했는지
+ */
+export function setHomePrefs(home) {
+  const records = loadRecords();
+  return writeRecords({ ...records, prefs: { ...records.prefs, home } });
+}
+
+/**
  * 이 브라우저에 저장된 기록을 모두 지운다. 저장소를 쓸 수 없어도 오류를 내지 않는다.
  *
  * @returns 지웠으면 true, 지우지 못했으면 false
