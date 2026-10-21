@@ -26,8 +26,11 @@ export const OVERLAYS = [
  * @param props.onOverlay 겹쳐 보기를 바꿀 때 호출
  * @param props.state 게임 상태
  * @param props.onExpand 부지 넓히기를 눌렀을 때 호출
+ * @param props.codexOpen 도감 창이 열려 있는지
+ * @param props.onCodex 도감 창을 여닫을 때 호출
+ * @param props.codexCount 도감과 업적을 얻은 수와 전체 수 문구
  */
-export default function Toolbar({ tool, onTool, overlay, onOverlay, state, onExpand }) {
+export default function Toolbar({ tool, onTool, overlay, onOverlay, state, onExpand, codexOpen, onCodex, codexCount }) {
   const cost = expandCost(state);
   const poor = cost !== null && state.coins < cost;
   const pill = "rounded-lg border px-3 py-2 text-xs font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white border-slate-300 bg-white text-slate-700";
@@ -68,6 +71,18 @@ export default function Toolbar({ tool, onTool, overlay, onOverlay, state, onExp
             <span className="ml-1 font-semibold opacity-70">{entry.key}</span>
           </button>
         ))}
+        <button
+          type="button"
+          aria-pressed={codexOpen}
+          onClick={(event) => {
+            onCodex();
+            if (event.detail > 0) event.currentTarget.blur();
+          }}
+          className={pill}
+        >
+          도감·업적
+          <span className="ml-1 font-semibold opacity-70">{codexCount}</span>
+        </button>
         {cost !== null && (
           <button
             type="button"
