@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { currentStreak, kstDate, nextDailyRecord, scoreOn } from "../../lib/daily.js";
 import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
 import DailyCard from "../_shared/DailyCard.jsx";
 import { hashSeed } from "../_shared/rng.js";
+import SoundButton from "../_shared/SoundButton.jsx";
+import { useAudio } from "../_shared/useAudio.js";
 import { useGameBack } from "../_shared/useGameBack.js";
+import { useMuted } from "../_shared/useMuted.js";
+import { createAudio } from "./audio.js";
 import { dailyRun, makeRun, MAX_STARS, worldOf } from "./engine.js";
 import Hud from "./Hud.jsx";
 import meta from "./meta.js";
@@ -41,9 +45,31 @@ export default function RogueModel() {
   const [autoPause, setAutoPause] = useState(true);
   const [speed, setSpeed] = useState(0);
   const [still, setStill] = useState(false);
+  const [muted, toggleMuted] = useMuted();
+  const audio = useAudio(muted, createAudio);
+  const reached = useRef(0);
 
   const world = useMemo(() => (state.run ? worldOf(state.run.seed) : null), [state.run]);
   const sim = state.sim;
+
+  useEffect(() => {
+    audio.music(state.phase === "play" ? "play" : "menu");
+  }, [audio, state.phase]);
+
+  useEffect(() => {
+    if (state.phase !== "play") {
+      reached.current = 0;
+      return;
+    }
+    const count = sim.a.filter((value) => value > 0).length;
+    if (reached.current && count > reached.current) audio.sfx("adopt");
+    reached.current = count;
+    if (sim.turn > 0 && sim.news.some((item) => item.turn === sim.turn && item.key)) audio.sfx("alert");
+  }, [audio, state.phase, sim]);
+
+  useEffect(() => {
+    if (state.phase === "result") audio.sfx(state.sim.over === "win" ? "win" : "lose");
+  }, [audio, state.phase, state.sim]);
 
   useEffect(() => {
     if (state.phase === "intro") setToday(kstDate(Date.now()));
@@ -93,9 +119,24 @@ export default function RogueModel() {
     setToday(date);
     begin("daily", dailyRun(date));
   }, [begin]);
-  const launch = useCallback(() => dispatch({ type: "launch", ai, start: pick, diff: mode === "daily" ? "normal" : diff }), [ai, pick, diff, mode]);
-  const collect = useCallback((id) => dispatch({ type: "collect", id }), []);
-  const buy = useCallback((id) => dispatch({ type: "buy", id }), []);
+  const launch = useCallback(() => {
+    audio.sfx("start");
+    dispatch({ type: "launch", ai, start: pick, diff: mode === "daily" ? "normal" : diff });
+  }, [audio, ai, pick, diff, mode]);
+  const collect = useCallback(
+    (id) => {
+      audio.sfx("coin");
+      dispatch({ type: "collect", id });
+    },
+    [audio],
+  );
+  const buy = useCallback(
+    (id) => {
+      audio.sfx("buy");
+      dispatch({ type: "buy", id });
+    },
+    [audio],
+  );
   const nextTurn = useCallback(() => dispatch({ type: "tick", now: Date.now() }), []);
 
   const doneScore = scoreOn(dailyRecord, today);
@@ -105,6 +146,9 @@ export default function RogueModel() {
 
   return (
     <section className="panel">
+      <div className="mb-2 flex justify-end">
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-primary text-primary hover:bg-indigo-50" />
+      </div>
       {state.phase === "intro" && (
         <div className="flex flex-col items-center gap-5 py-8 text-center">
           <h2 className="text-2xl font-extrabold">세계로 퍼져 나가는 AI가 되어 보세요</h2>
