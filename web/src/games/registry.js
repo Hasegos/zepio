@@ -1,6 +1,7 @@
 import agentTown from "./agent-town/meta.js";
 import bugSweeper from "./bug-sweeper/meta.js";
 import halluDetective from "./hallu-detective/meta.js";
+import hiddenRule from "./hidden-rule/meta.js";
 import lightFlip from "./light-flip/meta.js";
 import patternChallenge from "./pattern-challenge/meta.js";
 import promptFortress from "./prompt-fortress/meta.js";
@@ -18,6 +19,7 @@ export const games = [
   { ...stackTower, load: () => import("./stack-tower/index.jsx") },
   { ...bugSweeper, load: () => import("./bug-sweeper/index.jsx") },
   { ...rackTycoon, load: () => import("./rack-tycoon/index.jsx") },
+  { ...hiddenRule, load: () => import("./hidden-rule/index.jsx") },
 ];
 
 export const liveGames = games.filter((game) => game.status === "live");

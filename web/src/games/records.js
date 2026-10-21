@@ -8,4 +8,5 @@ export const recordLoaders = {
   "stack-tower": () => import("./stack-tower/record.js"),
   "bug-sweeper": () => import("./bug-sweeper/record.js"),
   "rack-tycoon": () => import("./rack-tycoon/record.js"),
+  "hidden-rule": () => import("./hidden-rule/record.js"),
 };
