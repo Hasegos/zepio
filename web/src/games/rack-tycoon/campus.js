@@ -1,7 +1,7 @@
 import { makeRng } from "../_shared/rng.js";
 import { DISASTERS, effectsOf } from "./disaster.js";
-import { advance, analyze, OFFLINE_CAP_SECONDS, starterCells } from "./engine.js";
-import { MAX_SITES, SITE_TYPES, traitOf } from "./sites.js";
+import { advance, analyze, newState, OFFLINE_CAP_SECONDS, starterCells } from "./engine.js";
+import { brandGain, MAX_SITES, REBRAND_MIN, SITE_TYPES, traitOf } from "./sites.js";
 
 export const LINK_COST = 100000;
 const LINK_GROWTH = 2.5;
@@ -225,9 +225,22 @@ export function spreadEvents(state, before, after) {
  * 저장할 모양으로 정리한다. 보고 있는 건물의 내용을 sites에 맞춘다.
  *
  * @param state 게임 상태
- * @returns { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, sites }
+ * @returns { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, sites }
  */
 export function snapshot(state) {
-  const { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title } = state;
-  return { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, sites: siteList(state) };
+  const { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand } = state;
+  return { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, brand, sites: siteList(state) };
+}
+/**
+ * 리브랜딩한다. 코인, 건물, 시설, 연결, 누적 수익을 처음으로 돌리고, 도감, 업적, 칭호, 재난 기록, 난이도는 남긴다.
+ * 누적 수익에 따라 브랜드 포인트를 얻고, 포인트 하나당 수익이 영구히 5% 늘어난다.
+ *
+ * @param state 게임 상태
+ * @returns { state, error }
+ */
+export function rebrand(state) {
+  if (state.lifetime < REBRAND_MIN) return { state, error: "아직 리브랜딩할 수 없어요." };
+  const { difficulty, stats, codex, badges, title, brand } = state;
+  const next = { points: brand.points + brandGain(state.lifetime), count: brand.count + 1 };
+  return { state: { ...newState(), difficulty, stats, codex, badges, title, brand: next } };
 }

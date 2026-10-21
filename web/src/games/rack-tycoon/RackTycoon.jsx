@@ -25,7 +25,7 @@ import {
   xyOf,
 } from "./engine.js";
 import { EventBanner, DifficultyChooser } from "./Banner.jsx";
-import { advanceAll, buySite, campusFx, eachSite, linkCost, linkSites, offlineAll, spreadEvents, switchSite, viewOf } from "./campus.js";
+import { advanceAll, buySite, campusFx, eachSite, linkCost, linkSites, offlineAll, rebrand, spreadEvents, switchSite, viewOf } from "./campus.js";
 import Campus from "./Campus.jsx";
 import Collection from "./Collection.jsx";
 import { BADGES, collect, PART_KEYS, setTitle } from "./collection.js";
@@ -182,6 +182,14 @@ export default function RackTycoon() {
     save();
     document.activeElement?.blur?.();
   }, [save, update]);
+
+  const doRebrand = useCallback(() => {
+    sceneRef.current?.stop();
+    if (!act(rebrand)) return;
+    evsRef.current = [newDisasters()];
+    update({ panel: null, carried: null, tool: "select" });
+    say("리브랜딩했어요! 브랜드 포인트로 영구히 더 벌어요.", "good");
+  }, [act, say, update]);
 
   const closePanel = useCallback(() => {
     update({ panel: null });
@@ -488,6 +496,7 @@ export default function RackTycoon() {
         <p className="text-xs font-semibold text-slate-700">
           {grade.name}
           {state.title && ` · ${BADGES.find((badge) => badge.id === state.title)?.name}`}
+          {state.brand.points > 0 && ` · 브랜드 ${state.brand.points}P`}
           {grade.next !== null && ` · 다음 등급까지 ${formatNumber(grade.next - state.lifetime)}`}
         </p>
         <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-200" role="presentation">
@@ -558,6 +567,7 @@ export default function RackTycoon() {
             onClose={closePanel}
             onReset={reset}
             onDifficulty={pickDifficulty}
+            onRebrand={doRebrand}
           />
         )}
       </div>
