@@ -1,6 +1,8 @@
 ---
 import { liveGames } from "../games/registry.js";
 
+const { size = "text" } = Astro.props;
+const WIDTHS = { text: "max-w-3xl", home: "max-w-6xl", full: "max-w-none sm:px-6 lg:px-8" };
 const year = new Date().getFullYear();
 const infoLinks = [
   { href: "/about/", label: "소개" },
@@ -12,7 +14,7 @@ const linkClass = "inline-block py-1.5 text-slate-700 hover:text-primary hover:u
 ---
 
 <footer class="border-t border-slate-200 bg-white">
-  <div class="mx-auto max-w-3xl px-4 py-8">
+  <div class:list={["mx-auto px-4 py-8", WIDTHS[size]]}>
     <div class="grid gap-6 sm:grid-cols-3">
       <div>
         <p class="text-lg font-extrabold text-primary">Zepio</p>
