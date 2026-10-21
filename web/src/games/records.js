@@ -9,4 +9,5 @@ export const recordLoaders = {
   "bug-sweeper": () => import("./bug-sweeper/record.js"),
   "rack-tycoon": () => import("./rack-tycoon/record.js"),
   "hidden-rule": () => import("./hidden-rule/record.js"),
+  "bug-desk": () => import("./bug-desk/record.js"),
 };
