@@ -716,7 +716,7 @@ export default function RackTycoon() {
       </div>
 
       <div className="relative">
-        <div ref={stageRef} className="h-[72vh] max-h-[900px] min-h-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-indigo-100" />
+        <div ref={stageRef} className="h-[62vh] max-h-[680px] min-h-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-indigo-100" />
         {!noWebgl && (
           <div className="absolute bottom-3 left-3 z-10 flex gap-1.5" role="group" aria-label="화면 회전">
             {[

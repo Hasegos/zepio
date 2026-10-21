@@ -2,8 +2,6 @@
 import { liveGames } from "../games/registry.js";
 import Mascot from "./Mascot.astro";
 
-const { size = "text" } = Astro.props;
-const WIDTHS = { text: "max-w-3xl", home: "max-w-6xl", full: "max-w-none sm:px-6 lg:px-8" };
 const path = Astro.url.pathname;
 const featured = liveGames[0];
 const links = [
@@ -14,7 +12,7 @@ const links = [
 ---
 
 <header class="border-b border-slate-200 bg-white">
-  <div class:list={["mx-auto flex items-center justify-between gap-3 px-4 py-3", WIDTHS[size]]}>
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
     <a href="/" class="flex items-center gap-2 text-xl font-extrabold text-primary">
       <Mascot size={30} motion="calm" />
       Zepio

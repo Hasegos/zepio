@@ -14,7 +14,7 @@ const {
   jsonLd = [],
   size = "text",
 } = Astro.props;
-const WIDTHS = { text: "max-w-3xl", home: "max-w-6xl", full: "max-w-none" };
+const WIDTHS = { text: "max-w-3xl", home: "max-w-6xl" };
 
 const indexable = import.meta.env.PUBLIC_SITE_ENV === "production";
 const canonical = indexable && !noindex ? canonicalUrl(Astro.site, Astro.url.pathname) : null;
@@ -84,11 +84,11 @@ const imageUrl = indexable ? new URL(image, Astro.site).href : null;
     >
       본문으로 건너뛰기
     </a>
-    <Header size={size} />
-    <main id="main" class:list={["mx-auto w-full flex-1 px-4 py-6", WIDTHS[size], size === "full" && "sm:px-6 lg:px-8"]}>
+    <Header />
+    <main id="main" class:list={["mx-auto w-full flex-1 px-4 py-6", WIDTHS[size]]}>
       <slot />
     </main>
-    <Footer size={size} />
+    <Footer />
     <script>
       import "../scripts/global-errors.js";
     </script>

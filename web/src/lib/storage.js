@@ -114,27 +114,6 @@ function writeRecords(records) {
   }
 }
 /**
- * 게임 화면을 넓게 보는 설정을 읽는다.
- *
- * @returns 저장된 설정(true, false), 고른 적이 없으면 null
- */
-export function getWide() {
-  const wide = loadRecords().prefs?.wide;
-  return typeof wide === "boolean" ? wide : null;
-}
-
-/**
- * 게임 화면을 넓게 보는 설정을 저장한다. 저장소에 쓸 수 없어도 오류를 내지 않는다.
- *
- * @param wide 넓게 볼지
- * @returns 저장에 성공했는지
- */
-export function setWide(wide) {
-  const records = loadRecords();
-  return writeRecords({ ...records, prefs: { ...records.prefs, wide } });
-}
-
-/**
  * 이 브라우저에 저장된 기록을 모두 지운다. 저장소를 쓸 수 없어도 오류를 내지 않는다.
  *
  * @returns 지웠으면 true, 지우지 못했으면 false
