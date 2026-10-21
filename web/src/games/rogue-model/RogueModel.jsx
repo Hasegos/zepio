@@ -136,13 +136,18 @@ export default function RogueModel() {
         </div>
       )}
       {state.phase === "setup" && world && (
-        <div className="flex flex-col gap-4">
-          <Setup ai={ai} diff={diff} showDifficulty={mode === "normal"} region={region} onAi={setAi} onDiff={setDiff} onLaunch={launch} />
-          <WorldMap world={world} sim={null} selected={pick} running={false} still={still} onSelect={setPick} />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="lg:col-start-2 lg:row-start-1">
+            <Setup ai={ai} diff={diff} showDifficulty={mode === "normal"} region={region} onAi={setAi} onDiff={setDiff} onLaunch={launch} />
+          </div>
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+            <WorldMap world={world} sim={null} selected={pick} running={false} still={still} onSelect={setPick} />
+          </div>
         </div>
       )}
       {state.phase === "play" && world && sim && (
-        <div className="flex flex-col gap-4">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="flex min-w-0 flex-col gap-4">
           <Hud world={world} sim={sim} />
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="진행 속도">
             {SPEEDS.map((item, i) => (
@@ -204,7 +209,10 @@ export default function RogueModel() {
                 ))}
             </ul>
           </div>
-          <TraitPanel sim={sim} onBuy={buy} />
+          </div>
+          <div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
+            <TraitPanel sim={sim} onBuy={buy} />
+          </div>
         </div>
       )}
       {state.phase === "result" && (
