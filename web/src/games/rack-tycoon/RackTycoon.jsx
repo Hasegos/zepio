@@ -27,6 +27,8 @@ import {
 import { EventBanner, DifficultyChooser } from "./Banner.jsx";
 import { advanceAll, buySite, campusFx, eachSite, linkCost, linkSites, offlineAll, spreadEvents, switchSite, viewOf } from "./campus.js";
 import Campus from "./Campus.jsx";
+import Collection from "./Collection.jsx";
+import { BADGES, collect, PART_KEYS, setTitle } from "./collection.js";
 import { burningTiles, describeEvent, newDisasters, putOut, stepDisasters } from "./disaster.js";
 import { describeHover, nextGoal, worldOf } from "./hover.js";
 import { GRID_HEIGHT, GRID_WIDTH, inLand, START, TERMINAL, TERMINAL_TILE } from "./layout.js";
@@ -102,7 +104,7 @@ export default function RackTycoon() {
   const evsRef = useRef(null);
   evsRef.current ??= boot.state.sites.map((_, i) => newDisasters(Date.now() + i * 977));
   const lastRef = useRef(boot.now);
-  const uiRef = useRef({ tool: "select", overlay: "none", hoverTile: null, panel: null, carried: null });
+  const uiRef = useRef({ tool: "select", overlay: "none", hoverTile: null, panel: null, carried: null, codex: false });
   const [ui, setUi] = useState(uiRef.current);
   const [snap, setSnap] = useState(() => {
     const analysis = analyze(boot.state);
@@ -392,6 +394,11 @@ export default function RackTycoon() {
         }
         if (broken) say(`서버 ${broken}대가 과열로 고장났어요. 로봇을 보내 고쳐 주세요.`);
       }
+      const got = collect(current);
+      if (got.fresh.length) {
+        current = got.state;
+        say(got.fresh.length > 3 ? `도감과 업적을 ${got.fresh.length}개 새로 얻었어요!` : `새로 얻었어요: ${got.fresh.join(", ")}`, "good");
+      }
       stateRef.current = current;
       refresh();
     }, TICK_MS);
@@ -480,6 +487,7 @@ export default function RackTycoon() {
       <div>
         <p className="text-xs font-semibold text-slate-700">
           {grade.name}
+          {state.title && ` · ${BADGES.find((badge) => badge.id === state.title)?.name}`}
           {grade.next !== null && ` · 다음 등급까지 ${formatNumber(grade.next - state.lifetime)}`}
         </p>
         <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-200" role="presentation">
@@ -501,7 +509,20 @@ export default function RackTycoon() {
 
       {event && <EventBanner event={event} onExtinguish={extinguishNearest} />}
 
-      {!noWebgl && <Toolbar tool={ui.tool} onTool={pickTool} overlay={ui.overlay} onOverlay={(overlay) => update({ overlay })} state={state} onExpand={() => act(expandLand)} />}
+      {!noWebgl && (
+        <Toolbar
+          tool={ui.tool}
+          onTool={pickTool}
+          overlay={ui.overlay}
+          onOverlay={(overlay) => update({ overlay })}
+          state={state}
+          onExpand={() => act(expandLand)}
+          codexOpen={ui.codex}
+          onCodex={() => update({ codex: !uiRef.current.codex })}
+          codexCount={`${state.codex.length + state.badges.length}/${PART_KEYS.size + BADGES.length}`}
+        />
+      )}
+      {ui.codex && <Collection state={state} onTitle={(id) => act(setTitle, id)} onClose={() => update({ codex: false })} />}
 
       <p className={`min-h-5 text-sm font-semibold ${TONES[hover.text ? hover.tone : "ok"]}`}>{carriedName || hint}</p>
       <div className="min-h-6" role="status">
