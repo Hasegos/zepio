@@ -4,7 +4,7 @@
 
 **다운로드나 회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임 플랫폼**
 
-퍼즐, 시뮬레이션, 아케이드 게임 10개를 한곳에 모았습니다. 한 판은 2~25분이고, 기록은 내 브라우저에만 저장됩니다.
+퍼즐, 시뮬레이션, 아케이드 게임 11개를 한곳에 모았습니다. 한 판은 2~25분이고, 기록은 내 브라우저에만 저장됩니다.
 
 [**zepio.kr**](https://zepio.kr)
 
@@ -26,9 +26,9 @@
 
 설치도 회원가입도 없이, 링크를 열면 바로 한 판을 시작할 수 있는 웹게임 사이트입니다. 서버와 데이터베이스가 없는 정적 사이트라서 이용자 정보를 받지 않고, 점수와 진행 상황은 이용자의 브라우저(`localStorage`)에만 남습니다.
 
-- 게임은 퍼즐 6개, 시뮬레이션 3개, 아케이드 1개입니다. 모바일과 PC 모두에서 되고, 3D 게임 하나만 PC 전용입니다.
+- 게임은 퍼즐 6개, 시뮬레이션 4개, 아케이드 1개입니다. 모바일과 PC 모두에서 되고, 3D 게임 하나만 PC 전용입니다.
 - Bug Sweeper와 Hidden Rule은 판을 만들 때 논리만으로 풀 수 있는지 엔진이 직접 확인합니다. 찍어야만 풀리거나 풀 수 없는 판은 나오지 않습니다.
-- 게임 8개에는 날짜(KST)를 시드로 삼아 모두가 같은 판을 푸는 **오늘의 도전**이 있고, 연속 일수를 이어 갈 수 있습니다.
+- 게임 9개에는 날짜(KST)를 시드로 삼아 모두가 같은 판을 푸는 **오늘의 도전**이 있고, 연속 일수를 이어 갈 수 있습니다.
 - 결과는 점수와 라운드별 기호가 담긴 글로 공유할 수 있습니다. 규칙이나 정답은 담지 않습니다.
 
 <br>
@@ -47,6 +47,7 @@
 | Bug Sweeper | 퍼즐 | 약 5분 | 모바일 · PC | 찍지 않고 논리만으로 풀 수 있게 만든 지뢰찾기 |
 | Rack Tycoon | 시뮬레이션 | 약 20분 | PC | 서버, 냉각기, 허브, 발전기를 배치해 데이터센터를 키우는 3D 경영 |
 | Hidden Rule | 퍼즐 | 약 3분 | 모바일 · PC | ○ ✕ 카드 예시로 숨은 규칙을 추리하는 가설 검증 퍼즐 |
+| 버그 접수처 | 시뮬레이션 | 약 5분 | 모바일 · PC | 밀려드는 버그 신고를 날마다 바뀌는 정책서대로 분류하는 접수 시뮬레이션 |
 
 <br>
 
@@ -84,12 +85,14 @@
 
 <table>
   <tr>
-    <td width="50%"><img src="img/rack-tycoon.jpg" alt="Rack Tycoon 3D 데이터센터"></td>
-    <td width="50%"><img src="img/agent-town.jpg" alt="Agent Town 도트 RPG"></td>
+    <td width="33%"><img src="img/rack-tycoon.jpg" alt="Rack Tycoon 3D 데이터센터"></td>
+    <td width="33%"><img src="img/agent-town.jpg" alt="Agent Town 도트 RPG"></td>
+    <td width="33%"><img src="img/bug-desk.jpg" alt="버그 접수처 플레이 화면"></td>
   </tr>
   <tr>
     <td align="center">Rack Tycoon: 아이소메트릭 3D, 열과 네트워크에 따라 달라지는 수익</td>
     <td align="center">Agent Town: 걸어 다니며 의뢰를 받는 도트 RPG</td>
+    <td align="center">버그 접수처: 정책서대로 버그 신고 분류</td>
   </tr>
 </table>
 
@@ -173,7 +176,7 @@ web/
     components/   헤더, 푸터, 마스코트, 게임 무대
     layouts/      BaseLayout(SEO · 광고), TextLayout
     games/
-      <slug>/     게임 10개 (meta · content · index · record · share-text · 엔진 · 화면)
+      <slug>/     게임 11개 (meta · content · index · record · share-text · 엔진 · 화면)
       _shared/    난수, 공유 글, 검증, 일일 카드, 오디오, 뒤로가기 처리
       registry.js · records.js
     lib/          storage(기록), daily(오늘의 도전), share, site, game-host

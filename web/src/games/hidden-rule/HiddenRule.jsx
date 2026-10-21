@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
-import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
+import { currentStreak, kstDate, nextDailyRecord, scoreOn } from "../../lib/daily.js";
 import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
 import DailyCard from "../_shared/DailyCard.jsx";
 import { hashSeed } from "../_shared/rng.js";
@@ -24,6 +24,10 @@ export default function HiddenRule() {
   const [today, setToday] = useState(() => kstDate(Date.now()));
   const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
   const [dailyResult, setDailyResult] = useState(null);
+
+  useEffect(() => {
+    if (state.phase === "intro") setToday(kstDate(Date.now()));
+  }, [state.phase]);
 
   useEffect(() => {
     if (state.phase !== "result") return;
@@ -58,7 +62,8 @@ export default function HiddenRule() {
   const submit = useCallback(() => dispatch({ type: "submit" }), []);
   const next = useCallback(() => dispatch({ type: "next", now: Date.now() }), []);
 
-  const doneToday = dailyRecord?.last === today;
+  const doneScore = scoreOn(dailyRecord, today);
+  const doneToday = doneScore !== null;
 
   return (
     <section className="panel">
@@ -77,7 +82,7 @@ export default function HiddenRule() {
             streak={currentStreak(dailyRecord, today)}
             doneText={
               doneToday
-                ? `오늘 완료 · ${dailyRecord.history?.[today] ?? 0} / ${MAX_SCORE}점 · 연속 ${currentStreak(dailyRecord, today)}일. 내일 새로운 규칙이 열려요.`
+                ? `오늘 완료 · ${doneScore} / ${MAX_SCORE}점 · 연속 ${currentStreak(dailyRecord, today)}일. 내일 새로운 규칙이 열려요.`
                 : null
             }
             onStart={startDaily}

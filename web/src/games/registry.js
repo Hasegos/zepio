@@ -1,4 +1,5 @@
 import agentTown from "./agent-town/meta.js";
+import bugDesk from "./bug-desk/meta.js";
 import bugSweeper from "./bug-sweeper/meta.js";
 import halluDetective from "./hallu-detective/meta.js";
 import hiddenRule from "./hidden-rule/meta.js";
@@ -20,6 +21,7 @@ export const games = [
   { ...bugSweeper, load: () => import("./bug-sweeper/index.jsx") },
   { ...rackTycoon, load: () => import("./rack-tycoon/index.jsx") },
   { ...hiddenRule, load: () => import("./hidden-rule/index.jsx") },
+  { ...bugDesk, load: () => import("./bug-desk/index.jsx") },
 ];
 
 export const liveGames = games.filter((game) => game.status === "live");
