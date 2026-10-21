@@ -203,10 +203,9 @@ export default function BugSweeper() {
   const audio = useAudio(muted, createAudio);
   useGameBack(view === "menu" ? 0 : 1, () => setView("menu"));
 
-  const playing = view === "play" && game !== null && game.phase !== "won" && game.phase !== "lost";
   useEffect(() => {
-    audio.music(playing ? "play" : "menu");
-  }, [audio, playing]);
+    audio.music("play");
+  }, [audio]);
 
   useEffect(() => {
     const onVisibility = () => {

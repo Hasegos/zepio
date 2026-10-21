@@ -1,17 +1,6 @@
 import { arpeggio, bars, createSynth } from "../_shared/audio.js";
 
 export const TRACKS = {
-  menu: {
-    bpm: 88,
-    lead: { wave: "triangle", gain: 0.055, notes: bars([
-      [["F5", 2], ["A5", 1], ["F5", 1]], [["E5", 2], ["C5", 2]], [["D5", 2], ["F5", 1], ["A5", 1]], [["G5", 3], [null, 1]],
-      [["A5", 2], ["C6", 1], ["A5", 1]], [["G5", 2], ["E5", 2]], [["F5", 1], ["E5", 1], ["D5", 1], ["C5", 1]], [["F5", 3], [null, 1]],
-    ]) },
-    bass: { wave: "sine", gain: 0.08, notes: bars([
-      [["F2", 2], ["C3", 2]], [["C3", 2], ["G2", 2]], [["Bb2", 2], ["F3", 2]], [["C3", 2], ["G3", 2]],
-      [["F2", 2], ["C3", 2]], [["C3", 2], ["E3", 2]], [["Bb2", 2], ["C3", 2]], [["F2", 4]],
-    ]) },
-  },
   play: {
     bpm: 104,
     lead: { wave: "square", gain: 0.025, notes: bars([

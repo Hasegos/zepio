@@ -33,8 +33,8 @@ export default function PatternChallenge() {
   const playing = state.phase === "playing";
 
   useEffect(() => {
-    audio.music(playing ? "play" : "menu");
-  }, [audio, playing]);
+    audio.music("play");
+  }, [audio]);
 
   useEffect(() => {
     if (state.revealed) audio.sfx(state.answers.at(-1).correct ? "correct" : "wrong");

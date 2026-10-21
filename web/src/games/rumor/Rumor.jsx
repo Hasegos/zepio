@@ -40,8 +40,8 @@ export default function Rumor() {
   const village = useMemo(() => (round ? makeVillage(round.seed) : null), [round]);
 
   useEffect(() => {
-    audio.music(state.phase === "plan" || state.phase === "play" ? "play" : "menu");
-  }, [audio, state.phase]);
+    audio.music("play");
+  }, [audio]);
 
   useEffect(() => {
     if (state.phase !== "play") return;

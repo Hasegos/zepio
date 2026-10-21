@@ -36,8 +36,8 @@ export default function StackTower() {
   useGameBack(phase === "intro" ? 0 : 1, () => setPhase("intro"));
 
   useEffect(() => {
-    audio.music(phase === "playing" ? "play" : "menu");
-  }, [audio, phase]);
+    audio.music("play");
+  }, [audio]);
 
   const begin = useCallback((date) => {
     reduceRef.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

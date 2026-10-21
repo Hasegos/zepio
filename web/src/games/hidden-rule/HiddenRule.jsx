@@ -32,8 +32,8 @@ export default function HiddenRule() {
   const audio = useAudio(muted, createAudio);
 
   useEffect(() => {
-    audio.music(state.phase === "playing" ? "play" : "menu");
-  }, [audio, state.phase]);
+    audio.music("play");
+  }, [audio]);
 
   useEffect(() => {
     if (state.tests.length) audio.sfx(state.tests.at(-1).pass ? "pass" : "block");
