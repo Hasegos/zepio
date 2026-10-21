@@ -8,11 +8,12 @@ import { TURNS, WIN_DEPENDENCY, weighted } from "./sim.js";
  * @param props.value 0~1
  * @param props.tone 막대 색 클래스
  * @param props.mark 목표 위치(0~1) 또는 비움
+ * @param props.shake 값이 바뀔 때마다 막대가 흔들린다. 0이면 흔들지 않는다
  */
-function Bar({ label, value, tone, mark }) {
+function Bar({ label, value, tone, mark, shake = 0 }) {
   const percent = Math.round(value * 100);
   return (
-    <div className="flex-1 min-w-[7rem]">
+    <div key={shake} className={`flex-1 min-w-[7rem] ${shake ? "animate-rm-shake motion-reduce:animate-none" : ""}`}>
       <div className="flex justify-between text-xs font-bold text-slate-700">
         <span>{label}</span>
         <span>{percent}%</span>
@@ -30,8 +31,9 @@ function Bar({ label, value, tone, mark }) {
  *
  * @param props.world 세계
  * @param props.sim 지금 상태
+ * @param props.alarm 규제안이 25%, 50%, 75%를 넘을 때마다 하나씩 오르는 번호. 오를 때 규제안 막대가 흔들린다
  */
-export default function Hud({ world, sim }) {
+export default function Hud({ world, sim, alarm = 0 }) {
   const turnRef = useRef(null);
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export default function Hud({ world, sim }) {
         <Bar label="채택률" value={weighted(world, sim.a)} tone="bg-primary" />
         <Bar label="의존도 (목표 85%)" value={weighted(world, sim.d)} tone="bg-amber-400" mark={WIN_DEPENDENCY} />
         <Bar label="경계도" value={weighted(world, sim.w)} tone="bg-danger" />
-        <Bar label="규제안 진행" value={sim.reg} tone="bg-danger-strong" />
+        <Bar label="규제안 진행" value={sim.reg} tone="bg-danger-strong" shake={alarm} />
       </div>
     </div>
   );
