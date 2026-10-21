@@ -75,6 +75,17 @@ export function nextDailyRecord(prev, date, score) {
 }
 
 /**
+ * 그 날짜에 오늘의 도전을 마쳤으면 그날의 점수를 돌려준다. 저장된 값이 깨졌으면 마치지 않은 것으로 본다.
+ *
+ * @param record 저장된 일일 기록 또는 null
+ * @param date 확인할 날짜
+ * @returns 점수, 마치지 않았으면 null
+ */
+export function scoreOn(record, date) {
+  return isValid(record) && record.last === date ? (record.history[date] ?? 0) : null;
+}
+
+/**
  * 오늘 기준으로 이어지고 있는 연속 일수를 구한다. 어제나 오늘 했을 때만 이어진다.
  *
  * @param record 저장된 일일 기록 또는 null

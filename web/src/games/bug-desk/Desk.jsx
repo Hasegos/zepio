@@ -94,31 +94,38 @@ export default function Desk({ report, day, index, trust, energy, chosen, earlie
                 <span className="block font-bold">{action.label}</span>
                 <span className="block text-xs font-normal text-slate-600">{action.note}</span>
               </span>
-              {isCorrect && <span aria-label="정답">✓</span>}
+              {isCorrect && (
+                <>
+                  <span aria-hidden="true">✓</span>
+                  <span className="sr-only">정답</span>
+                </>
+              )}
             </button>
           );
         })}
       </div>
 
-      {outcome && (
-        <div role="status" className={`rounded-xl border p-3 text-sm ${outcome.ok ? "border-success bg-emerald-50" : "border-danger bg-red-50"}`}>
-          <p className={`font-extrabold ${outcome.ok ? "text-success-strong" : "text-danger-strong"}`}>
-            {outcome.ok ? "정답!" : `오답. 정답은 ${LABELS[outcome.correct]}`}
-          </p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-slate-800">
-            {outcome.steps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ul>
-          {!outcome.ok && (
-            <p className="mt-2 font-semibold text-danger-strong">
-              {outcome.note}
-              {outcome.trust < 0 && ` 신뢰 ${outcome.trust}`}
-              {outcome.energy < 0 && ` 팀 체력 ${outcome.energy}`}
+      <div role="status">
+        {outcome && (
+          <div className={`rounded-xl border p-3 text-sm ${outcome.ok ? "border-success bg-emerald-50" : "border-danger bg-red-50"}`}>
+            <p className={`font-extrabold ${outcome.ok ? "text-success-strong" : "text-danger-strong"}`}>
+              {outcome.ok ? "정답!" : `오답. 정답은 ${LABELS[outcome.correct]}`}
             </p>
-          )}
-        </div>
-      )}
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-slate-800">
+              {outcome.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ul>
+            {!outcome.ok && (
+              <p className="mt-2 font-semibold text-danger-strong">
+                {outcome.note}
+                {outcome.trust < 0 && ` 신뢰 ${outcome.trust}`}
+                {outcome.energy < 0 && ` 팀 체력 ${outcome.energy}`}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
       {chosen && (
         <button ref={nextRef} type="button" onClick={onNext} className="btn-primary">
           {nextLabel}

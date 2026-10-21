@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useReducer, useState } from "react";
-import { currentStreak, kstDate, nextDailyRecord } from "../../lib/daily.js";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { currentStreak, kstDate, nextDailyRecord, scoreOn } from "../../lib/daily.js";
 import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
 import DailyCard from "../_shared/DailyCard.jsx";
 import { hashSeed } from "../_shared/rng.js";
@@ -26,6 +26,12 @@ export default function BugDesk() {
   const [today, setToday] = useState(() => kstDate(Date.now()));
   const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
   const [dailyResult, setDailyResult] = useState(null);
+  const briefRef = useRef(null);
+
+  useEffect(() => {
+    if (state.phase === "intro") setToday(kstDate(Date.now()));
+    if (state.phase === "brief") briefRef.current?.focus({ preventScroll: true });
+  }, [state.phase, state.day]);
 
   useEffect(() => {
     if (state.phase !== "result") return;
@@ -60,7 +66,8 @@ export default function BugDesk() {
   const next = useCallback(() => dispatch({ type: "next", now: Date.now() }), []);
   const proceed = useCallback(() => dispatch({ type: "continue" }), []);
 
-  const doneToday = dailyRecord?.last === today;
+  const doneScore = scoreOn(dailyRecord, today);
+  const doneToday = doneScore !== null;
   const report = state.days[state.day]?.[state.index];
 
   return (
@@ -79,7 +86,7 @@ export default function BugDesk() {
             streak={currentStreak(dailyRecord, today)}
             doneText={
               doneToday
-                ? `오늘 완료 · ${dailyRecord.history?.[today] ?? 0} / ${MAX_SCORE}건 · 연속 ${currentStreak(dailyRecord, today)}일. 내일 새로운 접수가 열려요.`
+                ? `오늘 완료 · ${doneScore} / ${MAX_SCORE}건 · 연속 ${currentStreak(dailyRecord, today)}일. 내일 새로운 접수가 열려요.`
                 : null
             }
             onStart={startDaily}
@@ -101,7 +108,7 @@ export default function BugDesk() {
             <p className="text-sm font-semibold text-slate-600">
               {state.day + 1}일차 / {DAYS}
             </p>
-            <h2 className="text-xl font-extrabold">{state.day === 0 ? POLICIES[0].title : `정책서 개정 · ${POLICIES[state.day].title}`}</h2>
+            <h2 ref={briefRef} tabIndex={-1} className="text-xl font-extrabold outline-none">{state.day === 0 ? POLICIES[0].title : `정책서 개정 · ${POLICIES[state.day].title}`}</h2>
           </div>
           <Meters trust={state.trust} energy={state.energy} />
           <PolicySheet day={state.day} highlightNew />
