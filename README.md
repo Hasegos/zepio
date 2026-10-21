@@ -116,7 +116,6 @@
 - **결과 공유** — 공유 창이나 클립보드로 `Zepio {게임}` 꼴의 글을 보냅니다. 공유 창을 못 쓰면 직접 복사할 수 있게 글을 보여 줍니다.
 - **접근성** — 키보드 조작, 색에 무늬를 함께 쓰는 카드(Hidden Rule), 화면 낭독용 이름, 움직임 줄이기 설정 존중(Stack Tower, Rack Tycoon, Agent Town), ESLint `jsx-a11y` 검사.
 - **SEO** — 페이지별 title · description · canonical · Open Graph · JSON-LD, 게임별 OG 이미지, `sitemap` · `robots.txt`.
-- **엄격한 CSP** — 빌드 결과에 인라인 스크립트와 스타일이 없도록 CI가 검사해서 `script-src 'self'` 중심의 정책을 그대로 쓸 수 있습니다.
 - **오류 격리** — 게임 안 예외는 `GameErrorBoundary`가 잡아 다시 시도 화면을 보이고, 잡히지 않은 오류는 콘솔에만 남깁니다. 어디로도 보내지 않습니다.
 
 <br>
@@ -129,9 +128,9 @@
 | Language | JavaScript (JSX), TypeScript 미사용 |
 | Style | Tailwind CSS 4 |
 | 3D | Three.js (Rack Tycoon) |
-| 검사 | ESLint 9 (`react-hooks`, `jsx-a11y`), 빌드 결과 CSP 검사 |
-| Infra | Cloudflare Pages, Cloudflare Transform Rule(보안 헤더), Cloudflare Web Analytics |
-| CI/CD | GitHub Actions (검사, 배포 스냅샷, PR 출처 검사) |
+| 검사 | ESLint 9 (`react-hooks`, `jsx-a11y`) |
+| Infra | Cloudflare Pages, Cloudflare Web Analytics |
+| CI/CD | GitHub Actions |
 
 <br>
 
@@ -179,8 +178,8 @@ web/
       registry.js · records.js
     lib/          storage(기록), daily(오늘의 도전), share, site, game-host
     scripts/      홈 기록 · 정렬, Play Now, 기록 지우기, 게임 무대, 전역 오류
-  public/         favicon, 폰트, 게임별 thumb.svg · og.png, _headers
-.github/workflows/  검사 · 배포, 스냅샷, PR 출처 검사
+  public/         favicon, 폰트, 게임별 thumb.svg · og.png
+.github/workflows/  GitHub Actions 워크플로
 ```
 
 <br>
