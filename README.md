@@ -139,15 +139,13 @@
 
 ```mermaid
 flowchart LR
-    U[브라우저] --> P[Astro 정적 페이지<br/>홈 · 게임 상세 · 소개 · 개인정보]
-    P --> M[mountReact<br/>게임 화면만 React]
-    M --> G[games 폴더(게임별)<br/>엔진 · 리듀서 · 화면]
-    G --> S[(localStorage<br/>zepio:v1)]
-    G --> R[_shared<br/>난수 · 공유 · 검증 · 일일 카드]
-    P --> H[home-records.js<br/>기록으로 카드 요약 · 정렬]
+    U["브라우저"] --> P["Astro 정적 페이지<br/>홈 · 게임 상세 · 소개 · 개인정보"]
+    P --> M["mountReact<br/>게임 화면만 React"]
+    M --> G["게임별 모듈<br/>엔진 · 리듀서 · 화면"]
+    G --> S[("localStorage<br/>zepio:v1")]
+    G --> R["_shared<br/>난수 · 공유 · 검증 · 일일 카드"]
+    P --> H["home-records.js<br/>기록으로 카드 요약 · 정렬"]
     H --> S
-    GH[GitHub<br/>dev → master] --> CI[Actions<br/>린트 · 빌드 · CSP 검사]
-    CI --> CF[Cloudflare Pages<br/>zepio.kr]
 ```
 
 ### 게임 모듈 규칙
@@ -184,38 +182,6 @@ web/
   public/         favicon, 폰트, 게임별 thumb.svg · og.png, _headers
 .github/workflows/  검사 · 배포, 스냅샷, PR 출처 검사
 ```
-
-<br>
-
-## 실행
-
-Node.js 22.22 이상이 필요합니다. 서버나 데이터베이스는 없습니다.
-
-```bash
-cd web
-npm install
-npm run dev -- --host 127.0.0.1 --port 4321
-```
-
-```bash
-npm run lint
-npm run build
-npm run preview
-```
-
-운영 빌드는 `PUBLIC_SITE_ENV=production`과 함께 `PUBLIC_SITE_URL`, `PUBLIC_CONTACT_EMAIL`이 필요하고, 광고를 켜려면 `PUBLIC_ADSENSE_CLIENT`를 넣습니다. 값은 `.env`나 GitHub Variables에 두고 저장소에는 올리지 않습니다.
-
-<br>
-
-## 브랜치와 배포
-
-| 브랜치 | 역할 |
-|---|---|
-| `feature/*` | 기능 하나당 하나. `dev`로 PR을 올리고 squash 병합 |
-| `dev` | 기준 브랜치 |
-| `master` | 배포 브랜치. `dev`에서만 PR을 받고 Create a merge commit으로 병합 |
-
-PR마다 린트, 빌드, 인라인 스크립트 · 스타일 검사가 돌고, `master`가 갱신되면 Cloudflare Pages로 배포됩니다. `master`로 가는 PR은 출처가 `dev`가 아니면 CI가 막습니다.
 
 <br>
 
