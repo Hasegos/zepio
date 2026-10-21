@@ -3,7 +3,11 @@ import { currentStreak, kstDate, nextDailyRecord, scoreOn } from "../../lib/dail
 import { getDaily, getGameData, saveDaily, saveResult } from "../../lib/storage.js";
 import DailyCard from "../_shared/DailyCard.jsx";
 import { hashSeed } from "../_shared/rng.js";
+import SoundButton from "../_shared/SoundButton.jsx";
+import { useAudio } from "../_shared/useAudio.js";
 import { useGameBack } from "../_shared/useGameBack.js";
+import { useMuted } from "../_shared/useMuted.js";
+import { createAudio } from "./audio.js";
 import Board from "./Board.jsx";
 import { CardDefs } from "./Card.jsx";
 import { dailyRun, makeRun, RUN_LEVELS } from "./engine.js";
@@ -24,6 +28,25 @@ export default function HiddenRule() {
   const [today, setToday] = useState(() => kstDate(Date.now()));
   const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
   const [dailyResult, setDailyResult] = useState(null);
+  const [muted, toggleMuted] = useMuted();
+  const audio = useAudio(muted, createAudio);
+
+  useEffect(() => {
+    audio.music(state.phase === "playing" ? "play" : "menu");
+  }, [audio, state.phase]);
+
+  useEffect(() => {
+    if (state.tests.length) audio.sfx(state.tests.at(-1).pass ? "pass" : "block");
+  }, [audio, state.tests]);
+
+  useEffect(() => {
+    if (state.wrongs.length) audio.sfx("wrong");
+  }, [audio, state.wrongs]);
+
+  useEffect(() => {
+    const last = state.results.at(-1);
+    if (state.revealed && last.status !== "fail") audio.sfx("correct");
+  }, [audio, state.revealed, state.results]);
 
   useEffect(() => {
     if (state.phase === "intro") setToday(kstDate(Date.now()));
@@ -58,9 +81,18 @@ export default function HiddenRule() {
     begin("daily", dailyRun(date));
   }, [begin]);
   const test = useCallback((card) => dispatch({ type: "test", card }), []);
-  const select = useCallback((option) => dispatch({ type: "select", option }), []);
+  const select = useCallback(
+    (option) => {
+      audio.sfx("tick");
+      dispatch({ type: "select", option });
+    },
+    [audio],
+  );
   const submit = useCallback(() => dispatch({ type: "submit" }), []);
-  const next = useCallback(() => dispatch({ type: "next", now: Date.now() }), []);
+  const next = useCallback(() => {
+    audio.sfx("select");
+    dispatch({ type: "next", now: Date.now() });
+  }, [audio]);
 
   const doneScore = scoreOn(dailyRecord, today);
   const doneToday = doneScore !== null;
@@ -68,6 +100,9 @@ export default function HiddenRule() {
   return (
     <section className="panel">
       <CardDefs />
+      <div className="mb-2 flex justify-end">
+        <SoundButton muted={muted} onToggle={toggleMuted} className="border-primary text-primary hover:bg-indigo-50" />
+      </div>
       {state.phase === "intro" && (
         <div className="flex flex-col items-center gap-5 py-8 text-center">
           <h2 className="text-2xl font-extrabold">숨은 규칙을 찾아내세요</h2>
