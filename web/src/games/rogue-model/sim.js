@@ -168,7 +168,7 @@ export function step(world, prev, events) {
     const growth = 0.25 * P.local * (1 - P.netBias + P.netBias * netEff) * Math.max(0.1, power) * (s.boost ? 1.3 : 1);
     if (s.a[i] === 0) {
       s.acc[i] += exposure[i];
-      if (s.acc[i] >= 0.35 * (1 + region.reg * 0.6)) {
+      if (s.acc[i] >= 0.5 * (1 + region.reg * 0.6)) {
         s.a[i] = 0.02;
         adopted += 1;
         s.news.push({ turn: s.turn, text: `${region.name}에서 이 모델이 처음 쓰이기 시작했어요.` });
@@ -188,7 +188,7 @@ export function step(world, prev, events) {
   }
   if (s.detected) {
     const before = s.reg;
-    s.reg = Math.min(1, s.reg + (0.01 + 0.12 * weighted(world, s.w.map((value, i) => value * world.regions[i].reg))) * (1 - P.legal));
+    s.reg = Math.min(1, s.reg + (0.012 + 0.14 * weighted(world, s.w.map((value, i) => value * world.regions[i].reg))) * (1 - P.legal));
     for (const mark of [0.25, 0.5, 0.75]) {
       if (before < mark && s.reg >= mark) s.news.push({ turn: s.turn, text: `규제안이 ${mark * 100}% 진행됐어요.` });
     }

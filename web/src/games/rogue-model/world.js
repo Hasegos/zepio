@@ -1,56 +1,115 @@
 import { makeRng } from "../_shared/rng.js";
 
+export const MAP_WIDTH = 1000;
+export const MAP_HEIGHT = 454;
+
 /**
- * 세계 권역 14곳. pop는 사용자 수, net는 인터넷 보급, power는 전력 안정, wealth는 컴퓨팅 자원,
- * reg는 규제 강도(0~1)이고, x와 y는 지도(100 x 56) 위 좌표다.
+ * 경도와 위도를 지도 좌표(1000 x 454)로 바꾼다.
+ *
+ * @param lon 경도
+ * @param lat 위도
+ * @returns [x, y]
  */
-export const REGIONS = [
-  { id: "na-w", name: "북미 서부", x: 17, y: 20, pop: 0.5, net: 0.9, power: 0.9, wealth: 0.95, reg: 0.6 },
-  { id: "na-e", name: "북미 동부", x: 28, y: 21, pop: 0.6, net: 0.9, power: 0.9, wealth: 0.9, reg: 0.6 },
-  { id: "la", name: "중남미", x: 31, y: 40, pop: 0.6, net: 0.6, power: 0.6, wealth: 0.45, reg: 0.3 },
-  { id: "eu-w", name: "서유럽", x: 46, y: 19, pop: 0.6, net: 0.9, power: 0.9, wealth: 0.85, reg: 0.95 },
-  { id: "eu-e", name: "동유럽", x: 56, y: 17, pop: 0.4, net: 0.7, power: 0.7, wealth: 0.5, reg: 0.5 },
-  { id: "me", name: "중동", x: 59, y: 30, pop: 0.4, net: 0.6, power: 0.85, wealth: 0.7, reg: 0.5 },
-  { id: "af-n", name: "북아프리카", x: 48, y: 31, pop: 0.3, net: 0.45, power: 0.6, wealth: 0.3, reg: 0.3 },
-  { id: "af-s", name: "사하라 이남", x: 52, y: 45, pop: 0.6, net: 0.25, power: 0.3, wealth: 0.15, reg: 0.2 },
-  { id: "ca", name: "중앙아시아", x: 68, y: 22, pop: 0.3, net: 0.4, power: 0.6, wealth: 0.3, reg: 0.6 },
-  { id: "sa", name: "남아시아", x: 70, y: 35, pop: 1, net: 0.5, power: 0.5, wealth: 0.35, reg: 0.4 },
-  { id: "ea", name: "동아시아", x: 83, y: 24, pop: 1, net: 0.9, power: 0.85, wealth: 0.9, reg: 0.9 },
-  { id: "sea", name: "동남아", x: 82, y: 39, pop: 0.7, net: 0.6, power: 0.6, wealth: 0.5, reg: 0.35 },
-  { id: "oc", name: "오세아니아", x: 90, y: 49, pop: 0.2, net: 0.85, power: 0.8, wealth: 0.7, reg: 0.6 },
-  { id: "no", name: "북아시아", x: 74, y: 10, pop: 0.3, net: 0.6, power: 0.8, wealth: 0.45, reg: 0.8 },
+export function project(lon, lat) {
+  return [Math.round(((lon + 180) * MAP_WIDTH) / 360), Math.round((84 - lat) * 3.2)];
+}
+
+const SPEC = [
+  ["us", "미국", -97, 38, 0.6, 0.92, 0.9, 1, 0.55],
+  ["ca", "캐나다", -100, 55, 0.15, 0.9, 0.9, 0.8, 0.65],
+  ["mx", "중미", -101, 22, 0.5, 0.6, 0.65, 0.4, 0.3],
+  ["br", "브라질", -52, -11, 0.6, 0.7, 0.75, 0.45, 0.4],
+  ["an", "안데스", -73, 0, 0.5, 0.55, 0.6, 0.3, 0.3],
+  ["sc", "남미 남부", -65, -35, 0.25, 0.65, 0.7, 0.4, 0.35],
+  ["uk", "영국", -2, 54, 0.2, 0.95, 0.95, 0.85, 0.8],
+  ["we", "서유럽", 6, 48, 0.45, 0.92, 0.92, 0.9, 0.95],
+  ["so", "남유럽", 5, 42, 0.35, 0.85, 0.85, 0.7, 0.85],
+  ["no", "북유럽", 15, 62, 0.15, 0.95, 0.95, 0.85, 0.85],
+  ["ee", "동유럽", 28, 50, 0.4, 0.75, 0.75, 0.5, 0.55],
+  ["ru", "러시아", 60, 58, 0.35, 0.75, 0.8, 0.5, 0.8],
+  ["me", "중동", 46, 27, 0.5, 0.65, 0.8, 0.65, 0.5],
+  ["na", "북아프리카", 12, 28, 0.45, 0.5, 0.65, 0.3, 0.35],
+  ["wa", "서아프리카", -2, 10, 0.7, 0.25, 0.3, 0.15, 0.2],
+  ["ea", "동아프리카", 38, 3, 0.6, 0.25, 0.3, 0.15, 0.25],
+  ["sf", "남부 아프리카", 24, -18, 0.45, 0.35, 0.4, 0.2, 0.3],
+  ["cas", "중앙아시아", 66, 44, 0.35, 0.45, 0.6, 0.3, 0.6],
+  ["sas", "남아시아", 78, 23, 1, 0.5, 0.55, 0.35, 0.4],
+  ["cn", "중국", 105, 34, 1, 0.85, 0.9, 0.9, 0.9],
+  ["ne", "한일", 133, 36, 0.35, 0.95, 0.95, 0.9, 0.75],
+  ["sea", "동남아", 105, 12, 0.7, 0.6, 0.6, 0.5, 0.35],
+  ["oc", "오세아니아", 134, -25, 0.15, 0.85, 0.85, 0.7, 0.6],
 ];
 
+/**
+ * 세계 권역 23곳. pop는 사용자 수, net는 인터넷 보급, power는 전력 안정, wealth는 컴퓨팅 자원,
+ * reg는 규제 강도(0~1)이고, x와 y는 지도(1000 x 454) 위 좌표다.
+ */
+export const REGIONS = SPEC.map(([id, name, lon, lat, pop, net, power, wealth, reg]) => {
+  const [x, y] = project(lon, lat);
+  return { id, name, x, y, pop, net, power, wealth, reg };
+});
+
 const BASE_LINKS = [
-  ["na-w", "na-e", "land", 0.9],
-  ["na-e", "la", "land", 0.5],
-  ["eu-w", "eu-e", "land", 0.8],
-  ["eu-e", "ca", "land", 0.5],
-  ["eu-e", "me", "land", 0.5],
-  ["eu-e", "no", "land", 0.5],
-  ["me", "af-n", "land", 0.5],
-  ["me", "ca", "land", 0.5],
-  ["me", "sa", "land", 0.5],
-  ["af-n", "af-s", "land", 0.35],
-  ["ca", "sa", "land", 0.4],
-  ["ca", "ea", "land", 0.5],
-  ["ca", "no", "land", 0.4],
-  ["no", "ea", "land", 0.4],
-  ["sa", "sea", "land", 0.5],
-  ["ea", "sea", "land", 0.6],
-  ["na-e", "eu-w", "cable", 0.95],
-  ["na-w", "ea", "cable", 0.9],
-  ["na-w", "oc", "cable", 0.5],
-  ["la", "eu-w", "cable", 0.4],
-  ["la", "af-s", "cable", 0.25],
-  ["af-s", "eu-w", "cable", 0.4],
-  ["af-n", "eu-w", "cable", 0.6],
-  ["me", "eu-w", "cable", 0.5],
-  ["me", "sa", "cable", 0.6],
-  ["af-s", "sa", "cable", 0.35],
-  ["sa", "sea", "cable", 0.6],
+  ["us", "ca", "land", 0.9],
+  ["us", "mx", "land", 0.8],
+  ["mx", "an", "land", 0.4],
+  ["an", "br", "land", 0.6],
+  ["an", "sc", "land", 0.4],
+  ["br", "sc", "land", 0.6],
+  ["uk", "we", "land", 0.7],
+  ["we", "so", "land", 0.8],
+  ["we", "no", "land", 0.6],
+  ["we", "ee", "land", 0.8],
+  ["no", "ee", "land", 0.5],
+  ["no", "ru", "land", 0.5],
+  ["ee", "ru", "land", 0.7],
+  ["ee", "so", "land", 0.5],
+  ["ee", "me", "land", 0.5],
+  ["ru", "cas", "land", 0.6],
+  ["ru", "cn", "land", 0.5],
+  ["ru", "ne", "land", 0.3],
+  ["me", "na", "land", 0.5],
+  ["me", "cas", "land", 0.4],
+  ["me", "sas", "land", 0.4],
+  ["na", "wa", "land", 0.35],
+  ["na", "ea", "land", 0.35],
+  ["wa", "ea", "land", 0.3],
+  ["wa", "sf", "land", 0.3],
+  ["ea", "sf", "land", 0.45],
+  ["cas", "cn", "land", 0.5],
+  ["cas", "sas", "land", 0.4],
+  ["sas", "cn", "land", 0.4],
+  ["sas", "sea", "land", 0.5],
+  ["cn", "sea", "land", 0.6],
+  ["cn", "ne", "land", 0.6],
+  ["us", "uk", "cable", 0.95],
+  ["us", "so", "cable", 0.6],
+  ["ca", "uk", "cable", 0.5],
+  ["us", "an", "cable", 0.4],
+  ["br", "so", "cable", 0.5],
+  ["br", "wa", "cable", 0.4],
+  ["sc", "sf", "cable", 0.3],
+  ["uk", "no", "cable", 0.5],
+  ["so", "na", "cable", 0.6],
+  ["so", "me", "cable", 0.5],
+  ["so", "wa", "cable", 0.4],
+  ["uk", "wa", "cable", 0.3],
+  ["me", "ea", "cable", 0.5],
+  ["me", "sas", "cable", 0.7],
+  ["me", "sea", "cable", 0.5],
+  ["ea", "sas", "cable", 0.5],
+  ["sf", "sas", "cable", 0.3],
+  ["sas", "sea", "cable", 0.7],
+  ["sea", "cn", "cable", 0.6],
+  ["sea", "ne", "cable", 0.6],
   ["sea", "oc", "cable", 0.6],
-  ["ea", "oc", "cable", 0.4],
+  ["cn", "ne", "cable", 0.6],
+  ["ne", "oc", "cable", 0.4],
+  ["us", "ne", "cable", 0.95],
+  ["us", "cn", "cable", 0.5],
+  ["us", "sea", "cable", 0.5],
+  ["us", "oc", "cable", 0.5],
+  ["ca", "ne", "cable", 0.4],
 ];
 
 export const LINK_TYPES = {
@@ -60,7 +119,7 @@ export const LINK_TYPES = {
   sat: "위성 인터넷",
 };
 
-const HUB_WEALTH = 0.7;
+const HUB_WEALTH = 0.75;
 const SAT_NET = 0.5;
 
 /**

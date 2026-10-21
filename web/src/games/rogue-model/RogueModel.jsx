@@ -101,7 +101,7 @@ export default function RogueModel() {
         <div className="flex flex-col items-center gap-5 py-8 text-center">
           <h2 className="text-2xl font-extrabold">세계로 퍼져 나가는 AI가 되어 보세요</h2>
           <p className="text-slate-600">
-            14개 권역 · 최대 80턴 · 별 {MAX_STARS}개 · {meta.estimatedPlayTime}
+            23개 권역 · 최대 80턴 · 별 {MAX_STARS}개 · {meta.estimatedPlayTime}
           </p>
           <p className="max-w-sm text-sm text-slate-700">
             해저 케이블과 클라우드를 타고 권역을 넘나들며 퍼지세요. 눈에 띄면 규제안이 빨라지고, 너무 조용하면 의존도가 쌓이지 않아요.
@@ -160,7 +160,7 @@ export default function RogueModel() {
                 {Math.round(sim.a[pick] * 100)}% · 의존 {Math.round(sim.d[pick] * 100)}% · 경계 {Math.round(sim.w[pick] * 100)}%{sim.blocked[pick] ? " · 해외 연결 차단 중" : ""}
               </>
             ) : (
-              "권역을 누르면 상태가 보여요. 해저 케이블은 파란 점선, 육상 광케이블은 회색 선, 클라우드는 보라 점선이에요. 점들이 AI가 옮겨 가는 모습이에요."
+              "권역을 누르면 상태가 보여요. 해저 케이블은 파란 점선(빛 알갱이), 클라우드는 보라 점선(비행기), 육상 광케이블은 회색 선(점)이에요. 보라색은 채택, 노란 빗금은 의존, 붉은 윤곽은 경계도예요."
             )}
           </div>
           <div role="log" aria-live="off" aria-label="소식" className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
