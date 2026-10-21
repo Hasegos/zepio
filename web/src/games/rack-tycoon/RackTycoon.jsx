@@ -137,6 +137,7 @@ export default function RackTycoon() {
     setSnap({ state, analysis, access, issues: diagnose(state, analysis, access), hover, event, campus: campusOf(state, evsRef.current, analysis) });
     const selected = u.carried ?? (u.panel?.kind === "item" ? u.panel.tile : null);
     const mood = event && event.phase === "live" && event.kind !== "fire" ? event.kind : "none";
+    sceneRef.current?.setSpeed(1 + 0.25 * state.robot.speed);
     sceneRef.current?.setWorld(worldOf(state, analysis, { overlay: u.overlay, ghost: hover.ghost, selected, burning: burningTiles(ev), mood }));
   }, []);
 
@@ -380,6 +381,7 @@ export default function RackTycoon() {
         if (settled.gain > 0) setWelcome({ gain: settled.gain, seconds: settled.seconds });
       } else {
         let broken = 0;
+        let fixed = 0;
         const live = !document.hidden && dt <= LIVE_GAP;
         while (dt > 1e-6) {
           const step = Math.min(MAX_STEP, dt);
@@ -387,6 +389,7 @@ export default function RackTycoon() {
           const out = advanceAll(current, step, (view, i) => fxs?.[i] ?? NO_FX);
           current = out.state;
           broken += out.breaks;
+          fixed += out.fixed;
           if (live) {
             const before = evsRef.current;
             const evs = [...before];
@@ -402,6 +405,7 @@ export default function RackTycoon() {
           dt -= step;
         }
         if (broken) say(`서버 ${broken}대가 과열로 고장났어요. 로봇을 보내 고쳐 주세요.`);
+        else if (fixed) say(`정비 드론이 서버 ${fixed}대를 고쳤어요.`, "good");
       }
       const got = collect(current);
       if (got.fresh.length) {
