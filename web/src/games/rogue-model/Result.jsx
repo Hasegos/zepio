@@ -4,7 +4,7 @@ import { endingOf, MAX_STARS, worldOf } from "./engine.js";
 import meta from "./meta.js";
 import { resultStars } from "./reducer.js";
 import { rogueShareText } from "./share-text.js";
-import { TURNS, weighted } from "./sim.js";
+import { DIFFICULTIES, TURNS, weighted } from "./sim.js";
 import { AI_TYPES } from "./traits.js";
 
 /**
@@ -40,7 +40,7 @@ export default function Result({ state, record, daily, onRetry }) {
         </h2>
         <p className="mt-1 text-slate-600">{ending.text}</p>
         <p className="mt-1 text-sm text-slate-600">
-          폭주 모델{daily ? ` · 오늘의 도전 · 연속 ${daily.streak}일` : ""} · {AI_TYPES[sim.ai].name} · {world.regions[sim.start].name}에서 시작
+          폭주 모델{daily ? ` · 오늘의 도전 · 연속 ${daily.streak}일` : ""} · {AI_TYPES[sim.ai].name} · {world.regions[sim.start].name}에서 시작 · {DIFFICULTIES[sim.diff].label}
         </p>
       </div>
 

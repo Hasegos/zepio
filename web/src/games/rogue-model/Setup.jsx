@@ -1,15 +1,19 @@
 import { useEffect, useRef } from "react";
+import { DIFFICULTIES, DIFFICULTY_IDS } from "./sim.js";
 import { AI_IDS, AI_TYPES } from "./traits.js";
 
 /**
  * 시작 전 선택 패널로 AI 유형을 고르고, 지도에서 고른 시작 권역을 확인한 뒤 시작을 받는다.
  *
  * @param props.ai 고른 AI 유형 id
+ * @param props.diff 고른 난이도 id
+ * @param props.showDifficulty 난이도 선택을 보일지(오늘의 도전은 보통으로 정해져 있다)
  * @param props.region 고른 시작 권역 또는 null
  * @param props.onAi AI 유형 id를 받는다
+ * @param props.onDiff 난이도 id를 받는다
  * @param props.onLaunch 시작할 때 호출
  */
-export default function Setup({ ai, region, onAi, onLaunch }) {
+export default function Setup({ ai, diff, showDifficulty, region, onAi, onDiff, onLaunch }) {
   const headingRef = useRef(null);
 
   useEffect(() => {
@@ -41,6 +45,23 @@ export default function Setup({ ai, region, onAi, onLaunch }) {
           </label>
         ))}
       </fieldset>
+      {showDifficulty && (
+        <fieldset className="grid gap-2 sm:grid-cols-3">
+          <legend className="mb-1 text-sm font-bold">난이도</legend>
+          {DIFFICULTY_IDS.map((id) => (
+            <label
+              key={id}
+              className={`cursor-pointer rounded-xl border-2 px-3 py-2 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-primary ${
+                diff === id ? "border-primary bg-indigo-50" : "border-slate-200 bg-white"
+              }`}
+            >
+              <input type="radio" name="diff" value={id} checked={diff === id} onChange={() => onDiff(id)} className="sr-only" />
+              <span className="block font-bold">{DIFFICULTIES[id].label}</span>
+              <span className="block text-xs text-slate-600">{DIFFICULTIES[id].note}</span>
+            </label>
+          ))}
+        </fieldset>
+      )}
       <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
         <p className="font-bold">시작 권역</p>
         {region ? (
