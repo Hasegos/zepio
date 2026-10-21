@@ -80,3 +80,5 @@ export const NET_MAX = 4;
 export function connectionsOf(links, type) {
   return links.filter((pair) => pair.includes(type)).length;
 }
+
+export const BADGE_BONUS = 0.01;

@@ -2,6 +2,7 @@ import { isInt, isObject } from "../_shared/validate.js";
 import { analyze, DIFFICULTIES, formatRate, gradeOf, KINDS, newState, xyOf } from "./engine.js";
 import { snapshot, viewOf } from "./campus.js";
 import { AREA, GRID_HEIGHT, GRID_WIDTH, inLand, LANDS, TERMINAL_TILE } from "./layout.js";
+import { BADGE_IDS, PART_KEYS } from "./collection.js";
 import { MAX_SITES, SITE_TYPES } from "./sites.js";
 
 const MAX_VALUE = 1e18;
@@ -108,9 +109,21 @@ function readLinks(raw, sites) {
 }
 
 /**
+ * 저장된 도감, 업적, 칭호를 안전한 모양으로 다듬는다. 모르는 항목은 버리고 겹치는 항목은 하나로 합친다.
+ *
+ * @param raw 저장소에서 읽은 센터 상태
+ * @returns { codex, badges, title }
+ */
+function readCollection(raw) {
+  const pick = (list, known) => (Array.isArray(list) ? [...new Set(list.filter((key) => typeof key === "string" && known.has(key)))] : []);
+  const badges = pick(raw.badges, BADGE_IDS);
+  return { codex: pick(raw.codex, PART_KEYS), badges, title: typeof raw.title === "string" && badges.includes(raw.title) ? raw.title : null };
+}
+
+/**
  * 건물 목록과 보고 있는 건물로 게임 상태를 만든다.
  *
- * @param base { coins, lifetime, time, difficulty, stats, links }
+ * @param base { coins, lifetime, time, difficulty, stats, links, codex, badges, title }
  * @param sites 건물 목록
  * @param active 보고 있는 건물 번호
  * @returns 게임 상태
@@ -135,7 +148,7 @@ export function readState(raw) {
   const clean = sites.map(readSite);
   if (clean.some((site) => site === null) || new Set(clean.map((site) => site.type)).size !== clean.length) return null;
   const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
-  return build({ coins, lifetime, time, difficulty, stats: readStats(raw.stats), links: readLinks(raw.links, clean) }, clean, active);
+  return build({ coins, lifetime, time, difficulty, stats: readStats(raw.stats), links: readLinks(raw.links, clean), ...readCollection(raw) }, clean, active);
 }
 
 /**
@@ -163,7 +176,7 @@ function migrateV2(raw) {
     return null;
   });
   const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
-  const base = { coins: Math.min(MAX_VALUE, coins + refund), lifetime, time, difficulty, stats: readStats(raw.stats), links: [] };
+  const base = { coins: Math.min(MAX_VALUE, coins + refund), lifetime, time, difficulty, stats: readStats(raw.stats), links: [], ...readCollection(raw) };
   return build(base, [{ type: "basement", land: nextLand, cells: kept }], 0);
 }
 

@@ -225,9 +225,9 @@ export function spreadEvents(state, before, after) {
  * 저장할 모양으로 정리한다. 보고 있는 건물의 내용을 sites에 맞춘다.
  *
  * @param state 게임 상태
- * @returns { coins, lifetime, time, difficulty, stats, active, links, sites }
+ * @returns { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, sites }
  */
 export function snapshot(state) {
-  const { coins, lifetime, time, difficulty, stats, active, links } = state;
-  return { coins, lifetime, time, difficulty, stats, active, links, sites: siteList(state) };
+  const { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title } = state;
+  return { coins, lifetime, time, difficulty, stats, active, links, codex, badges, title, sites: siteList(state) };
 }
