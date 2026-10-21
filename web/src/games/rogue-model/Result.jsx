@@ -5,6 +5,7 @@ import meta from "./meta.js";
 import { resultStars } from "./reducer.js";
 import { rogueShareText } from "./share-text.js";
 import { DIFFICULTIES, TURNS, weighted } from "./sim.js";
+import Timelapse from "./Timelapse.jsx";
 import { AI_TYPES } from "./traits.js";
 
 /**
@@ -14,8 +15,9 @@ import { AI_TYPES } from "./traits.js";
  * @param props.record 저장한 최고 기록과 새 기록 여부, 오늘의 도전이거나 저장 전에는 null
  * @param props.daily 오늘의 도전이면 { date, streak }, 아니면 null
  * @param props.onRetry 다시 도전하기를 눌렀을 때 호출
+ * @param props.still 움직임을 줄여야 하는지. 켜져 있으면 타임랩스를 자동 재생하지 않는다
  */
-export default function Result({ state, record, daily, onRetry }) {
+export default function Result({ state, record, daily, onRetry, still }) {
   const headingRef = useRef(null);
   const { sim, run } = state;
   const stars = resultStars(state);
@@ -43,6 +45,8 @@ export default function Result({ state, record, daily, onRetry }) {
           폭주 모델{daily ? ` · 오늘의 도전 · 연속 ${daily.streak}일` : ""} · {AI_TYPES[sim.ai].name} · {world.regions[sim.start].name}에서 시작 · {DIFFICULTIES[sim.diff].label}
         </p>
       </div>
+
+      <Timelapse world={world} sim={sim} history={state.history} still={still} />
 
       <p className="text-center text-3xl font-extrabold">
         <span aria-hidden="true">
