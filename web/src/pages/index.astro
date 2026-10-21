@@ -12,6 +12,11 @@ const SORTS = [
   { id: "recent", label: "최근 한 순", needsRecords: true },
   { id: "short", label: "짧은 순" },
 ];
+const GUIDE = [
+  { lead: "2~5분 안에 한 판 끝내고 싶다면", ids: ["stack-tower", "light-flip", "pattern-challenge"] },
+  { lead: "논리와 추리로 차근차근 풀고 싶다면", ids: ["bug-sweeper", "hallu-detective", "prompt-fortress"] },
+  { lead: "자리를 잡고 계획을 세우며 키우고 싶다면", ids: ["tiny-isle", "agent-town", "rack-tycoon"] },
+];
 const categories = [...new Set(liveGames.map((game) => game.category))];
 const pill =
   "rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-white";
@@ -134,6 +139,42 @@ const jsonLd = {
       ))
     }
   </ul>
+  <section class="mt-12 max-w-3xl">
+    <h2 class="text-xl font-bold">Zepio는 이런 곳입니다</h2>
+    <p class="mt-2">
+      Zepio는 다운로드나 회원가입 없이 브라우저에서 바로 즐기는 무료 웹게임 모음입니다. 규칙을 보면 바로 이해되는 짧은
+      퍼즐과 아케이드부터 몇십 분 붙잡고 키우는 시뮬레이션까지, 직접 만든 게임을 하나씩 늘려 가고 있습니다. 기록은 내
+      브라우저에만 저장되고, 게임마다 하는 방법과 공략 팁이 함께 있어서 처음 하는 게임도 부담이 없습니다.
+    </p>
+
+    <h3 class="mt-6 text-lg font-bold">어떤 게임부터 할까요?</h3>
+    <ul class="mt-2 list-disc space-y-1.5 pl-5">
+      {
+        GUIDE.map(({ lead, ids }) => (
+          <li>
+            {lead}{" "}
+            {ids.map((id, i) => {
+              const game = liveGames.find((entry) => entry.id === id);
+              return (
+                game && (
+                  <>
+                    {i > 0 && ", "}
+                    <a href={`/games/${game.slug}/`} class="font-semibold text-primary underline">
+                      {game.name}
+                    </a>
+                    <span class="text-sm text-slate-600"> ({game.estimatedPlayTime})</span>
+                  </>
+                )
+              );
+            })}
+          </li>
+        ))
+      }
+    </ul>
+    <p class="mt-4 text-sm text-slate-600">
+      Zepio는 계속 게임을 추가하고 있습니다. 제안이나 오류는 <a href="/contact/" class="underline">문의</a> 페이지로 알려 주세요.
+    </p>
+  </section>
 </BaseLayout>
 
 <script>
