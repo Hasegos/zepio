@@ -11,15 +11,16 @@ import { mergeResult } from "./record.js";
 import { initialState, reducer, resultStars } from "./reducer.js";
 import Result from "./Result.jsx";
 import Setup from "./Setup.jsx";
+import { BUBBLE_CALM, BUBBLE_POINTS } from "./sim.js";
 import TraitPanel from "./TraitPanel.jsx";
 import { AI_IDS } from "./traits.js";
 import WorldMap from "./WorldMap.jsx";
 
 const SPEEDS = [
   { label: "일시정지", ms: 0 },
-  { label: "1배속", ms: 700 },
-  { label: "2배속", ms: 350 },
-  { label: "4배속", ms: 175 },
+  { label: "1배속", ms: 1600 },
+  { label: "2배속", ms: 800 },
+  { label: "4배속", ms: 400 },
 ];
 
 /**
@@ -36,6 +37,8 @@ export default function RogueModel() {
   const [dailyResult, setDailyResult] = useState(null);
   const [ai, setAi] = useState(AI_IDS[0]);
   const [pick, setPick] = useState(null);
+  const [diff, setDiff] = useState("normal");
+  const [autoPause, setAutoPause] = useState(true);
   const [speed, setSpeed] = useState(0);
   const [still, setStill] = useState(false);
 
@@ -55,6 +58,10 @@ export default function RogueModel() {
     const timer = setTimeout(() => dispatch({ type: "tick", now: Date.now() }), SPEEDS[speed].ms);
     return () => clearTimeout(timer);
   }, [state.phase, state.sim, speed]);
+
+  useEffect(() => {
+    if (state.phase === "play" && autoPause && state.sim.turn > 0 && state.sim.news.some((item) => item.turn === state.sim.turn && item.key)) setSpeed(0);
+  }, [state.phase, state.sim, autoPause]);
 
   useEffect(() => {
     if (state.phase !== "result") return;
@@ -86,7 +93,8 @@ export default function RogueModel() {
     setToday(date);
     begin("daily", dailyRun(date));
   }, [begin]);
-  const launch = useCallback(() => dispatch({ type: "launch", ai, start: pick }), [ai, pick]);
+  const launch = useCallback(() => dispatch({ type: "launch", ai, start: pick, diff: mode === "daily" ? "normal" : diff }), [ai, pick, diff, mode]);
+  const collect = useCallback((id) => dispatch({ type: "collect", id }), []);
   const buy = useCallback((id) => dispatch({ type: "buy", id }), []);
   const nextTurn = useCallback(() => dispatch({ type: "tick", now: Date.now() }), []);
 
@@ -129,7 +137,7 @@ export default function RogueModel() {
       )}
       {state.phase === "setup" && world && (
         <div className="flex flex-col gap-4">
-          <Setup ai={ai} region={region} onAi={setAi} onLaunch={launch} />
+          <Setup ai={ai} diff={diff} showDifficulty={mode === "normal"} region={region} onAi={setAi} onDiff={setDiff} onLaunch={launch} />
           <WorldMap world={world} sim={null} selected={pick} running={false} still={still} onSelect={setPick} />
         </div>
       )}
@@ -151,8 +159,28 @@ export default function RogueModel() {
             <button type="button" onClick={nextTurn} disabled={speed !== 0} className="rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-sm font-bold disabled:opacity-50">
               한 턴 진행
             </button>
+            <label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+              <input type="checkbox" checked={autoPause} onChange={(event) => setAutoPause(event.target.checked)} />
+              중요한 소식에서 멈춤
+            </label>
           </div>
-          <WorldMap world={world} sim={sim} selected={pick} running={speed !== 0} still={still} onSelect={setPick} />
+          <WorldMap world={world} sim={sim} selected={pick} running={speed !== 0} still={still} onSelect={setPick} onCollect={collect} />
+          {sim.bubbles.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="보너스">
+              <span className="text-sm font-bold">보너스</span>
+              {sim.bubbles.map((bubble) => (
+                <button
+                  key={bubble.id}
+                  type="button"
+                  onClick={() => collect(bubble.id)}
+                  className="rounded-lg border-2 border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-bold"
+                >
+                  {world.regions[bubble.region].name} ·{" "}
+                  {bubble.kind === "points" ? `포인트 +${BUBBLE_POINTS}` : `경계도 -${Math.round(BUBBLE_CALM * 100)}%`} ({bubble.left}턴)
+                </button>
+              ))}
+            </div>
+          )}
           <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
             {info ? (
               <>
@@ -166,10 +194,11 @@ export default function RogueModel() {
           <div role="log" aria-live="off" aria-label="소식" className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
             <ul className="grid gap-1">
               {sim.news
-                .slice(-5)
+                .slice(-7)
                 .reverse()
                 .map((item, i) => (
-                  <li key={`${item.turn}-${i}`} className={i === 0 ? "font-bold" : "text-slate-600"}>
+                  <li key={`${item.turn}-${i}`} className={item.key ? "font-bold text-slate-900" : "text-slate-600"}>
+                    {item.key ? "● " : ""}
                     {item.turn}턴 · {item.text}
                   </li>
                 ))}

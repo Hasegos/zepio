@@ -105,8 +105,9 @@ function Vehicle({ type, path, length, offset }) {
  * @param props.running 턴이 흐르는 중인지
  * @param props.still 움직임을 줄여야 하는지
  * @param props.onSelect 권역을 눌렀을 때 번호를 받는다
+ * @param props.onCollect 보너스 버블을 눌렀을 때 버블 id를 받는다
  */
-export default function WorldMap({ world, sim, selected, running, still, onSelect }) {
+export default function WorldMap({ world, sim, selected, running, still, onSelect, onCollect }) {
   const { regions, links } = world;
   const levels = sim?.levels ?? {};
   const P = useMemo(() => (sim ? derive(sim.levels, sim.ai) : null), [sim]);
@@ -198,6 +199,20 @@ export default function WorldMap({ world, sim, selected, running, still, onSelec
                 : [],
             );
           })}
+        {sim?.bubbles.map((bubble) => {
+          const region = regions[bubble.region];
+          const points = bubble.kind === "points";
+          return (
+            <g key={bubble.id} aria-hidden="true" transform={`translate(${region.x + 13} ${region.y - 15})`} className="cursor-pointer" onClick={() => onCollect(bubble.id)}>
+              <circle r="9" className={points ? "fill-amber-300 stroke-white" : "fill-sky-300 stroke-white"} strokeWidth="1.5">
+                {!still && <animate attributeName="r" values="9;11;9" dur="1.6s" repeatCount="indefinite" />}
+              </circle>
+              <text textAnchor="middle" dominantBaseline="central" fontSize="9" fontWeight="900" className="fill-slate-900">
+                {points ? "+3" : "↓"}
+              </text>
+            </g>
+          );
+        })}
         {sim &&
           links.map((link, index) => {
             if (!sim.cut[index]) return null;

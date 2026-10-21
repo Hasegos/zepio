@@ -1,6 +1,6 @@
 import { shareText } from "../_shared/share-text.js";
 import { endingOf, MAX_STARS, worldOf } from "./engine.js";
-import { weighted } from "./sim.js";
+import { DIFFICULTIES, weighted } from "./sim.js";
 import { AI_TYPES } from "./traits.js";
 import { resultStars } from "./reducer.js";
 
@@ -18,7 +18,7 @@ export function rogueShareText(state, date) {
   const mark = `${"★".repeat(stars)}${"☆".repeat(MAX_STARS - stars)}`;
   const lines = [
     `${mark} · ${endingOf(sim.over).title}`,
-    `${AI_TYPES[sim.ai].name} · ${sim.turn}턴`,
+    `${AI_TYPES[sim.ai].name} · ${sim.turn}턴${sim.diff === "normal" ? "" : ` · ${DIFFICULTIES[sim.diff].label}`}`,
     `채택 ${Math.round(weighted(world, sim.a) * 100)}% · 의존 ${Math.round(weighted(world, sim.d) * 100)}% · 규제 ${Math.round(sim.reg * 100)}%`,
   ];
   return shareText("폭주 모델", lines.join("\n"), date && { label: "오늘의 도전", date });
