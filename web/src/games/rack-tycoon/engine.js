@@ -132,6 +132,7 @@ export function newState() {
     title: null,
     brand: { points: 0, count: 0 },
     robot: { speed: 0, discount: 0, drone: 0 },
+    research: { cooling: 0, hub: 0, power: 0, warn: 0, battery: 0, fire: 0, profit: 0 },
     sites: [{ type: "basement", land: 0, cells }],
   };
 }
@@ -272,7 +273,7 @@ export function synergyNeighbors(state, tile) {
  * 온도 비율, 네트워크 효율, 이웃한 같은 단계 서버 시너지(+6%씩)를 곱하고, 전력이 모자라면 전체가 같은 비율로 준다.
  *
  * 재난 효과(fx)가 있으면 수익과 열, 대역폭 수요, 전력 상한에 곱해지고 불에 탄 서버는 꺼진 것으로 본다.
- * 난이도에 따른 수익 배율과 다른 건물과 이어진 수만큼의 네트워크 보너스(건물 하나당 +8%, 최대 +32%), 업적 하나당 +1%, 브랜드 포인트 하나당 +5% 보너스도 여기서 곱한다.
+ * 난이도에 따른 수익 배율과 다른 건물과 이어진 수만큼의 네트워크 보너스(건물 하나당 +8%, 최대 +32%), 업적 하나당 +1%, 브랜드 포인트 하나당 +5%, 연구(냉각, 허브, 발전, 배터리, 수익)도 여기서 반영한다.
  *
  * @param state 게임 상태
  * @param fx 재난 효과 { outputMul, heatMul, demandMul, capMul, burning }, 기본은 효과 없음
@@ -285,6 +286,7 @@ export function analyze(state, fx = NO_FX) {
   const counts = { server: 0, cooler: 0, hub: 0, gen: 0, battery: 0, ext: 0 };
   let usage = 0;
   const trait = traitOf(state.type);
+  const rs = state.research ?? {};
   let supply = trait.baseCap;
   let backup = 0;
   state.cells.forEach((cell, tile) => {
@@ -299,19 +301,20 @@ export function analyze(state, fx = NO_FX) {
       addHeat(heat, tile, spec.heat * fx.heatMul * trait.heatMul);
     } else if (cell.kind === "cooler") {
       usage += spec.power;
-      addCool(heat, tile, spec);
+      addCool(heat, tile, { ...spec, cool: spec.cool * (1 + 0.1 * (rs.cooling ?? 0)) });
     } else if (cell.kind === "hub") {
       usage += spec.power;
-      hubs.push({ tile, cap: spec.cap, reach: spec.reach });
+      hubs.push({ tile, cap: spec.cap, reach: spec.reach + (rs.hub ?? 0) });
     } else if (cell.kind === "gen") {
-      supply += spec.cap;
+      supply += spec.cap * (1 + 0.1 * (rs.power ?? 0));
       addHeat(heat, tile, spec.heat * trait.heatMul);
     } else if (cell.kind === "battery") {
-      backup += spec.cap;
+      backup += spec.cap * (1 + 0.25 * (rs.battery ?? 0));
     }
   });
   const cap = supply * fx.capMul + (fx.capMul < 1 ? backup : 0);
   const bonus = DIFFICULTIES[state.difficulty ?? "calm"].bonus;
+  const profitBonus = 1 + 0.05 * (rs.profit ?? 0);
   const badgeBonus = 1 + BADGE_BONUS * (state.badges?.length ?? 0);
   const brandBonus = 1 + BRAND_BONUS * (state.brand?.points ?? 0);
   const network = 1 + NET_BONUS * Math.min(NET_MAX, connectionsOf(state.links ?? [], state.type));
@@ -326,7 +329,7 @@ export function analyze(state, fx = NO_FX) {
     const temp = heat[server.tile];
     maxTemp = Math.max(maxTemp, temp);
     outputs[server.tile] =
-      server.spec.output * thermal(temp) * net.get(server.tile) * (1 + SYNERGY * neighbors) * efficiency * fx.outputMul * bonus * trait.incomeMul * network * badgeBonus * brandBonus;
+      server.spec.output * thermal(temp) * net.get(server.tile) * (1 + SYNERGY * neighbors) * efficiency * fx.outputMul * bonus * trait.incomeMul * network * badgeBonus * brandBonus * profitBonus;
     income += outputs[server.tile];
   }
   return {

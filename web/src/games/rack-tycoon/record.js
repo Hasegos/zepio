@@ -3,7 +3,7 @@ import { analyze, DIFFICULTIES, formatRate, gradeOf, KINDS, newState, xyOf } fro
 import { snapshot, viewOf } from "./campus.js";
 import { AREA, GRID_HEIGHT, GRID_WIDTH, inLand, LANDS, TERMINAL_TILE } from "./layout.js";
 import { BADGE_IDS, PART_KEYS } from "./collection.js";
-import { MAX_SITES, ROBOT_UPS, SITE_TYPES } from "./sites.js";
+import { MAX_SITES, RESEARCH, ROBOT_UPS, SITE_TYPES } from "./sites.js";
 
 const MAX_VALUE = 1e18;
 const VERSION = 3;
@@ -143,9 +143,21 @@ function readRobot(raw) {
 }
 
 /**
+ * 저장된 연구 단계를 안전한 모양으로 다듬는다. 없거나 범위를 벗어난 값은 0으로 본다.
+ *
+ * @param raw 저장소에서 읽은 기록
+ * @returns 연구 종류별 단계
+ */
+function readResearch(raw) {
+  const clean = {};
+  for (const [key, item] of Object.entries(RESEARCH)) clean[key] = isObject(raw) && isInt(raw[key], 0, item.max) ? raw[key] : 0;
+  return clean;
+}
+
+/**
  * 건물 목록과 보고 있는 건물로 게임 상태를 만든다.
  *
- * @param base { coins, lifetime, time, difficulty, stats, links, brand, robot, codex, badges, title }
+ * @param base { coins, lifetime, time, difficulty, stats, links, brand, robot, research, codex, badges, title }
  * @param sites 건물 목록
  * @param active 보고 있는 건물 번호
  * @returns 게임 상태
@@ -170,7 +182,7 @@ export function readState(raw) {
   const clean = sites.map(readSite);
   if (clean.some((site) => site === null) || new Set(clean.map((site) => site.type)).size !== clean.length) return null;
   const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
-  return build({ coins, lifetime, time, difficulty, stats: readStats(raw.stats), links: readLinks(raw.links, clean), brand: readBrand(raw.brand), robot: readRobot(raw.robot), ...readCollection(raw) }, clean, active);
+  return build({ coins, lifetime, time, difficulty, stats: readStats(raw.stats), links: readLinks(raw.links, clean), brand: readBrand(raw.brand), robot: readRobot(raw.robot), research: readResearch(raw.research), ...readCollection(raw) }, clean, active);
 }
 
 /**
@@ -198,7 +210,7 @@ function migrateV2(raw) {
     return null;
   });
   const difficulty = Object.hasOwn(DIFFICULTIES, raw.difficulty) ? raw.difficulty : null;
-  const base = { coins: Math.min(MAX_VALUE, coins + refund), lifetime, time, difficulty, stats: readStats(raw.stats), links: [], brand: readBrand(raw.brand), robot: readRobot(raw.robot), ...readCollection(raw) };
+  const base = { coins: Math.min(MAX_VALUE, coins + refund), lifetime, time, difficulty, stats: readStats(raw.stats), links: [], brand: readBrand(raw.brand), robot: readRobot(raw.robot), research: readResearch(raw.research), ...readCollection(raw) };
   return build(base, [{ type: "basement", land: nextLand, cells: kept }], 0);
 }
 
