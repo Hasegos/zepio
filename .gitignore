@@ -9,3 +9,5 @@ AGENTS.md
 .codex/
 .serena
 .wrangler/
+graphify-out/
+.gitattributes
