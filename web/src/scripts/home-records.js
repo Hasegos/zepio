@@ -48,6 +48,7 @@ if (dailyRows.length) {
       status.textContent = `연속 ${streak}일 이어가는 중`;
     }
   }
+  for (const row of dailyRows) if (row.dataset.done !== undefined) row.parentElement.append(row);
   if (dailySummary && Object.keys(daily).length) {
     dailySummary.textContent =
       done === dailyRows.length
