@@ -13,4 +13,5 @@ export default {
   wide: true,
   status: "live",
   runtime: "module",
+  hasDaily: true,
 };
