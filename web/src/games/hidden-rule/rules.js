@@ -71,7 +71,7 @@ function tableOf(test) {
 }
 
 /**
- * 규칙 목록을 만든다. 난이도 1은 속성 하나, 2는 부정과 개수 조건, 3은 속성 둘의 조합이다.
+ * 규칙 목록을 만든다. 난이도 1은 속성 하나, 2는 부정과 개수 조건과 같은 속성 안의 둘 묶음, 3은 속성 둘의 조합이다.
  * 모든 카드에서 같은 결과를 내는 규칙은 낮은 난이도 하나만 남긴다.
  *
  * @returns { id, level, text, test, table } 목록
@@ -88,6 +88,15 @@ function buildRules() {
       all.push({ id: `not:${atom.id}`, level: 2, text: `${atom.head} ${atom.value}${josa(atom.value)} 아님`, test: (card) => !atom.test(card) });
     }
   }
+  for (const [attr, head, values, names] of [["shape", "모양이", SHAPES, SHAPE_NAMES], ["color", "색이", COLORS, COLOR_NAMES]]) {
+    for (let i = 0; i < values.length; i += 1) {
+      for (let j = i + 1; j < values.length; j += 1) {
+        const a = values[i];
+        const b = values[j];
+        all.push({ id: `${attr}:${a}+${b}`, level: 2, text: `${head} ${names[a]} 또는 ${names[b]}`, test: (card) => card[attr] === a || card[attr] === b });
+      }
+    }
+  }
   for (let i = 0; i < ATOMS.length; i += 1) {
     for (let j = i + 1; j < ATOMS.length; j += 1) {
       const a = ATOMS[i];
@@ -95,6 +104,12 @@ function buildRules() {
       if (a.attr === b.attr) continue;
       all.push({ id: `${a.id}&${b.id}`, level: 3, text: `${atomText(a)}이면서 ${atomText(b)}`, test: (card) => a.test(card) && b.test(card) });
       all.push({ id: `${a.id}|${b.id}`, level: 3, text: `${atomText(a)}이거나 ${atomText(b)}`, test: (card) => a.test(card) || b.test(card) });
+    }
+  }
+  for (const a of ATOMS) {
+    for (const b of ATOMS) {
+      if (a.attr === b.attr || !b.negatable) continue;
+      all.push({ id: `${a.id}&!${b.id}`, level: 3, text: `${atomText(a)}이면서 ${b.head} ${b.value}${josa(b.value)} 아님`, test: (card) => a.test(card) && !b.test(card) });
     }
   }
   const seen = new Map();
