@@ -12,4 +12,5 @@ export default {
   inputs: ["mouse", "keyboard"],
   status: "live",
   runtime: "module",
+  hasDaily: true,
 };

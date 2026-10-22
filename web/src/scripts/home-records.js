@@ -30,16 +30,29 @@ for (const [id, card] of cards) {
   });
 }
 
-const banner = document.querySelector("[data-daily]");
-const bannerText = document.querySelector("[data-daily-text]");
-const record = banner ? daily[banner.dataset.gameId] : null;
-if (bannerText && record) {
+const dailyRows = [...document.querySelectorAll("[data-daily-game]")];
+const dailySummary = document.querySelector("[data-daily-summary]");
+if (dailyRows.length) {
   const today = kstDate(Date.now());
-  const streak = currentStreak(record, today);
-  if (record.last === today) {
-    bannerText.textContent = `오늘 완료 · 연속 ${streak}일. 내일 새로운 문제가 열려요.`;
-  } else if (streak > 0) {
-    bannerText.textContent = `오늘의 문제가 기다려요 · 연속 ${streak}일을 이어가는 중`;
+  let done = 0;
+  for (const row of dailyRows) {
+    const status = row.querySelector("[data-daily-status]");
+    const record = daily[row.dataset.dailyGame];
+    if (!status || !record) continue;
+    const streak = currentStreak(record, today);
+    if (record.last === today) {
+      done += 1;
+      row.dataset.done = "";
+      status.textContent = `오늘 완료 · 연속 ${streak}일`;
+    } else if (streak > 0) {
+      status.textContent = `연속 ${streak}일 이어가는 중`;
+    }
+  }
+  if (dailySummary && Object.keys(daily).length) {
+    dailySummary.textContent =
+      done === dailyRows.length
+        ? `오늘의 도전 ${done}개를 모두 마쳤어요. 내일 새 판이 열려요.`
+        : `오늘 ${done}/${dailyRows.length}개 완료. 마치지 않은 게임에 도전해 보세요.`;
   }
 }
 
