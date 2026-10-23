@@ -15,6 +15,7 @@ import { mergeResult } from "./record.js";
 import { initialState, reducer, resultStars } from "./reducer.js";
 import Result from "./Result.jsx";
 import Setup from "./Setup.jsx";
+import { parseChallenge } from "./share-text.js";
 import { BUBBLE_CALM, BUBBLE_POINTS } from "./sim.js";
 import TraitPanel from "./TraitPanel.jsx";
 import { AI_IDS } from "./traits.js";
@@ -31,6 +32,7 @@ const SPEEDS = [
 /**
  * 폭주 모델 한 판을 진행한다. 시작 화면, AI와 시작 권역 고르기, 턴 진행(능력 구매와 지도 관찰), 결과 화면을 오간다.
  * 시작 화면에서 오늘(KST)의 도전과 일반 모드를 고른다. 오늘의 도전은 날짜로 세계와 이벤트가 정해져 모두가 같다.
+ * 주소에 오늘 날짜의 도전장(`?vs=날짜.별.턴`)이 있으면 시작 화면에 친구 기록을 보여 주고 오늘의 도전 결과와 비교한다.
  */
 export default function RogueModel() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
@@ -40,6 +42,7 @@ export default function RogueModel() {
   const [today, setToday] = useState(() => kstDate(Date.now()));
   const [dailyRecord, setDailyRecord] = useState(() => getDaily(meta.id));
   const [dailyResult, setDailyResult] = useState(null);
+  const [challenge] = useState(() => parseChallenge(new URLSearchParams(window.location.search).get("vs")));
   const [ai, setAi] = useState(AI_IDS[0]);
   const [pick, setPick] = useState(null);
   const [diff, setDiff] = useState("normal");
@@ -151,6 +154,7 @@ export default function RogueModel() {
 
   const doneScore = scoreOn(dailyRecord, today);
   const doneToday = doneScore !== null;
+  const rival = challenge?.date === today ? challenge : null;
   const region = world && pick !== null ? world.regions[pick] : null;
   const info = world && pick !== null && sim ? world.regions[pick] : null;
 
@@ -168,6 +172,13 @@ export default function RogueModel() {
           <p className="max-w-sm text-sm text-slate-700">
             해저 케이블과 클라우드를 타고 권역을 넘나들며 퍼지세요. 눈에 띄면 규제안이 빨라지고, 너무 조용하면 의존도가 쌓이지 않아요.
           </p>
+          {rival && (
+            <p className="w-full max-w-sm rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-sm font-bold text-slate-800">
+              친구의 오늘의 도전 기록: 별 {rival.stars}개 · {rival.turn}턴
+              <br />
+              {doneToday ? `내 오늘 기록: 별 ${doneScore}개` : "같은 판에서 이겨 보세요."}
+            </p>
+          )}
           <DailyCard
             date={today}
             streak={currentStreak(dailyRecord, today)}
@@ -282,7 +293,7 @@ export default function RogueModel() {
         </div>
       )}
       {state.phase === "result" && (
-        <Result state={state} record={record} daily={mode === "daily" ? dailyResult : null} onRetry={startNormal} still={still} />
+        <Result state={state} record={record} daily={mode === "daily" ? dailyResult : null} rival={mode === "daily" ? rival : null} onRetry={startNormal} still={still} />
       )}
     </section>
   );
