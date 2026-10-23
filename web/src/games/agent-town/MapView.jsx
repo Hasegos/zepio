@@ -8,7 +8,8 @@ const LANTERN_LIGHT = 5.5;
 
 export const WALK_MS = 150;
 const TURN_MS = 80;
-const CHAIN_SLACK_MS = 50;
+const CHAIN_SLACK_MS = 20;
+const MOVING_MS = 200;
 const PAD = [
   { dir: "up", label: "위로", cls: "col-start-2 row-start-1", glyph: "▲" },
   { dir: "left", label: "왼쪽으로", cls: "col-start-1 row-start-2", glyph: "◀" },
@@ -18,7 +19,7 @@ const PAD = [
 
 /**
  * 지역 지도. 도트 캔버스에 지도와 인물을 그리고, 터치용 방향 버튼을 함께 보여 준다. 다른 지역으로 건너가면 지역 이름과 전환 효과를 잠깐 보여 준다.
- * 방향을 누르고 있는 동안 한 칸이 끝나는 시각에 바로 다음 칸을 시작해 일정한 속도로 걷고, 서 있다가 다른 방향을 누르면 먼저 몸만 돌린다.
+ * 방향을 누르고 있는 동안 한 칸이 끝나는 시각에 바로 다음 칸을 시작해 일정한 속도로 걷는다. 걸음이 끝난 지 MOVING_MS 안에 다른 방향을 누르면 바로 걷고, 그보다 오래 서 있다가 누르면 먼저 몸만 돌린다.
  * 키보드 입력은 부모가 `held`에 기록하고(방향키, WASD, Enter), 방향 버튼은 이 컴포넌트가 기록한다.
  *
  * @param props.state 게임 상태
@@ -81,12 +82,12 @@ export default function MapView({ state, held, onMove, onTurn, onInteract, disab
       const c = clock.current;
       const dir = handlers.current.disabled ? null : topDir(held);
       if (dir && now >= c.next) {
-        const chaining = c.next > 0 && now - c.next < CHAIN_SLACK_MS;
-        if (!chaining && s.player.dir !== dir) {
+        const since = c.next > 0 ? now - c.next : Infinity;
+        if (since >= MOVING_MS && s.player.dir !== dir) {
           handlers.current.onTurn(dir);
           c.next = now + TURN_MS;
         } else {
-          const start = chaining ? c.next : now;
+          const start = since < CHAIN_SLACK_MS ? c.next : now;
           clock.current = { next: start + WALK_MS, start, issued: now };
           handlers.current.onMove(dir);
         }

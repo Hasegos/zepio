@@ -338,8 +338,8 @@ export function drawFrame(ctx, world, view) {
   const map = MAPS[mapId];
   const fx = from ? from.x + (player.x - from.x) * t : player.x;
   const fy = from ? from.y + (player.y - from.y) * t : player.y;
-  const baseX = Math.round(fx * TILE);
-  const baseY = Math.round(fy * TILE);
+  const baseX = Math.round(fx * TILE * SCALE) / SCALE;
+  const baseY = Math.round(fy * TILE * SCALE) / SCALE;
   const maxX = map.width * TILE - VIEW_PX_W;
   const maxY = map.height * TILE - VIEW_PX_H;
   const camX = Math.max(0, Math.min(maxX, baseX + (TILE - VIEW_PX_W) / 2));
